@@ -24,6 +24,18 @@ static void uv_on_tcp_conn_close(uv_handle_t* handle) {
   ts_conn__destroy(listener, conn);
   ts__free(conn);
 }
+static void uv_on_listener_close(uv_handle_t* handle) {
+  ts_server_listener_t* listener = (ts_server_listener_t*)handle;
+  ts_server_t* server = listener->server;
+  
+  server->listener_count--;
+  if (server->listener_count == 0) {
+    ts__free(server->listeners);
+    server->listeners = NULL;
+  }
+  // TODO: disconnect all connections;
+  return;
+}
 
 static void uv_on_write(uv_write_t *req, int status) {
   ts_conn_write_req_t* wr = (ts_conn_write_req_t*) req;
@@ -409,10 +421,15 @@ int ts_server__run(ts_server_t* server) {
   return uv_run(server->uvloop, UV_RUN_NOWAIT);
 }
 int ts_server__stop(ts_server_t* server) {
-  int err;
   uv_idle_stop(&server->uvidle);
   
-  return err;
+  for (int i = 0; i < server->listener_count; i++) {
+    uv_close((uv_handle_t*)&server->listeners[i].uvtcp, uv_on_listener_close);
+  }
+  
+  while (uv_run(server->uvloop, UV_RUN_NOWAIT) != 0) {}
+  
+  return 0;
 }
 
 
