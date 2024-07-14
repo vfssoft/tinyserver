@@ -367,8 +367,10 @@ static int ts_server__listener_init(ts_server_t* server, int listener_index) {
 
   return 0;
 }
-static int ts_server__listeners_init(ts_server_t* server) {
+
+int ts_server__start(ts_server_t* server) {
   int err;
+  ts_server_listener_t* listener;
   
   server->listener_count = server->config.listeners_count;
   server->listeners = (ts_server_listener_t*) ts__malloc(sizeof(ts_server_listener_t) * server->listener_count);
@@ -383,32 +385,11 @@ static int ts_server__listeners_init(ts_server_t* server) {
     }
   }
   
-done:
-  return err;
-}
-static int ts_server__listener_listen(ts_server_listener_t* listener) {
-  int err;
-
-  err = uv_listen((uv_stream_t*)&(listener->uvtcp), listener->config->backlog, uv_on_new_tcp_connection);
-  if (err) {
-    return err;
-  }
-
-  return 0;
-}
-
-int ts_server__start(ts_server_t* server) {
-  int err;
-  
-  err = ts_server__listeners_init(server);
-  if (err) {
-    goto done;
-  }
-  
   for (int i = 0; i < server->listener_count; i++) {
-    err = ts_server__listener_listen(&server->listeners[i]);
+    listener = &server->listeners[i];
+    err = uv_listen((uv_stream_t*)&(listener->uvtcp), listener->config->backlog, uv_on_new_tcp_connection);
     if (err) {
-      goto done;
+      return err;
     }
   }
   
