@@ -59,10 +59,12 @@ int ts_data_pipe__peek(ts_data_pipe_t* dp, int inout, char** data, int *out_len)
 
 
 int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn);
+int ts_conn__destroy(ts_server_listener_t* listener, ts_conn_t* conn);
 ts_conn_write_req_t* ts_conn__create_write_req(ts_conn_t* conn, char* data, int len);
 void ts_conn__destroy_write_req(ts_conn_t* conn, ts_conn_write_req_t* req);
 
 int ts_tls__init(ts_tls_t* tls);
+int ts_tls__destroy(ts_tls_t* tls);
 int ts_tls__set_cert_files(ts_tls_t* tls, const char* cert, const char* key);
 int ts_tls__set_verify_mode(ts_tls_t* tls, int mode);
 int ts_tls__get_state(ts_tls_t* tls);

@@ -47,6 +47,14 @@ done:
   return 0;
 }
 
+int ts_conn__destroy(ts_server_listener_t* listener, ts_conn_t* conn) {
+  if (conn->tls) {
+    ts_tls__destroy(conn->tls);
+    ts__free(conn->tls);
+  }
+  return 0;
+}
+
 ts_conn_write_req_t* ts_conn__create_write_req(ts_conn_t* conn, char* data, int len) {
   ts_conn_write_req_t* req = (ts_conn_write_req_t*) ts__malloc(sizeof(ts_conn_write_req_t));
   if (req == NULL) {

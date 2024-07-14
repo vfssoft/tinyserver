@@ -26,47 +26,54 @@ static void client_connect_cb(void *arg) {
   ASSERT_EQ(err, 0);
 }
 
-typedef struct test_connected_info_s {
+typedef struct test_conn_info_s {
   int fired;
   ts_server_t* server;
   ts_conn_t* conn;
-  int status;
-} test_connected_info_t;
+} test_conn_info_t;
 
 static int connected_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status) {
-  test_connected_info_t* info = (test_connected_info_t*)ctx;
+  test_conn_info_t* info = (test_conn_info_t*)ctx;
   info->fired++;
   info->server = server;
   info->conn = conn;
-  info->status = status;
+  return 0;
+}
+static int disconnected_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status) {
+  test_conn_info_t* info = (test_conn_info_t*)ctx;
+  info->fired--;
+  info->server = server;
+  info->conn = conn;
   return 0;
 }
 
 TEST(TCPServer, ConnectTest) {
-  test_connected_info_t connected_info;
-  memset(&connected_info, 0, sizeof(connected_info));
+  test_conn_info_t conn_info;
+  memset(&conn_info, 0, sizeof(conn_info));
   
   ts_server_t server;
   start_server(&server);
-  ts_server__set_cb_ctx(&server, &connected_info);
+  ts_server__set_cb_ctx(&server, &conn_info);
   ts_server__set_connected_cb(&server, connected_cb);
+  ts_server__set_disconnected_cb(&server, disconnected_cb);
   
   uv_thread_t client_thread;
   uv_thread_create(&client_thread, client_connect_cb, NULL);
   
   int r = ts_server__start(&server);
   ASSERT_EQ(r, 0);
-  while (true) {
+  while (conn_info.fired == 0) {
     ts_server__run(&server);
-    
-    if (connected_info.fired > 0) {
-      break;
-    }
   }
-  ASSERT_EQ(connected_info.fired, 1);
-  ASSERT_EQ(connected_info.server, &server);
-  ASSERT_TRUE(connected_info.conn != NULL);
-  ASSERT_EQ(connected_info.status, 0);
+  ASSERT_EQ(conn_info.fired, 1);
+  ASSERT_EQ(conn_info.server, &server);
+  ASSERT_TRUE(conn_info.conn != NULL);
   
+  while (conn_info.fired > 0) {
+    ts_server__run(&server);
+  }
   
+  ASSERT_EQ(conn_info.fired, 0);
+  ASSERT_EQ(conn_info.server, &server);
+  ASSERT_TRUE(conn_info.conn != NULL);
 }

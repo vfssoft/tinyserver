@@ -15,7 +15,13 @@ static void uv_on_free_buffer(const uv_buf_t* buf) {
 
 static void uv_on_tcp_conn_close(uv_handle_t* handle) {
   ts_conn_t* conn = (ts_conn_t*)handle;
-  DL_DELETE(conn->listener->server->conns, conn);
+  ts_server_listener_t* listener = conn->listener;
+  ts_server_t* server = listener->server;
+ 
+  server->disconnected_cb(server->cb_ctx, server, conn, 0);
+  
+  DL_DELETE(server->conns, conn);
+  ts_conn__destroy(listener, conn);
   ts__free(conn);
 }
 
@@ -126,9 +132,7 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
   }
   
   if (nread < 0) {
-    if (nread != UV_EOF)
-      fprintf(stderr, "Read error %s\n", uv_err_name(nread));
-    //uv_close((uv_handle_t*) uvstream, uv_on_close);
+    uv_close((uv_handle_t*)stream, uv_on_tcp_conn_close);
   }
   
   uv_on_free_buffer(buf);
