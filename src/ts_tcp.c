@@ -227,6 +227,8 @@ int ts_server__init(ts_server_t* server) {
   server->conns = NULL;
   server->err_msg = NULL;
   
+  uv_idle_init(uv_default_loop(), &server->uvidle);
+  
   memset(&(server->config), 0, sizeof(ts_server_config_t));
   
   return 0;
@@ -369,7 +371,7 @@ static int ts_server__listener_listen(ts_server_listener_t* listener) {
   return 0;
 }
 
-int ts_server__run(ts_server_t* server) {
+int ts_server__start(ts_server_t* server) {
   int err;
   
   err = ts_server__listeners_init(server);
@@ -384,9 +386,18 @@ int ts_server__run(ts_server_t* server) {
     }
   }
   
-  return uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  uv_idle_start(&(server->uvidle), ts_server__default_idle_cb);
   
 done:
+  return err;
+}
+int ts_server__run(ts_server_t* server) {
+  return uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+}
+int ts_server__stop(ts_server_t* server) {
+  int err;
+  uv_idle_stop(&server->uvidle);
+  
   return err;
 }
 

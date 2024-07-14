@@ -44,7 +44,9 @@ TS_EXTERN int ts_server__set_disconnected_cb(ts_server_t* server, ts_server_disc
 TS_EXTERN int ts_server__set_read_cb(ts_server_t* server, ts_server_read_cb cb);
 TS_EXTERN int ts_server__set_idle_cb(ts_server_t* server, ts_server_idle_cb cb);
 TS_EXTERN int ts_server__set_config(ts_server_t* server, ts_server_config_t* cfg);
+TS_EXTERN int ts_server__start(ts_server_t* server);
 TS_EXTERN int ts_server__run(ts_server_t* server);
+TS_EXTERN int ts_server__stop(ts_server_t* server);
 TS_EXTERN int ts_server__write(ts_server_t server, ts_conn_t conn, const char* data, int len);
 TS_EXTERN int ts_server__disconnect(ts_server_t server, ts_conn_t conn);
 
@@ -101,6 +103,7 @@ struct ts_server_s {
     ts_server_read_cb read_cb;
     ts_server_idle_cb idle_cb;
   
+    uv_idle_t uvidle;
     ts_conn_t* conns;
     ts_server_config_t config;
     char* err_msg;
