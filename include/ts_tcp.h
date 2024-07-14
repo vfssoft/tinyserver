@@ -104,6 +104,8 @@ struct ts_server_s {
     ts_server_idle_cb idle_cb;
   
     uv_idle_t uvidle;
+    uv_loop_t *uvloop;
+    
     ts_conn_t* conns;
     ts_server_config_t config;
     char* err_msg;

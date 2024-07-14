@@ -227,7 +227,8 @@ int ts_server__init(ts_server_t* server) {
   server->conns = NULL;
   server->err_msg = NULL;
   
-  uv_idle_init(uv_default_loop(), &server->uvidle);
+  server->uvloop = uv_default_loop();
+  uv_idle_init(server->uvloop, &server->uvidle);
   
   memset(&(server->config), 0, sizeof(ts_server_config_t));
   
@@ -327,7 +328,7 @@ static int ts_server__listener_init(ts_server_t* server, int listener_index) {
   listener->server = server;
   listener->config = cfg;
 
-  listener->uvloop = uv_default_loop();
+  listener->uvloop = server->uvloop;
 
   err = uv_tcp_init(listener->uvloop, &listener->uvtcp);
   if (err) {
@@ -392,7 +393,7 @@ done:
   return err;
 }
 int ts_server__run(ts_server_t* server) {
-  return uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+  return uv_run(server->uvloop, UV_RUN_NOWAIT);
 }
 int ts_server__stop(ts_server_t* server) {
   int err;
