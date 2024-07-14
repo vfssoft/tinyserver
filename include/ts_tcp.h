@@ -30,15 +30,16 @@ typedef struct ts_conn_write_req_s ts_conn_write_req_t;
 typedef struct ts_conn_s ts_conn_t;
 typedef struct ts_tls_s ts_tls_t;
 
-typedef int (*ts_server_connected_cb)(ts_server_t* server, ts_conn_t* conn, int status);
-typedef int (*ts_server_disconnected_cb)(ts_server_t* server, ts_conn_t* conn, int status);
-typedef int (*ts_server_read_cb)(ts_server_t* server, ts_conn_t* conn, const char* data, int len);
-typedef int (*ts_server_idle_cb)(ts_server_t* server);
+typedef int (*ts_server_connected_cb)(void* ctx, ts_server_t* server, ts_conn_t* conn, int status);
+typedef int (*ts_server_disconnected_cb)(void* ctx, ts_server_t* server, ts_conn_t* conn, int status);
+typedef int (*ts_server_read_cb)(void* ctx, ts_server_t* server, ts_conn_t* conn, const char* data, int len);
+typedef int (*ts_server_idle_cb)(void* ctx, ts_server_t* server);
 
 TS_EXTERN  int ts_server_listener_config__init(ts_server_listener_config_t* cfg);
 
 TS_EXTERN int ts_server__init(ts_server_t* server);
 TS_EXTERN int ts_server__destroy(ts_server_t server);
+TS_EXTERN int ts_server__set_cb_ctx(ts_server_t* server, void* ctx);
 TS_EXTERN int ts_server__set_connected_cb(ts_server_t* server, ts_server_connected_cb cb);
 TS_EXTERN int ts_server__set_disconnected_cb(ts_server_t* server, ts_server_disconnected_cb cb);
 TS_EXTERN int ts_server__set_read_cb(ts_server_t* server, ts_server_read_cb cb);
@@ -102,6 +103,7 @@ struct ts_server_s {
     ts_server_disconnected_cb disconnected_cb;
     ts_server_read_cb read_cb;
     ts_server_idle_cb idle_cb;
+    void* cb_ctx;
   
     uv_idle_t uvidle;
     uv_loop_t *uvloop;

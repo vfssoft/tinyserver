@@ -11,6 +11,9 @@
 #include <openssl/conf.h>
 #include <openssl/engine.h>
 
+// help macros
+#define CONTAINER_OF(ptr, type, member) \
+    ((type *)((char *)(ptr) - offsetof(type, member)))
 
 typedef struct ts_data_queue_s ts_data_queue_t;
 typedef struct ts_stream_block_s ts_stream_block_t;

@@ -26,19 +26,47 @@ static void client_connect_cb(void *arg) {
   ASSERT_EQ(err, 0);
 }
 
-static int connected_cb(ts_server_t* server, ts_conn_t* conn, int status) {
+typedef struct test_connected_info_s {
+  int fired;
+  ts_server_t* server;
+  ts_conn_t* conn;
+  int status;
+} test_connected_info_t;
+
+static int connected_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status) {
+  test_connected_info_t* info = (test_connected_info_t*)ctx;
+  info->fired++;
+  info->server = server;
+  info->conn = conn;
+  info->status = status;
   return 0;
 }
 
 TEST(TCPServer, ConnectTest) {
+  test_connected_info_t connected_info;
+  memset(&connected_info, 0, sizeof(connected_info));
+  
   ts_server_t server;
   start_server(&server);
+  ts_server__set_cb_ctx(&server, &connected_info);
   ts_server__set_connected_cb(&server, connected_cb);
   
   uv_thread_t client_thread;
   uv_thread_create(&client_thread, client_connect_cb, NULL);
   
-  int r = ts_server__run(&server);
-  ASSERT_TRUE(r == -4071);
-  ASSERT_STREQ(server.err_msg, "invalid host");
+  int r = ts_server__start(&server);
+  ASSERT_EQ(r, 0);
+  while (true) {
+    ts_server__run(&server);
+    
+    if (connected_info.fired > 0) {
+      break;
+    }
+  }
+  ASSERT_EQ(connected_info.fired, 1);
+  ASSERT_EQ(connected_info.server, &server);
+  ASSERT_TRUE(connected_info.conn != NULL);
+  ASSERT_EQ(connected_info.status, 0);
+  
+  
 }

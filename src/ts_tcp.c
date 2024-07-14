@@ -114,14 +114,14 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
       
       if (ssl_state == TLS_STATE_HANDSHAKING && tls->ssl_state == TLS_STATE_CONNECTED) {
         // tls handshake is done
-        server->connected_cb(server, conn, 0);
+        server->connected_cb(server->cb_ctx, server, conn, 0);
       }
       
       input.buf = ssl_decrypted->buf;
       input.len = ssl_decrypted->len;
     }
     
-    server->read_cb(server, conn, input.buf, input.len);
+    server->read_cb(server->cb_ctx, server, conn, input.buf, input.len);
     
   }
   
@@ -159,7 +159,7 @@ static void uv_on_new_tcp_connection(uv_stream_t *stream, int status) {
   err = uv_accept((uv_stream_t*) &listener->uvtcp, (uv_stream_t*) &conn->uvtcp);
   if (err == 0) {
     if (listener->config->protocol == TS_PROTO_TCP) {
-      err = server->connected_cb(server, conn, 0);
+      err = server->connected_cb(server->cb_ctx, server, conn, 0);
     }
 
     err = uv_read_start((uv_stream_t*) &conn->uvtcp, uv_on_alloc_buffer, uv_on_read);
@@ -172,14 +172,18 @@ static void uv_on_new_tcp_connection(uv_stream_t *stream, int status) {
 done:
   return;
 }
+static void uv_on_idle(uv_idle_t *handle) {
+  ts_server_t* server = CONTAINER_OF(handle, ts_server_t, uvidle);
+  server->idle_cb(server->cb_ctx, server);
+}
 
-static int ts_server__default_connected_cb(ts_server_t* server, ts_conn_t* conn, int status) {
+static int ts_server__default_connected_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status) {
   return 0;
 }
-static int ts_server__default_disconnected_cb(ts_server_t* server, ts_conn_t* conn, int status) {
+static int ts_server__default_disconnected_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status) {
   return 0;
 }
-static int ts_server__default_idle_cb(ts_server_t* server) {
+static int ts_server__default_idle_cb(void* ctx, ts_server_t* server) {
   return 0;
 }
 
@@ -223,6 +227,7 @@ int ts_server__init(ts_server_t* server) {
   server->disconnected_cb = ts_server__default_disconnected_cb;
   server->read_cb = NULL;
   server->idle_cb = ts_server__default_idle_cb;
+  server->cb_ctx = NULL;
   
   server->conns = NULL;
   server->err_msg = NULL;
@@ -239,6 +244,10 @@ int ts_server__destroy(ts_server_t server) {
   return 0; // TODO
 }
 
+int ts_server__set_cb_ctx(ts_server_t* server, void* ctx) {
+  server->cb_ctx = ctx;
+  return 0;
+}
 int ts_server__set_connected_cb(ts_server_t* server, ts_server_connected_cb cb) {
   server->connected_cb = cb;
   return 0;
@@ -387,7 +396,7 @@ int ts_server__start(ts_server_t* server) {
     }
   }
   
-  uv_idle_start(&(server->uvidle), ts_server__default_idle_cb);
+  uv_idle_start(&(server->uvidle), uv_on_idle);
   
 done:
   return err;
