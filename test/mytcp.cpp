@@ -44,7 +44,7 @@ int mytcp__disconnect(mytcp_t* tcp) {
   tcp->socket = 0;
   return err;
 }
-int mytcp__read(mytcp_t* tcp, const char* data, int len) {
+int mytcp__write(mytcp_t* tcp, const char* data, int len) {
   int err;
 
   err = send(tcp->socket, data, len, 0);
@@ -53,7 +53,7 @@ int mytcp__read(mytcp_t* tcp, const char* data, int len) {
   }
   return err;
 }
-int mytcp__write(mytcp_t* tcp, char* data, int len) {
+int mytcp__read(mytcp_t* tcp, char* data, int len) {
   int err;
 
   memset(data, 0, len);

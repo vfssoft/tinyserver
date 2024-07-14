@@ -25,8 +25,8 @@ struct mytcp_s {
 
 int mytcp__connect(mytcp_t* tcp, const char* host, int port);
 int mytcp__disconnect(mytcp_t* tcp);
-int mytcp__read(mytcp_t* tcp, const char* data, int len);
-int mytcp__write(mytcp_t* tcp, char* data, int len);
+int mytcp__read(mytcp_t* tcp, char* data, int len);
+int mytcp__write(mytcp_t* tcp, const char* data, int len);
 
 #ifdef __cplusplus
 }
