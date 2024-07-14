@@ -10,6 +10,7 @@ add_executable(tests
         basic_errors_test.cpp
         mytcp.h
         mytcp.cpp
-        tcp_connect_test.cpp)
+        tcp_connect_test.cpp
+        tcp_read_write_test.cpp)
 
 target_link_libraries(tests gtest gtest_main server_lib)

@@ -76,4 +76,6 @@ TEST(TCPServer, ConnectTest) {
   ASSERT_EQ(conn_info.fired, 0);
   ASSERT_EQ(conn_info.server, &server);
   ASSERT_TRUE(conn_info.conn != NULL);
+  
+  ts_server__stop(&server);
 }
