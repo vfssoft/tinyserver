@@ -1,0 +1,6 @@
+[submodule "libuv"]
+	path = libuv
+	url = git@github.com:VFSSOFT/libuv.git
+[submodule "test/googletest"]
+	path = test/googletest
+	url = https://github.com/google/googletest.git
