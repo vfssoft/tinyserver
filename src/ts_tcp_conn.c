@@ -61,8 +61,11 @@ ts_conn_write_req_t* ts_conn__create_write_req(ts_conn_t* conn, char* data, int 
     return NULL;
   }
   
+  req->ptr = (char*) ts__malloc(len);
+  memcpy(req->ptr, data, len);
+  
   req->conn = conn;
-  req->buf = uv_buf_init(data, len);
+  req->buf = uv_buf_init(req->ptr, len);
   DL_APPEND(conn->write_reqs, req);
   
   return req;

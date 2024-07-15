@@ -39,11 +39,12 @@ static void uv_on_listener_close(uv_handle_t* handle) {
 
 static void uv_on_write(uv_write_t *req, int status) {
   ts_conn_write_req_t* wr = (ts_conn_write_req_t*) req;
-  ts_conn__destroy_write_req(wr->conn, wr);
-  ts_server_t* server = wr->conn->listener->server;
-
-  int write_more = !ts_conn__has_pending_write_req(wr->conn);
-  server->write_cb(server->cb_ctx, server, wr->conn, status, write_more);
+  ts_conn_t* conn = wr->conn;
+  ts_server_t* server = conn->listener->server;
+  ts_conn__destroy_write_req(conn, wr);
+  
+  int write_more = !ts_conn__has_pending_write_req(conn);
+  server->write_cb(server->cb_ctx, server, conn, status, write_more);
 }
 
 static int ts_server__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
@@ -280,7 +281,7 @@ int ts_server__set_read_cb(ts_server_t* server, ts_server_read_cb cb) {
   server->read_cb = cb;
   return 0;
 }
-int ts_server__set_can_write_cb(ts_server_t* server, ts_server_write_cb cb) {
+int ts_server__set_write_cb(ts_server_t* server, ts_server_write_cb cb) {
   server->write_cb = cb;
   return 0;
 }

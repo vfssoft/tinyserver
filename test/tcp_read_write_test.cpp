@@ -24,9 +24,9 @@ static void client_cb(void *arg) {
   err = mytcp__write(&client, data, strlen(data));
   ASSERT_EQ(err, strlen(data));
   
-  char recvbuf[6];
-  err = mytcp__read(&client, recvbuf, 6);
-  ASSERT_EQ(err, 5);
+  char recvbuf[100];
+  err = mytcp__read(&client, recvbuf, 100);
+  ASSERT_EQ(err, strlen(data));
   
   err = mytcp__disconnect(&client);
   ASSERT_EQ(err, 0);
@@ -35,12 +35,21 @@ static void client_cb(void *arg) {
 typedef struct test_conn_info_s {
     int fired;
     char databuf[10];
+    
+    int write_done;
 } test_conn_info_t;
 
 static int read_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, const char* data, int len) {
   test_conn_info_t* info = (test_conn_info_t*)ctx;
   info->fired++;
   memcpy(info->databuf, data, len);
+  
+  ts_server__write(server, conn, data, len);
+  return 0;
+}
+static int write_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status, int write_more) {
+  test_conn_info_t* info = (test_conn_info_t*)ctx;
+  info->write_done = 1;
   return 0;
 }
 
@@ -52,6 +61,7 @@ TEST(TCPServer, EchoTest) {
   start_server(&server);
   ts_server__set_cb_ctx(&server, &conn_info);
   ts_server__set_read_cb(&server, read_cb);
+  ts_server__set_write_cb(&server, write_cb);
   
   char* str = "hello world";
   uv_thread_t client_thread;
@@ -64,5 +74,11 @@ TEST(TCPServer, EchoTest) {
   }
   ASSERT_EQ(conn_info.fired, 1);
   ASSERT_STREQ(conn_info.databuf, str);
+  
+  while (conn_info.write_done == 0) {
+    ts_server__run(&server);
+  }
+  
+  ts_server__stop(&server);
   
 }

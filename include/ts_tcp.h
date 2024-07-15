@@ -119,6 +119,7 @@ struct ts_server_s {
 struct ts_conn_write_req_s {
     uv_write_t req;
     uv_buf_t buf;
+    char* ptr;
     
     ts_conn_t* conn;
     
