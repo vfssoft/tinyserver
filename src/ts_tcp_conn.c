@@ -74,3 +74,7 @@ void ts_conn__destroy_write_req(ts_conn_t* conn, ts_conn_write_req_t* req) {
   ts__free(req->buf.base);
   ts__free(req);
 }
+
+int ts_conn__has_pending_write_req(ts_conn_t* conn) {
+  return conn->write_reqs != NULL;
+}

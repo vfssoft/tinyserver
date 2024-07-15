@@ -40,10 +40,10 @@ static void uv_on_listener_close(uv_handle_t* handle) {
 static void uv_on_write(uv_write_t *req, int status) {
   ts_conn_write_req_t* wr = (ts_conn_write_req_t*) req;
   ts_conn__destroy_write_req(wr->conn, wr);
-  
-  if (status) {
-    //uv_close();
-  }
+  ts_server_t* server = wr->conn->listener->server;
+
+  int write_more = !ts_conn__has_pending_write_req(wr->conn);
+  server->write_cb(server->cb_ctx, server, wr->conn, status, write_more);
 }
 
 static int ts_server__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
@@ -199,6 +199,9 @@ static int ts_server__default_connected_cb(void* ctx, ts_server_t* server, ts_co
 static int ts_server__default_disconnected_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status) {
   return 0;
 }
+static int ts_server__default_write_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status, int write_more) {
+  return 0;
+}
 static int ts_server__default_idle_cb(void* ctx, ts_server_t* server) {
   return 0;
 }
@@ -242,6 +245,7 @@ int ts_server__init(ts_server_t* server) {
   server->connected_cb = ts_server__default_connected_cb;
   server->disconnected_cb = ts_server__default_disconnected_cb;
   server->read_cb = NULL;
+  server->write_cb = ts_server__default_write_cb;
   server->idle_cb = ts_server__default_idle_cb;
   server->cb_ctx = NULL;
   
@@ -274,6 +278,10 @@ int ts_server__set_disconnected_cb(ts_server_t* server, ts_server_disconnected_c
 }
 int ts_server__set_read_cb(ts_server_t* server, ts_server_read_cb cb) {
   server->read_cb = cb;
+  return 0;
+}
+int ts_server__set_can_write_cb(ts_server_t* server, ts_server_write_cb cb) {
+  server->write_cb = cb;
   return 0;
 }
 int ts_server__set_idle_cb(ts_server_t* server, ts_server_idle_cb cb) {
@@ -411,6 +419,16 @@ int ts_server__stop(ts_server_t* server) {
   while (uv_run(server->uvloop, UV_RUN_NOWAIT) != 0) {}
   
   return 0;
+}
+int ts_server__write(ts_server_t* server, ts_conn_t* conn, const char* data, int len) {
+  int err;
+  ts_buf_t* buf = ts_buf__create(0);
+  ts_buf__set_const(buf, data,len);
+
+  err = ts_server__send_tcp_data(conn, buf);
+
+  ts_buf__destroy(buf);
+  return err;
 }
 
 

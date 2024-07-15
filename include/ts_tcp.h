@@ -33,6 +33,7 @@ typedef struct ts_tls_s ts_tls_t;
 typedef int (*ts_server_connected_cb)(void* ctx, ts_server_t* server, ts_conn_t* conn, int status);
 typedef int (*ts_server_disconnected_cb)(void* ctx, ts_server_t* server, ts_conn_t* conn, int status);
 typedef int (*ts_server_read_cb)(void* ctx, ts_server_t* server, ts_conn_t* conn, const char* data, int len);
+typedef int (*ts_server_write_cb)(void* ctx, ts_server_t* server, ts_conn_t* conn, int status, int can_write_more);
 typedef int (*ts_server_idle_cb)(void* ctx, ts_server_t* server);
 
 TS_EXTERN  int ts_server_listener_config__init(ts_server_listener_config_t* cfg);
@@ -43,13 +44,14 @@ TS_EXTERN int ts_server__set_cb_ctx(ts_server_t* server, void* ctx);
 TS_EXTERN int ts_server__set_connected_cb(ts_server_t* server, ts_server_connected_cb cb);
 TS_EXTERN int ts_server__set_disconnected_cb(ts_server_t* server, ts_server_disconnected_cb cb);
 TS_EXTERN int ts_server__set_read_cb(ts_server_t* server, ts_server_read_cb cb);
+TS_EXTERN int ts_server__set_write_cb(ts_server_t* server, ts_server_write_cb cb);
 TS_EXTERN int ts_server__set_idle_cb(ts_server_t* server, ts_server_idle_cb cb);
 TS_EXTERN int ts_server__set_config(ts_server_t* server, ts_server_config_t* cfg);
 TS_EXTERN int ts_server__start(ts_server_t* server);
 TS_EXTERN int ts_server__run(ts_server_t* server);
 TS_EXTERN int ts_server__stop(ts_server_t* server);
-TS_EXTERN int ts_server__write(ts_server_t server, ts_conn_t conn, const char* data, int len);
-TS_EXTERN int ts_server__disconnect(ts_server_t server, ts_conn_t conn);
+TS_EXTERN int ts_server__write(ts_server_t* server, ts_conn_t* conn, const char* data, int len);
+TS_EXTERN int ts_server__disconnect(ts_server_t* server, ts_conn_t* conn);
 
 struct ts_error_s {
     int err;
@@ -102,6 +104,7 @@ struct ts_server_s {
     ts_server_connected_cb connected_cb;
     ts_server_disconnected_cb disconnected_cb;
     ts_server_read_cb read_cb;
+    ts_server_write_cb write_cb;
     ts_server_idle_cb idle_cb;
     void* cb_ctx;
   
