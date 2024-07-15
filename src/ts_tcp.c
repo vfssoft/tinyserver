@@ -145,7 +145,7 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
   }
   
   if (nread < 0) {
-    uv_close((uv_handle_t*)stream, uv_on_tcp_conn_close);
+    ts_server__disconnect(server, conn);
   }
   
   uv_on_free_buffer(buf);
@@ -183,7 +183,7 @@ static void uv_on_new_tcp_connection(uv_stream_t *stream, int status) {
   }
 
   if (err) {
-    uv_close((uv_handle_t*) &conn->uvtcp, uv_on_tcp_conn_close);
+    ts_server__disconnect(server, conn);
   }
   
 done:
@@ -430,6 +430,13 @@ int ts_server__write(ts_server_t* server, ts_conn_t* conn, const char* data, int
 
   ts_buf__destroy(buf);
   return err;
+}
+int ts_server__disconnect(ts_server_t* server, ts_conn_t* conn) {
+  uv_handle_t* h = (uv_handle_t*)&conn->uvtcp;
+  if (h && !uv_is_closing(h)) {
+    uv_close(h, uv_on_tcp_conn_close);
+  }
+  return 0;
 }
 
 
