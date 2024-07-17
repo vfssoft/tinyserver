@@ -19,6 +19,8 @@ static void uv_on_tcp_conn_close(uv_handle_t* handle) {
   ts_server_t* server = listener->server;
  
   server->disconnected_cb(server->cb_ctx, server, conn, 0);
+
+  uv_read_stop((uv_stream_t*)&conn->uvtcp);
   
   DL_DELETE(server->conns, conn);
   ts_conn__destroy(listener, conn);
@@ -29,11 +31,11 @@ static void uv_on_listener_close(uv_handle_t* handle) {
   ts_server_t* server = listener->server;
   
   server->listener_count--;
+  assert(server->listener_count >= 0);
   if (server->listener_count == 0) {
     ts__free(server->listeners);
     server->listeners = NULL;
   }
-  // TODO: disconnect all connections;
   return;
 }
 
@@ -412,6 +414,16 @@ int ts_server__run(ts_server_t* server) {
 }
 int ts_server__stop(ts_server_t* server) {
   uv_idle_stop(&server->uvidle);
+  
+  // TODO: add a stop flag to stop accepting new connections
+  ts_conn_t* cur_conn = NULL;
+  DL_FOREACH(server->conns, cur_conn) {
+    ts_server__disconnect(server, cur_conn);
+  }
+  // wait for all conns are closed
+  while (server->conns != NULL) {
+    uv_run(server->uvloop, UV_RUN_NOWAIT);
+  }
   
   for (int i = 0; i < server->listener_count; i++) {
     uv_close((uv_handle_t*)&server->listeners[i].uvtcp, uv_on_listener_close);
