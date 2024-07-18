@@ -29,12 +29,15 @@ typedef struct ts_server_s ts_server_t;
 typedef struct ts_conn_write_req_s ts_conn_write_req_t;
 typedef struct ts_conn_s ts_conn_t;
 typedef struct ts_tls_s ts_tls_t;
+typedef struct ts_log_s ts_log_t;
 
 typedef int (*ts_server_connected_cb)(void* ctx, ts_server_t* server, ts_conn_t* conn, int status);
 typedef int (*ts_server_disconnected_cb)(void* ctx, ts_server_t* server, ts_conn_t* conn, int status);
 typedef int (*ts_server_read_cb)(void* ctx, ts_server_t* server, ts_conn_t* conn, const char* data, int len);
 typedef int (*ts_server_write_cb)(void* ctx, ts_server_t* server, ts_conn_t* conn, int status, int can_write_more);
 typedef int (*ts_server_idle_cb)(void* ctx, ts_server_t* server);
+
+typedef int (*ts_log_cb)(void* ctx, int level, const char* msg);
 
 TS_EXTERN  int ts_server_listener_config__init(ts_server_listener_config_t* cfg);
 
@@ -53,6 +56,11 @@ TS_EXTERN int ts_server__stop(ts_server_t* server);
 TS_EXTERN int ts_server__write(ts_server_t* server, ts_conn_t* conn, const char* data, int len);
 TS_EXTERN int ts_server__disconnect(ts_server_t* server, ts_conn_t* conn);
 
+TS_EXTERN  int ts_server_log_set_log_level(ts_server_t* server, int log_level);
+TS_EXTERN  int ts_server_log_set_log_dest(ts_server_t* server, int dest);
+TS_EXTERN  int ts_server_log_set_log_dir(ts_server_t* server, const char* dir);
+TS_EXTERN  int ts_server_log_set_log_cb(ts_server_t* server, void* ctx, ts_log_cb cb);
+
 struct ts_error_s {
     int err;
     char* msg;
@@ -69,6 +77,25 @@ struct ts_buf_s {
 struct ts_ro_buf_s {
     const char* buf;
     int len;
+};
+
+#define TS_LOG_DEST_STDOUT 1
+#define TS_LOG_DEST_FILE   2
+#define TS_LOG_DEST_EVENT  4
+
+#define TS_LOG_LEVEL_NONE    0
+#define TS_LOG_LEVEL_ERROR   1
+#define TS_LOG_LEVEL_INFO    2
+#define TS_LOG_LEVEL_VERB    3
+#define TS_LOG_LEVEL_DEBUG   4
+#define TS_LOG_LEVEL_DEBUGEX 5
+
+struct ts_log_s {
+    int log_level;
+    int log_dest;
+    char* log_dir;
+    void* log_ctx;
+    ts_log_cb log_cb;
 };
 
 #define TS_PROTO_TCP   1
@@ -113,6 +140,7 @@ struct ts_server_s {
     
     ts_conn_t* conns;
     ts_server_config_t config;
+    ts_log_t log;
     char* err_msg;
 };
 

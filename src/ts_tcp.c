@@ -251,6 +251,8 @@ int ts_server__init(ts_server_t* server) {
   
   server->conns = NULL;
   server->err_msg = NULL;
+
+  ts_log__init(&server->log);
   
   server->uvloop = uv_default_loop();
   uv_idle_init(server->uvloop, &server->uvidle);
@@ -261,6 +263,7 @@ int ts_server__init(ts_server_t* server) {
 }
 
 int ts_server__destroy(ts_server_t server) {
+  ts_log__destroy(&server.log);
   return 0; // TODO
 }
 

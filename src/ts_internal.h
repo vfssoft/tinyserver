@@ -76,6 +76,9 @@ int ts_tls__decrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output);
 ts_error_t* ts_error_create(int err);
 void ts_error_destroy(ts_error_t* e);
 
+int ts_log__init(ts_log_t* log);
+int ts_log__destroy(ts_log_t* log);
+
 ts_buf_t* ts_buf__create(int cap);
 void ts_buf__destroy(ts_buf_t* buf);
 int ts_buf__set_length(ts_buf_t* buf, int len);
