@@ -19,6 +19,8 @@ static void uv_on_tcp_conn_close(uv_handle_t* handle) {
   ts_server_t* server = listener->server;
  
   server->disconnected_cb(server->cb_ctx, server, conn, 0);
+
+  uv_read_stop((uv_stream_t*)&conn->uvtcp);
   
   DL_DELETE(server->conns, conn);
   ts_conn__destroy(listener, conn);
@@ -29,21 +31,22 @@ static void uv_on_listener_close(uv_handle_t* handle) {
   ts_server_t* server = listener->server;
   
   server->listener_count--;
+  assert(server->listener_count >= 0);
   if (server->listener_count == 0) {
     ts__free(server->listeners);
     server->listeners = NULL;
   }
-  // TODO: disconnect all connections;
   return;
 }
 
 static void uv_on_write(uv_write_t *req, int status) {
   ts_conn_write_req_t* wr = (ts_conn_write_req_t*) req;
-  ts_conn__destroy_write_req(wr->conn, wr);
-  ts_server_t* server = wr->conn->listener->server;
-
-  int write_more = !ts_conn__has_pending_write_req(wr->conn);
-  server->write_cb(server->cb_ctx, server, wr->conn, status, write_more);
+  ts_conn_t* conn = wr->conn;
+  ts_server_t* server = conn->listener->server;
+  ts_conn__destroy_write_req(conn, wr);
+  
+  int write_more = !ts_conn__has_pending_write_req(conn);
+  server->write_cb(server->cb_ctx, server, conn, status, write_more);
 }
 
 static int ts_server__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
@@ -144,7 +147,7 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
   }
   
   if (nread < 0) {
-    uv_close((uv_handle_t*)stream, uv_on_tcp_conn_close);
+    ts_server__disconnect(server, conn);
   }
   
   uv_on_free_buffer(buf);
@@ -182,7 +185,7 @@ static void uv_on_new_tcp_connection(uv_stream_t *stream, int status) {
   }
 
   if (err) {
-    uv_close((uv_handle_t*) &conn->uvtcp, uv_on_tcp_conn_close);
+    ts_server__disconnect(server, conn);
   }
   
 done:
@@ -283,7 +286,7 @@ int ts_server__set_read_cb(ts_server_t* server, ts_server_read_cb cb) {
   server->read_cb = cb;
   return 0;
 }
-int ts_server__set_can_write_cb(ts_server_t* server, ts_server_write_cb cb) {
+int ts_server__set_write_cb(ts_server_t* server, ts_server_write_cb cb) {
   server->write_cb = cb;
   return 0;
 }
@@ -415,6 +418,16 @@ int ts_server__run(ts_server_t* server) {
 int ts_server__stop(ts_server_t* server) {
   uv_idle_stop(&server->uvidle);
   
+  // TODO: add a stop flag to stop accepting new connections
+  ts_conn_t* cur_conn = NULL;
+  DL_FOREACH(server->conns, cur_conn) {
+    ts_server__disconnect(server, cur_conn);
+  }
+  // wait for all conns are closed
+  while (server->conns != NULL) {
+    uv_run(server->uvloop, UV_RUN_NOWAIT);
+  }
+  
   for (int i = 0; i < server->listener_count; i++) {
     uv_close((uv_handle_t*)&server->listeners[i].uvtcp, uv_on_listener_close);
   }
@@ -432,6 +445,13 @@ int ts_server__write(ts_server_t* server, ts_conn_t* conn, const char* data, int
 
   ts_buf__destroy(buf);
   return err;
+}
+int ts_server__disconnect(ts_server_t* server, ts_conn_t* conn) {
+  uv_handle_t* h = (uv_handle_t*)&conn->uvtcp;
+  if (h && !uv_is_closing(h)) {
+    uv_close(h, uv_on_tcp_conn_close);
+  }
+  return 0;
 }
 
 
