@@ -78,9 +78,8 @@ struct ts_ro_buf_s {
     int len;
 };
 
-#define TS_LOG_DEST_STDOUT 1
-#define TS_LOG_DEST_FILE   2
-#define TS_LOG_DEST_EVENT  4
+#define TS_LOG_DEST_FILE   1
+#define TS_LOG_DEST_EVENT  2
 
 #define TS_LOG_LEVEL_NONE    0
 #define TS_LOG_LEVEL_ERROR   1
@@ -95,6 +94,14 @@ struct ts_log_s {
     char* log_dir;
     void* log_ctx;
     ts_log_cb log_cb;
+
+    int log_timestamp;
+    char* log_timestamp_format;
+
+    // internal states
+    FILE* cur_log_file;
+
+    uv_mutex_t mutex;
 };
 
 #define TS_PROTO_TCP   1
