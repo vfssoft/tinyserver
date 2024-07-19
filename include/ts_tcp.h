@@ -22,8 +22,6 @@ extern "C" {
 typedef struct ts_error_s ts_error_t;
 typedef struct ts_buf_s ts_buf_t;
 typedef struct ts_ro_buf_s ts_ro_buf_t;
-typedef struct ts_server_listener_config_s ts_server_listener_config_t;
-typedef struct ts_server_config_s ts_server_config_t;
 typedef struct ts_server_listener_s ts_server_listener_t;
 typedef struct ts_server_s ts_server_t;
 typedef struct ts_conn_write_req_s ts_conn_write_req_t;
@@ -39,8 +37,6 @@ typedef int (*ts_server_idle_cb)(void* ctx, ts_server_t* server);
 
 typedef int (*ts_log_cb)(void* ctx, int level, const char* msg);
 
-TS_EXTERN  int ts_server_listener_config__init(ts_server_listener_config_t* cfg);
-
 TS_EXTERN int ts_server__init(ts_server_t* server);
 TS_EXTERN int ts_server__destroy(ts_server_t server);
 TS_EXTERN int ts_server__set_cb_ctx(ts_server_t* server, void* ctx);
@@ -49,7 +45,10 @@ TS_EXTERN int ts_server__set_disconnected_cb(ts_server_t* server, ts_server_disc
 TS_EXTERN int ts_server__set_read_cb(ts_server_t* server, ts_server_read_cb cb);
 TS_EXTERN int ts_server__set_write_cb(ts_server_t* server, ts_server_write_cb cb);
 TS_EXTERN int ts_server__set_idle_cb(ts_server_t* server, ts_server_idle_cb cb);
-TS_EXTERN int ts_server__set_config(ts_server_t* server, ts_server_config_t* cfg);
+TS_EXTERN int ts_server__set_listener_count(ts_server_t* server, int cnt);
+TS_EXTERN int ts_server__set_listener_host_port(ts_server_t* server, int idx, const char* host, int port);
+TS_EXTERN int ts_server__set_listener_use_ipv6(ts_server_t* server, int idx, int use);
+TS_EXTERN int ts_server__set_listener_protocol(ts_server_t* server, int idx, int proto);
 TS_EXTERN int ts_server__start(ts_server_t* server);
 TS_EXTERN int ts_server__run(ts_server_t* server);
 TS_EXTERN int ts_server__stop(ts_server_t* server);
@@ -101,28 +100,20 @@ struct ts_log_s {
 #define TS_PROTO_TCP   1
 #define TS_PROTO_TLS  2
 
-struct ts_server_listener_config_s {
+struct ts_server_listener_s {
+    uv_tcp_t uvtcp;
+    uv_loop_t *uvloop;
+    ts_server_t* server;
+
     const char* host;
     int port;
     int use_ipv6;
     int backlog;
     int protocol;
-    
+
     const char* cert;
     const char* key;
     int tls_verify_mode;
-};
-struct ts_server_config_s {
-    ts_server_listener_config_t* listeners;
-    int listeners_count;
-};
-
-struct ts_server_listener_s {
-    uv_tcp_t uvtcp;
-    uv_loop_t *uvloop;
-    ts_server_t* server;
-  
-    ts_server_listener_config_t* config;
 };
 struct ts_server_s {
     ts_server_listener_t* listeners;
@@ -139,7 +130,6 @@ struct ts_server_s {
     uv_loop_t *uvloop;
     
     ts_conn_t* conns;
-    ts_server_config_t config;
     ts_log_t log;
     char* err_msg;
 };

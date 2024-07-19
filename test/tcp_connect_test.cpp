@@ -3,15 +3,9 @@
 #include "mytcp.h"
 
 static void start_server(ts_server_t* server) {
-  ts_server_config_t cfg;
-  
-  cfg.listeners = (ts_server_listener_config_t*) malloc(sizeof(ts_server_listener_config_t));
-  cfg.listeners_count = 1;
-  ts_server_listener_config__init(&cfg.listeners[0]);
-  cfg.listeners[0].port = 12345;
-  
   ts_server__init(server);
-  ts_server__set_config(server, &cfg);
+  ts_server__set_listener_count(server, 1);
+  ts_server__set_listener_host_port(server, 0, "127.0.0.1", 12345);
 }
 
 static void client_connect_cb(void *arg) {

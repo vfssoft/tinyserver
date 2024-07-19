@@ -177,7 +177,7 @@ static void uv_on_new_tcp_connection(uv_stream_t *stream, int status) {
 
   err = uv_accept((uv_stream_t*) &listener->uvtcp, (uv_stream_t*) &conn->uvtcp);
   if (err == 0) {
-    if (listener->config->protocol == TS_PROTO_TCP) {
+    if (listener->protocol == TS_PROTO_TCP) {
       err = server->connected_cb(server->cb_ctx, server, conn, 0);
     }
 
@@ -229,17 +229,6 @@ void ts_server__set_errmsg_f(ts_server_t* server, const char* format, ...) {
   ts_server__set_errmsg(server, buf);
 }
 
-int ts_server_listener_config__init(ts_server_listener_config_t* cfg) {
-  cfg->host = "0.0.0.0";
-  cfg->port = 0;
-  cfg->use_ipv6 = 0;
-  cfg->backlog = TS_DEFAULT_BACKLOG;
-  cfg->protocol = TS_PROTO_TCP;
-  cfg->cert = "";
-  cfg->key = "";
-  cfg->tls_verify_mode = 0;
-  return 0;
-}
 
 int ts_server__init(ts_server_t* server) {
   server->listeners = NULL;
@@ -259,8 +248,6 @@ int ts_server__init(ts_server_t* server) {
   
   server->uvloop = uv_default_loop();
   uv_idle_init(server->uvloop, &server->uvidle);
-  
-  memset(&(server->config), 0, sizeof(ts_server_config_t));
   
   return 0;
 }
@@ -294,23 +281,46 @@ int ts_server__set_idle_cb(ts_server_t* server, ts_server_idle_cb cb) {
   server->idle_cb = cb;
   return 0;
 }
-int ts_server__set_config(ts_server_t* server, ts_server_config_t* cfg) {
-  server->config.listeners_count = cfg->listeners_count;
-  server->config.listeners = (ts_server_listener_config_t*) ts__malloc(sizeof(ts_server_listener_config_t) * cfg->listeners_count);
-  if (server->config.listeners == NULL) {
-    return TS_ERR_OUT_OF_MEMORY;
+int ts_server__set_listener_count(ts_server_t* server, int cnt) {
+  if (server->listener_count > 0) {
+    ts__free(server->listeners);
   }
-  
-  for (int i = 0; i < cfg->listeners_count; i++) {
-    server->config.listeners[i].host = ts__strdup(cfg->listeners[i].host);
-    server->config.listeners[i].port = cfg->listeners[i].port;
-    server->config.listeners[i].use_ipv6 = cfg->listeners[i].use_ipv6;
-    server->config.listeners[i].backlog = cfg->listeners[i].backlog;
-    server->config.listeners[i].protocol = cfg->listeners[i].protocol;
-    server->config.listeners[i].cert = ts__strdup(cfg->listeners[i].cert);
-    server->config.listeners[i].key = ts__strdup(cfg->listeners[i].key);
-    server->config.listeners[i].tls_verify_mode = cfg->listeners[i].tls_verify_mode;
+
+  server->listener_count = cnt;
+  server->listeners = NULL;
+  if (cnt > 0) {
+    server->listeners = (ts_server_listener_t*) ts__malloc(sizeof(ts_server_listener_t) * cnt);
+    if (server->listeners == NULL) {
+      return TS_ERR_OUT_OF_MEMORY;
+    }
   }
+
+  for (int i = 0; i < cnt; i++) {
+    ts_server_listener_t* l = &server->listeners[i];
+    l->host = "0.0.0.0";
+    l->port = 0;
+    l->use_ipv6 = 0;
+    l->backlog = TS_DEFAULT_BACKLOG;
+    l->protocol = TS_PROTO_TCP;
+    l->cert = "";
+    l->key = "";
+    l->tls_verify_mode = 0;
+  }
+
+  return 0;
+}
+int ts_server__set_listener_host_port(ts_server_t* server, int idx, const char* host, int port){
+  ts_server_listener_t* l = &server->listeners[idx];
+  l->host = ts__strdup(host);
+  l->port = port;
+  return 0;
+}
+int ts_server__set_listener_use_ipv6(ts_server_t* server, int idx, int use) {
+  server->listeners[idx].use_ipv6 = use;
+  return 0;
+}
+int ts_server__set_listener_protocol(ts_server_t* server, int idx, int proto) {
+  server->listeners[idx].protocol = proto;
   return 0;
 }
 
@@ -321,9 +331,9 @@ static int ts_server__listener_bind(ts_server_listener_t* listener) {
   struct sockaddr_in* in4 = (struct sockaddr_in*)&addr;
   struct sockaddr_in6* in6 = (struct sockaddr_in6*)&addr;
 
-  int use_ipv6 = listener->config->use_ipv6;
-  const char* host = listener->config->host;
-  int port = listener->config->port;
+  int use_ipv6 = listener->use_ipv6;
+  const char* host = listener->host;
+  int port = listener->port;
 
   if (use_ipv6) {
     in6->sin6_family = AF_INET6;
@@ -362,11 +372,8 @@ static int ts_server__listener_bind(ts_server_listener_t* listener) {
 static int ts_server__listener_init(ts_server_t* server, int listener_index) {
   int err;
   ts_server_listener_t* listener = &(server->listeners[listener_index]);
-  ts_server_listener_config_t* cfg = &(server->config.listeners[listener_index]);
 
   listener->server = server;
-  listener->config = cfg;
-
   listener->uvloop = server->uvloop;
 
   err = uv_tcp_init(listener->uvloop, &listener->uvtcp);
@@ -386,12 +393,6 @@ int ts_server__start(ts_server_t* server) {
   int err;
   ts_server_listener_t* listener;
   
-  server->listener_count = server->config.listeners_count;
-  server->listeners = (ts_server_listener_t*) ts__malloc(sizeof(ts_server_listener_t) * server->listener_count);
-  if (server->listeners == NULL) {
-    return TS_ERR_OUT_OF_MEMORY;
-  }
-  
   for (int i = 0; i < server->listener_count; i++) {
     err = ts_server__listener_init(server, i);
     if (err) {
@@ -401,7 +402,7 @@ int ts_server__start(ts_server_t* server) {
   
   for (int i = 0; i < server->listener_count; i++) {
     listener = &server->listeners[i];
-    err = uv_listen((uv_stream_t*)&(listener->uvtcp), listener->config->backlog, uv_on_new_tcp_connection);
+    err = uv_listen((uv_stream_t*)&(listener->uvtcp), listener->backlog, uv_on_new_tcp_connection);
     if (err) {
       return err;
     }

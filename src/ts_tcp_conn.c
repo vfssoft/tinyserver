@@ -7,7 +7,7 @@ int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
   conn->listener = listener;
   conn->write_reqs = NULL;
   
-  switch (listener->config->protocol) {
+  switch (listener->protocol) {
     case TS_PROTO_TCP:
       conn->tls = NULL;
       break;
@@ -24,12 +24,12 @@ int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
         goto done;
       }
       
-      err = ts_tls__set_cert_files(conn->tls, listener->config->cert, listener->config->key);
+      err = ts_tls__set_cert_files(conn->tls, listener->cert, listener->key);
       if (err) {
         goto done;
       }
       
-      err = ts_tls__set_verify_mode(conn->tls, listener->config->tls_verify_mode);
+      err = ts_tls__set_verify_mode(conn->tls, listener->tls_verify_mode);
       if (err) {
         goto done;
       }
