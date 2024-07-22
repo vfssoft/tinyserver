@@ -13,6 +13,9 @@
 #include <unistd.h>
 #endif
 
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -21,6 +24,10 @@ typedef struct mytcp_s mytcp_t;
 
 struct mytcp_s {
   int socket;
+  int use_ssl;
+
+  SSL_CTX* sslctx;
+  SSL*     ssl;
 };
 
 int mytcp__init(mytcp_t* tcp);
