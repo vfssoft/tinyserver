@@ -31,6 +31,25 @@ static void ts_tls__destroy_openssl() {
   openssl_lib_initialized = 0;
 }
 
+static void ts_tls__set_err(ts_tls_t* tls, int err) {
+  // don't process the error, convert error should be done out side of this function
+  tls->ssl_state = TLS_STATE_DISCONNECTED;
+  tls->ssl_err = err;
+}
+static void ts_tls__set_err2(ts_tls_t* tls) {
+  tls->ssl_state = TLS_STATE_DISCONNECTED;
+  tls->ssl_err = ERR_get_error();
+  
+  // ref: https://en.wikibooks.org/wiki/OpenSSL/Error_handling
+  BIO* bio = BIO_new(BIO_s_mem());
+  ERR_print_errors(bio);
+  char *errmsg;
+  size_t errmsg_len = BIO_get_mem_data(bio, &errmsg);
+  tls->ssl_err_msg = ts_buf__create(0);
+  ts_buf__set_str(tls->ssl_err_msg, errmsg, errmsg_len);
+  BIO_free(bio);
+}
+
 static SSL_CTX* ts_tls__create_ssl_ctx() {
   ts_tls__init_openssl();
   
@@ -91,6 +110,7 @@ int ts_tls__init(ts_tls_t* tls) {
   
   tls->ssl_state = TLS_STATE_HANDSHAKING;
   tls->ssl_err = 0;
+  tls->ssl_err_msg = NULL;
 
   tls->ssl_buf = ts_buf__create(0);
   if (tls->ssl_buf == NULL) {
@@ -111,17 +131,20 @@ int ts_tls__set_cert_files(ts_tls_t* tls, const char* cert, const char* key) {
   
   err = SSL_CTX_use_certificate_file(ctx, cert, SSL_FILETYPE_PEM);
   if (err != 1) {
-    return -1;
+    ts_tls__set_err2(tls);
+    return tls->ssl_err;
   }
   
   err = SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM);
   if (err != 1) {
-    return -1;
+    ts_tls__set_err2(tls);
+    return tls->ssl_err;
   }
   
   err = SSL_CTX_check_private_key(ctx);
   if (err != 1) {
-    return -1;
+    ts_tls__set_err2(tls);
+    return tls->ssl_err;
   }
   
   return 0;
@@ -135,12 +158,6 @@ int ts_tls__set_verify_mode(ts_tls_t* tls, int mode) {
 
 static int ts_tls__connected(ts_tls_t* tls) {
   return tls->ssl_state == TLS_STATE_CONNECTED;
-}
-
-static void ts_tls__set_err(ts_tls_t* tls, int err) {
-  // don't process the error, convert error should be done out side of this function
-  tls->ssl_state = TLS_STATE_DISCONNECTED;
-  tls->ssl_err = err;
 }
 
 static int ts_tls__get_pending_ssl_data_to_send(ts_tls_t* tls, ts_buf_t* output) {

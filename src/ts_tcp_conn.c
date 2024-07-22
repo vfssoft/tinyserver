@@ -2,7 +2,7 @@
 #include "ts_internal.h"
 
 int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
-  int err;
+  int err = 0;
   
   conn->listener = listener;
   conn->write_reqs = NULL;
@@ -44,7 +44,7 @@ int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
   
 done:
   
-  return 0;
+  return err;
 }
 
 int ts_conn__destroy(ts_server_listener_t* listener, ts_conn_t* conn) {
