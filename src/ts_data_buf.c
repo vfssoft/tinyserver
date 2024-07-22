@@ -132,6 +132,23 @@ int ts_buf__set(ts_buf_t* buf, const char* data, int len) {
   return 0;
 }
 
+int ts_buf__set_str(ts_buf_t* buf, const char* str, int len) {
+  int err;
+  
+  err = ts_buf__ensure_cap(buf, len + 1); // extra one byte
+  if (err) {
+    return err;
+  }
+  
+  err = ts_buf__set(buf, str, len);
+  if (err) {
+    return err;
+  }
+  
+  buf->buf[buf->len] = 0; // ensure string terminates with '\0'
+  return 0;
+}
+
 int ts_buf__set_const(ts_buf_t* buf, const char* data, int len) {
   buf->buf = (char*) data;
   buf->len = len;

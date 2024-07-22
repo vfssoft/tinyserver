@@ -89,6 +89,7 @@ int ts_buf__get_length(ts_buf_t* buf);
 int ts_buf__write(ts_buf_t* buf, const char* data, int len);
 int ts_buf__read(ts_buf_t* buf, char* data, int* len);
 int ts_buf__set(ts_buf_t* buf, const char* data, int len);
+int ts_buf__set_str(ts_buf_t* buf, const char* str, int len);
 int ts_buf__set_const(ts_buf_t* buf, const char* data, int len);
 
 int ts_tcp__getaddrinfo(const char* host, int use_ipv6, struct addrinfo* ret);
