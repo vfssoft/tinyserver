@@ -99,7 +99,7 @@ int ts_buf__write(ts_buf_t* buf, const char* data, int len) {
   buf->len += len;
   return 0;
 }
-int ts_buf__read(ts_buf_t* buf, const char* data, int* len) {
+int ts_buf__read(ts_buf_t* buf, char* data, int* len) {
   int len_read = *len > buf->len ? buf->len : *len;
   // If data == NULL, we just drop the data
   if (data) {

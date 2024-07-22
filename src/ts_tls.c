@@ -209,7 +209,8 @@ static int ts_tls__more_action(ts_tls_t* tls, int hs_err, ts_ro_buf_t* input, ts
       ts_tls__set_err(tls, ts_tls__get_openssl_error(ssl_err));
       return tls->ssl_err;
   }
-  
+
+  return 0;
 }
 int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
   int err;

@@ -7,6 +7,7 @@
 #include "utlist.h"
 
 #include <time.h>
+#include <inttypes.h>
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -86,7 +87,7 @@ void ts_buf__destroy(ts_buf_t* buf);
 int ts_buf__set_length(ts_buf_t* buf, int len);
 int ts_buf__get_length(ts_buf_t* buf);
 int ts_buf__write(ts_buf_t* buf, const char* data, int len);
-int ts_buf__read(ts_buf_t* buf, const char* data, int* len);
+int ts_buf__read(ts_buf_t* buf, char* data, int* len);
 int ts_buf__set(ts_buf_t* buf, const char* data, int len);
 int ts_buf__set_const(ts_buf_t* buf, const char* data, int len);
 
