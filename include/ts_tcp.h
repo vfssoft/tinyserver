@@ -49,6 +49,7 @@ TS_EXTERN int ts_server__set_listener_count(ts_server_t* server, int cnt);
 TS_EXTERN int ts_server__set_listener_host_port(ts_server_t* server, int idx, const char* host, int port);
 TS_EXTERN int ts_server__set_listener_use_ipv6(ts_server_t* server, int idx, int use);
 TS_EXTERN int ts_server__set_listener_protocol(ts_server_t* server, int idx, int proto);
+TS_EXTERN int ts_server__set_listener_certs(ts_server_t* server, int idx, const char* cert, const char* key);
 TS_EXTERN int ts_server__start(ts_server_t* server);
 TS_EXTERN int ts_server__run(ts_server_t* server);
 TS_EXTERN int ts_server__stop(ts_server_t* server);

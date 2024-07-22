@@ -323,6 +323,11 @@ int ts_server__set_listener_protocol(ts_server_t* server, int idx, int proto) {
   server->listeners[idx].protocol = proto;
   return 0;
 }
+int ts_server__set_listener_certs(ts_server_t* server, int idx, const char* cert, const char* key) {
+  server->listeners[idx].cert = ts__strdup(cert);
+  server->listeners[idx].key  = ts__strdup(key);
+  return 0;
+}
 
 static int ts_server__listener_bind(ts_server_listener_t* listener) {
   int err;

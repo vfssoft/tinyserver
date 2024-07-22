@@ -161,9 +161,9 @@ int mytcp__connect(mytcp_t* tcp, const char* host, int port) {
 }
 int mytcp__disconnect(mytcp_t* tcp) {
   if (tcp->use_ssl) {
-    return mytcp__tcp_disconnect(tcp);
-  } else {
     return mytcp__ssl_disconnect(tcp);
+  } else {
+    return mytcp__tcp_disconnect(tcp);
   }
 }
 int mytcp__write(mytcp_t* tcp, const char* data, int len) {
