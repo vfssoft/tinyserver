@@ -11,6 +11,7 @@ static void start_server(ts_server_t* server) {
 static void client_cb(void *arg) {
   int err;
   mytcp_t client;
+  mytcp__init(&client);
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
   
@@ -80,6 +81,7 @@ TEST(TCPServer, EchoTest) {
 static void client_cb2(void *arg) {
   int err;
   mytcp_t client;
+  mytcp__init(&client);
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
   

@@ -23,6 +23,9 @@ struct mytcp_s {
   int socket;
 };
 
+int mytcp__init(mytcp_t* tcp);
+int mytcp__destroy(mytcp_t* tcp);
+
 int mytcp__connect(mytcp_t* tcp, const char* host, int port);
 int mytcp__disconnect(mytcp_t* tcp);
 int mytcp__read(mytcp_t* tcp, char* data, int len);

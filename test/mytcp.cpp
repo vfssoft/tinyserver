@@ -16,6 +16,13 @@ static void mytcp__wsa_startup() {
   WSA_START_UP = 1;
 }
 
+int mytcp__init(mytcp_t* tcp) {
+  return 0;
+}
+int mytcp__destroy(mytcp_t* tcp) {
+  return 0;
+}
+
 int mytcp__connect(mytcp_t* tcp, const char* host, int port) {
   int err;
   struct sockaddr_in addr;
