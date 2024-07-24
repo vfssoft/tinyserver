@@ -39,37 +39,6 @@ static void uv_on_listener_close(uv_handle_t* handle) {
   return;
 }
 
-static void uv_on_write(uv_write_t *req, int status) {
-  ts_conn_write_req_t* wr = (ts_conn_write_req_t*) req;
-  ts_conn_t* conn = wr->conn;
-  ts_server_t* server = conn->listener->server;
-  ts_conn__destroy_write_req(conn, wr);
-  
-  int write_more = !ts_conn__has_pending_write_req(conn);
-  server->write_cb(server->cb_ctx, server, conn, status, write_more);
-}
-
-static int ts_server__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
-  int err;
-  ts_conn_write_req_t* write_req;
-  
-  if (output->len > 0) {
-    write_req = ts_conn__create_write_req(conn, output->buf, output->len);
-    if (write_req == NULL) {
-      return TS_ERR_OUT_OF_MEMORY;
-    }
-  
-    err = uv_write((uv_write_t*)write_req, (uv_stream_t*)&conn->uvtcp, &write_req->buf, 1, uv_on_write);
-    if (err) {
-      return err;
-    }
-  
-    ts_buf__set_length(output, 0); // reset the buf for reuse
-  }
-  
-  return 0;
-}
-
 static int ts_server__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, ts_buf_t** decrypted) {
   int err = 0;
   ts_tls_t* tls = conn->tls;
@@ -85,8 +54,8 @@ static int ts_server__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* inpu
       if (err) {
         goto done;
       }
-  
-      err = ts_server__send_tcp_data(conn, tls->ssl_buf);
+      
+      err = ts_conn__send_tcp_data(conn, tls->ssl_buf);
       if (err) {
         goto done;
       }
@@ -287,7 +256,7 @@ int ts_server__write(ts_server_t* server, ts_conn_t* conn, const char* data, int
   ts_buf_t* buf = ts_buf__create(0);
   ts_buf__set_const(buf, data,len);
 
-  err = ts_server__send_tcp_data(conn, buf);
+  err = ts_conn__send_tcp_data(conn, buf); // TODO:
 
   ts_buf__destroy(buf);
   return err;

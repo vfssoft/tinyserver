@@ -62,14 +62,12 @@ int ts_data_pipe__peek(ts_data_pipe_t* dp, int inout, char** data, int *out_len)
 
 int ts_server_listener__init_default(ts_server_listener_t* listener);
 int ts_server_listener__init(ts_server_listener_t* listener, ts_server_t* server);
-int ts_server_listener__start(ts_server_listener_t* listener, uv_connect_cb cb);
+int ts_server_listener__start(ts_server_listener_t* listener, uv_connection_cb cb);
 int ts_server_listener__stop(ts_server_listener_t* listener, uv_close_cb cb);
 
 int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn);
 int ts_conn__destroy(ts_server_listener_t* listener, ts_conn_t* conn);
-ts_conn_write_req_t* ts_conn__create_write_req(ts_conn_t* conn, char* data, int len);
-void ts_conn__destroy_write_req(ts_conn_t* conn, ts_conn_write_req_t* req);
-int ts_conn__has_pending_write_req(ts_conn_t* conn);
+int ts_conn__send_tcp_data(ts_conn_t* conn, ts_buf_t* output);
 
 int ts_tls__init(ts_tls_t* tls);
 int ts_tls__destroy(ts_tls_t* tls);
