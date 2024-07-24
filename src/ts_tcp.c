@@ -175,10 +175,6 @@ done:
   
   return;
 }
-static void uv_on_idle(uv_idle_t *handle) {
-  ts_server_t* server = CONTAINER_OF(handle, ts_server_t, uvidle);
-  server->idle_cb(server->cb_ctx, server);
-}
 
 static int ts_server__default_connected_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status) {
   return 0;
@@ -211,7 +207,8 @@ int ts_server__init(ts_server_t* server) {
   ts_log__init(&server->log);
   
   server->uvloop = uv_default_loop();
-  uv_idle_init(server->uvloop, &server->uvidle);
+
+  ts_server_idle__init(server);
   
   return 0;
 }
@@ -232,7 +229,10 @@ int ts_server__start(ts_server_t* server) {
     }
   }
   
-  uv_idle_start(&(server->uvidle), uv_on_idle);
+  err = ts_server_idle__start(server);
+  if (err) {
+    goto done;
+  }
   
 done:
   return err;
@@ -241,7 +241,7 @@ int ts_server__run(ts_server_t* server) {
   return uv_run(server->uvloop, UV_RUN_NOWAIT);
 }
 int ts_server__stop(ts_server_t* server) {
-  uv_idle_stop(&server->uvidle);
+  ts_server_idle__stop(server);
   
   // TODO: add a stop flag to stop accepting new connections
   ts_conn_t* cur_conn = NULL;
