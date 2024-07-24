@@ -251,82 +251,9 @@ int ts_server__init(ts_server_t* server) {
   
   return 0;
 }
-
 int ts_server__destroy(ts_server_t server) {
   ts_log__destroy(&server.log);
   return 0; // TODO
-}
-
-int ts_server__set_cb_ctx(ts_server_t* server, void* ctx) {
-  server->cb_ctx = ctx;
-  return 0;
-}
-int ts_server__set_connected_cb(ts_server_t* server, ts_server_connected_cb cb) {
-  server->connected_cb = cb;
-  return 0;
-}
-int ts_server__set_disconnected_cb(ts_server_t* server, ts_server_disconnected_cb cb) {
-  server->disconnected_cb = cb;
-  return 0;
-}
-int ts_server__set_read_cb(ts_server_t* server, ts_server_read_cb cb) {
-  server->read_cb = cb;
-  return 0;
-}
-int ts_server__set_write_cb(ts_server_t* server, ts_server_write_cb cb) {
-  server->write_cb = cb;
-  return 0;
-}
-int ts_server__set_idle_cb(ts_server_t* server, ts_server_idle_cb cb) {
-  server->idle_cb = cb;
-  return 0;
-}
-int ts_server__set_listener_count(ts_server_t* server, int cnt) {
-  if (server->listener_count > 0) {
-    ts__free(server->listeners);
-  }
-
-  server->listener_count = cnt;
-  server->listeners = NULL;
-  if (cnt > 0) {
-    server->listeners = (ts_server_listener_t*) ts__malloc(sizeof(ts_server_listener_t) * cnt);
-    if (server->listeners == NULL) {
-      return TS_ERR_OUT_OF_MEMORY;
-    }
-  }
-
-  for (int i = 0; i < cnt; i++) {
-    ts_server_listener_t* l = &server->listeners[i];
-    l->host = "0.0.0.0";
-    l->port = 0;
-    l->use_ipv6 = 0;
-    l->backlog = TS_DEFAULT_BACKLOG;
-    l->protocol = TS_PROTO_TCP;
-    l->cert = "";
-    l->key = "";
-    l->tls_verify_mode = 0;
-  }
-
-  return 0;
-}
-int ts_server__set_listener_host_port(ts_server_t* server, int idx, const char* host, int port){
-  ts_server_listener_t* l = &server->listeners[idx];
-  l->host = ts__strdup(host);
-  l->port = port;
-  return 0;
-}
-int ts_server__set_listener_use_ipv6(ts_server_t* server, int idx, int use) {
-  server->listeners[idx].use_ipv6 = use;
-  return 0;
-}
-int ts_server__set_listener_protocol(ts_server_t* server, int idx, int proto) {
-  server->listeners[idx].protocol = proto;
-  return 0;
-}
-int ts_server__set_listener_certs(ts_server_t* server, int idx, const char* cert, const char* key) {
-  server->listeners[idx].cert = ts__strdup(cert);
-  server->listeners[idx].key  = ts__strdup(key);
-  return 0;
 }
 
 static int ts_server__listener_bind(ts_server_listener_t* listener) {
