@@ -139,7 +139,7 @@ struct ts_server_s {
     
     ts_conn_t* conns;
     ts_log_t log;
-    char* err_msg;
+    ts_error_t err;
 };
 
 struct ts_conn_write_req_s {

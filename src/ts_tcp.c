@@ -209,26 +209,6 @@ static int ts_server__default_idle_cb(void* ctx, ts_server_t* server) {
   return 0;
 }
 
-void ts_server__set_errmsg(ts_server_t* server, const char* msg) {
-  if (server->err_msg) {
-    ts__free(server->err_msg);
-  }
-  if (msg == NULL || strlen(msg) == 0) {
-    server->err_msg = NULL;
-  } else {
-    server->err_msg = ts__strdup(msg);
-  }
-}
-void ts_server__set_errmsg_f(ts_server_t* server, const char* format, ...) {
-  char buf[256];
-  va_list args;
-  va_start(args, format);
-  snprintf(buf, sizeof(buf), format, args);
-  va_end(args);
-  
-  ts_server__set_errmsg(server, buf);
-}
-
 
 int ts_server__init(ts_server_t* server) {
   server->listeners = NULL;
@@ -242,7 +222,7 @@ int ts_server__init(ts_server_t* server) {
   server->cb_ctx = NULL;
   
   server->conns = NULL;
-  server->err_msg = NULL;
+  ts_error__init(&server->err);
 
   ts_log__init(&server->log);
   

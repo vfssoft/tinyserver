@@ -32,15 +32,13 @@ static int ts_server_listener__bind(ts_server_listener_t* listener) {
     err = uv_inet_pton(AF_INET, host, &in4->sin_addr);
   }
   if (err) {
-    // TODO:
-    //ts_server__set_errmsg(listener->server, "invalid host");
+    ts_error__set_msg(&(listener->server->err), err, "invalid host");
   }
 
   if (err) {
     if (ts_tcp__getaddrinfo(host, use_ipv6, &addr) == 0) {
       err = 0;
-      // TODO:
-      //ts_server__set_errmsg(listener->server, NULL);
+      ts_error__reset(&(listener->server->err));
     }
   }
 
@@ -56,8 +54,7 @@ static int ts_server_listener__bind(ts_server_listener_t* listener) {
 
   err = uv_tcp_bind(&listener->uvtcp, &addr, 0);
   if (err) {
-    // TODO:
-    //ts_server__set_errmsg(listener->server, uv_strerror(err));
+    ts_error__set_msg(&(listener->server->err), err, uv_strerror(err));
   }
   return err;
 }

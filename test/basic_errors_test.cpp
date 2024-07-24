@@ -9,7 +9,7 @@ TEST(TCPServer, InvalidLocalHostTest) {
   
   int r = ts_server__start(&server);
   ASSERT_TRUE(r == -4071);
-  ASSERT_STREQ(server.err->msg, "invalid host");
+  ASSERT_STREQ(server.err.msg, "invalid host");
 }
 
 TEST(TCPServer, InvalidLocalHost2Test) {
@@ -20,5 +20,5 @@ TEST(TCPServer, InvalidLocalHost2Test) {
   
   int r = ts_server__start(&server);
   ASSERT_TRUE(r == -4090);
-  ASSERT_STREQ(server.err->msg, "address not available");
+  ASSERT_STREQ(server.err.msg, "address not available");
 }
