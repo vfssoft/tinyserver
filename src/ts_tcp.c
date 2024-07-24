@@ -226,12 +226,7 @@ int ts_server__start(ts_server_t* server) {
   
   for (int i = 0; i < server->listener_count; i++) {
     listener = &(server->listeners[i]);
-    err = ts_server_listener__init(listener, server);
-    if (err) {
-      goto done;
-    }
-    
-    err = ts_server_listener__start(listener, uv_on_new_tcp_connection);
+    err = ts_server_listener__start(listener, server, uv_on_new_tcp_connection);
     if (err) {
       goto done;
     }

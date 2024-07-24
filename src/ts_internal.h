@@ -61,8 +61,7 @@ int ts_data_pipe__read(ts_data_pipe_t* dp, int inout, const char* data, int* len
 int ts_data_pipe__peek(ts_data_pipe_t* dp, int inout, char** data, int *out_len);
 
 int ts_server_listener__init_default(ts_server_listener_t* listener);
-int ts_server_listener__init(ts_server_listener_t* listener, ts_server_t* server);
-int ts_server_listener__start(ts_server_listener_t* listener, uv_connection_cb cb);
+int ts_server_listener__start(ts_server_listener_t* listener, ts_server_t* server, uv_connection_cb cb);
 int ts_server_listener__stop(ts_server_listener_t* listener, uv_close_cb cb);
 
 int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn);

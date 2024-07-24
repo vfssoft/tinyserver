@@ -59,27 +59,22 @@ static int ts_server_listener__bind(ts_server_listener_t* listener) {
   return err;
 }
 
-int ts_server_listener__init(ts_server_listener_t* listener, ts_server_t* server) {
+int ts_server_listener__start(ts_server_listener_t* listener, ts_server_t* server, uv_connection_cb cb) {
   int err;
-
+  
   listener->server = server;
   listener->uvloop = server->uvloop;
-
+  
   err = uv_tcp_init(listener->uvloop, &listener->uvtcp);
   if (err) {
     return err;
   }
-
+  
   err = ts_server_listener__bind(listener);
   if (err) {
     return err;
   }
-
-  return 0;
-}
-
-int ts_server_listener__start(ts_server_listener_t* listener, uv_connection_cb cb) {
-  int err;
+  
   err = uv_listen((uv_stream_t*)&(listener->uvtcp), listener->backlog, cb);
   return err;
 }
