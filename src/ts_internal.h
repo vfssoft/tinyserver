@@ -78,8 +78,11 @@ int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output);
 int ts_tls__decrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output);
 
     
-ts_error_t* ts_error_create(int err);
-void ts_error_destroy(ts_error_t* e);
+void ts_error__init(ts_error_t* errt);
+void ts_error__reset(ts_error_t* errt);
+void ts_error__set(ts_error_t* errt, int err);
+void ts_error__set_msg(ts_error_t* errt, int err, const char* msg);
+void ts_error__set_msgf(ts_error_t* errt, int err, const char* format, ...);
 
 int ts_log__init(ts_log_t* log);
 int ts_log__destroy(ts_log_t* log);
