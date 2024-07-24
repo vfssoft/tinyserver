@@ -84,6 +84,11 @@ static void uv_on_write(uv_write_t *req, int status) {
   int has_pending_write_reqs = conn->write_reqs != NULL;
   server->write_cb(server->cb_ctx, server, conn, status, !has_pending_write_reqs);
 }
+static void uv_on_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+  // TODO: add mem pool
+  buf->base = (char*) ts__malloc(suggested_size);
+  buf->len = suggested_size;
+}
 
 int ts_conn__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
   int err;
@@ -107,5 +112,17 @@ int ts_conn__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
     ts_buf__set_length(output, 0); // reset the buf for reuse
   }
   
+  return 0;
+}
+int ts_conn__read_tcp_data(ts_conn_t* conn, uv_read_cb cb) {
+  int err;
+  err = uv_read_start((uv_stream_t*) &conn->uvtcp, uv_on_alloc_buffer, cb);
+  return err;
+}
+int ts_conn__close(ts_conn_t* conn, uv_close_cb cb) {
+  uv_handle_t* h = (uv_handle_t*)&conn->uvtcp;
+  if (h && !uv_is_closing(h)) {
+    uv_close(h, cb);
+  }
   return 0;
 }

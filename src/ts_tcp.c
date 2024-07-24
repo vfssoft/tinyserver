@@ -1,11 +1,7 @@
 
 #include "ts_internal.h"
 
-static void uv_on_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-  // TODO: add mem pool
-  buf->base = (char*) ts__malloc(suggested_size);
-  buf->len = suggested_size;
-}
+
 static void uv_on_free_buffer(const uv_buf_t* buf) {
   if (buf == NULL || buf->base == NULL || buf->len == 0) {
     return;
@@ -74,6 +70,7 @@ done:
   return err;
 }
 
+// TODO: move it to ts_conn.c
 static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
   int err = 0;
   ts_conn_t* conn = (ts_conn_t*) stream;
@@ -124,6 +121,21 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
 done:
   return;
 }
+
+static ts_conn_t* ts_server__new_conn(ts_server_listener_t* listener) {
+  ts_server_t* server = listener->server;
+  ts_conn_t* conn;
+  
+  conn = (ts_conn_t*) ts__malloc(sizeof(ts_conn_t));
+  if (conn == NULL) {
+    return NULL;
+  }
+  
+  DL_APPEND(server->conns, conn);
+  
+  return conn;
+}
+
 static void uv_on_new_tcp_connection(uv_stream_t *stream, int status) {
   if (status < 0) {
     return;
@@ -132,12 +144,12 @@ static void uv_on_new_tcp_connection(uv_stream_t *stream, int status) {
   int err;
   ts_server_listener_t* listener = (ts_server_listener_t*) stream;
   ts_server_t* server = listener->server;
-  ts_conn_t* conn = (ts_conn_t*) ts__malloc(sizeof(ts_conn_t));
-  if (conn == NULL) {
-    return;
-  }
+  ts_conn_t* conn;
   
-  DL_APPEND(server->conns, conn);
+  conn = ts_server__new_conn(listener);
+  if (conn == NULL) {
+    return; // TODO: no memory, what should we do?
+  }
   
   err = ts_conn__init(listener, conn);
   if (err) {
@@ -148,16 +160,19 @@ static void uv_on_new_tcp_connection(uv_stream_t *stream, int status) {
   if (err == 0) {
     if (listener->protocol == TS_PROTO_TCP) {
       err = server->connected_cb(server->cb_ctx, server, conn, 0);
+      if (err) {
+        goto done;
+      }
     }
-
-    err = uv_read_start((uv_stream_t*) &conn->uvtcp, uv_on_alloc_buffer, uv_on_read);
+    
+    err = ts_conn__read_tcp_data(conn, uv_on_read);
   }
-
+  
+done:
   if (err) {
     ts_server__disconnect(server, conn);
   }
   
-done:
   return;
 }
 static void uv_on_idle(uv_idle_t *handle) {
@@ -262,11 +277,9 @@ int ts_server__write(ts_server_t* server, ts_conn_t* conn, const char* data, int
   return err;
 }
 int ts_server__disconnect(ts_server_t* server, ts_conn_t* conn) {
-  uv_handle_t* h = (uv_handle_t*)&conn->uvtcp;
-  if (h && !uv_is_closing(h)) {
-    uv_close(h, uv_on_tcp_conn_close);
-  }
-  return 0;
+  int err;
+  err = ts_conn__close(conn, uv_on_tcp_conn_close);
+  return err;
 }
 
 
