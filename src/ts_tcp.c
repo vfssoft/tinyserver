@@ -256,77 +256,12 @@ int ts_server__destroy(ts_server_t server) {
   return 0; // TODO
 }
 
-static int ts_server__listener_bind(ts_server_listener_t* listener) {
-  int err;
-
-  struct sockaddr addr = { 0 };
-  struct sockaddr_in* in4 = (struct sockaddr_in*)&addr;
-  struct sockaddr_in6* in6 = (struct sockaddr_in6*)&addr;
-
-  int use_ipv6 = listener->use_ipv6;
-  const char* host = listener->host;
-  int port = listener->port;
-
-  if (use_ipv6) {
-    in6->sin6_family = AF_INET6;
-    err = uv_inet_pton(AF_INET6, host, &in6->sin6_addr);
-  } else {
-    in4->sin_family = AF_INET;
-    err = uv_inet_pton(AF_INET, host, &in4->sin_addr);
-  }
-  if (err) {
-    ts_server__set_errmsg(listener->server, "invalid host");
-  }
-
-  if (err) {
-    if (ts_tcp__getaddrinfo(host, use_ipv6, &addr) == 0) {
-      err = 0;
-      ts_server__set_errmsg(listener->server, NULL);
-    }
-  }
-
-  if (err) {
-    return err;
-  }
-
-  if (use_ipv6) {
-    in6->sin6_port = htons(port);
-  } else {
-    in4->sin_port = htons(port);
-  }
-
-  err = uv_tcp_bind(&listener->uvtcp, &addr, 0);
-  if (err) {
-    ts_server__set_errmsg(listener->server, uv_strerror(err));
-  }
-  return err;
-}
-static int ts_server__listener_init(ts_server_t* server, int listener_index) {
-  int err;
-  ts_server_listener_t* listener = &(server->listeners[listener_index]);
-
-  listener->server = server;
-  listener->uvloop = server->uvloop;
-
-  err = uv_tcp_init(listener->uvloop, &listener->uvtcp);
-  if (err) {
-    return err;
-  }
-
-  err = ts_server__listener_bind(listener);
-  if (err) {
-    return err;
-  }
-
-  return 0;
-}
-
 int ts_server__start(ts_server_t* server) {
   int err;
   ts_server_listener_t* listener;
   
   for (int i = 0; i < server->listener_count; i++) {
-    err = ts_server__listener_init(server, i);
+    err = ts_server_listener__init(&server->listeners[i], server);
     if (err) {
       goto done;
     }
@@ -334,6 +269,7 @@ int ts_server__start(ts_server_t* server) {
   
   for (int i = 0; i < server->listener_count; i++) {
     listener = &server->listeners[i];
+    // TODO:
     err = uv_listen((uv_stream_t*)&(listener->uvtcp), listener->backlog, uv_on_new_tcp_connection);
     if (err) {
       return err;

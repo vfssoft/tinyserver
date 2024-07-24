@@ -40,15 +40,7 @@ int ts_server__set_listener_count(ts_server_t* server, int cnt) {
   }
 
   for (int i = 0; i < cnt; i++) {
-    ts_server_listener_t* l = &server->listeners[i];
-    l->host = "0.0.0.0";
-    l->port = 0;
-    l->use_ipv6 = 0;
-    l->backlog = TS_DEFAULT_BACKLOG;
-    l->protocol = TS_PROTO_TCP;
-    l->cert = "";
-    l->key = "";
-    l->tls_verify_mode = 0;
+    ts_server_listener__init_default(&server->listeners[i]);
   }
 
   return 0;
