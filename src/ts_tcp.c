@@ -241,18 +241,15 @@ int ts_server__start(ts_server_t* server) {
   ts_server_listener_t* listener;
   
   for (int i = 0; i < server->listener_count; i++) {
-    err = ts_server_listener__init(&server->listeners[i], server);
+    listener = &(server->listeners[i]);
+    err = ts_server_listener__init(listener, server);
     if (err) {
       goto done;
     }
-  }
-  
-  for (int i = 0; i < server->listener_count; i++) {
-    listener = &server->listeners[i];
-    // TODO:
-    err = uv_listen((uv_stream_t*)&(listener->uvtcp), listener->backlog, uv_on_new_tcp_connection);
+    
+    err = ts_server_listener__start(listener, uv_on_new_tcp_connection);
     if (err) {
-      return err;
+      goto done;
     }
   }
   
@@ -278,7 +275,7 @@ int ts_server__stop(ts_server_t* server) {
   }
   
   for (int i = 0; i < server->listener_count; i++) {
-    uv_close((uv_handle_t*)&server->listeners[i].uvtcp, uv_on_listener_close);
+    ts_server_listener__stop(&(server->listeners[i]), uv_on_listener_close);
   }
   
   while (uv_run(server->uvloop, UV_RUN_NOWAIT) != 0) {}
