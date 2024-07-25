@@ -89,7 +89,115 @@ static void uv_on_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_bu
   buf->base = (char*) ts__malloc(suggested_size);
   buf->len = suggested_size;
 }
+static void uv_on_free_buffer(const uv_buf_t* buf) {
+  if (buf == NULL || buf->base == NULL || buf->len == 0) {
+    return;
+  }
+  ts__free(buf->base);
+}
 
+static int ts_server__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, ts_buf_t** decrypted) {
+  int err = 0;
+  ts_tls_t* tls = conn->tls;
+
+  assert(tls->ssl_state == TLS_STATE_HANDSHAKING || tls->ssl_state == TLS_STATE_CONNECTED);
+
+  while (input->len > 0) { // we have to consume all input data here
+
+    ts_buf__set_length(tls->ssl_buf, 0);
+
+    if (tls->ssl_state == TLS_STATE_HANDSHAKING) {
+      err = ts_tls__handshake(tls, input, tls->ssl_buf);
+      if (err) {
+        goto done;
+      }
+
+      err = ts_conn__send_tcp_data(conn, tls->ssl_buf);
+      if (err) {
+        goto done;
+      }
+
+    } else {
+      err = ts_tls__decrypt(tls, input, tls->ssl_buf);
+      if (err) {
+        goto done;
+      }
+      *decrypted = tls->ssl_buf;
+    }
+
+  }
+
+  done:
+  return err;
+}
+
+static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
+  int err = 0;
+  ts_conn_t* conn = (ts_conn_t*) stream;
+  ts_server_t* server = conn->listener->server;
+  ts_tls_t* tls = conn->tls;
+  ts_buf_t* ssl_decrypted = NULL;
+  ts_ro_buf_t input;
+  int ssl_state = 0;
+
+  input.buf = buf->base;
+  input.len = (int)nread;
+
+  // nread can be zero
+  if (nread > 0) {
+
+    if (tls) {
+      ssl_state = tls->ssl_state;
+      assert(ssl_state == TLS_STATE_HANDSHAKING || ssl_state == TLS_STATE_CONNECTED);
+
+      err = ts_server__process_ssl_socket_data(conn, &input, &ssl_decrypted);
+      if (err) {
+        goto done;
+      }
+
+      if (tls->ssl_state == TLS_STATE_HANDSHAKING) {
+        goto done; // handshake is not done, nothing can be done, wait for more tcp data
+      }
+
+      if (ssl_state == TLS_STATE_HANDSHAKING && tls->ssl_state == TLS_STATE_CONNECTED) {
+        // tls handshake is done
+        server->connected_cb(server->cb_ctx, server, conn, 0);
+      }
+
+      input.buf = ssl_decrypted->buf;
+      input.len = ssl_decrypted->len;
+    }
+
+    server->read_cb(server->cb_ctx, server, conn, input.buf, input.len);
+
+  }
+
+  if (nread < 0) {
+    ts_server__disconnect(server, conn);
+  }
+
+  uv_on_free_buffer(buf);
+
+  done:
+  return;
+}
+
+int ts_conn__tcp_connected(ts_conn_t* conn) {
+  int err;
+  ts_server_listener_t* listener = conn->listener;
+  ts_server_t* server = listener->server;
+
+  if (listener->protocol == TS_PROTO_TCP) {
+    err = server->connected_cb(server->cb_ctx, server, conn, 0);
+    if (err) {
+      return err;
+    }
+  }
+
+  err = ts_conn__read_tcp_data(conn, uv_on_read);
+
+  return err;
+}
 int ts_conn__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
   int err;
   
