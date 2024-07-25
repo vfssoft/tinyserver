@@ -34,19 +34,18 @@ static void ts_tls__destroy_openssl() {
 static void ts_tls__set_err(ts_tls_t* tls, int err) {
   // don't process the error, convert error should be done out side of this function
   tls->ssl_state = TLS_STATE_DISCONNECTED;
-  tls->ssl_err = err;
+  ts_error__set_msg(&tls->err, err, "TLS Error");
 }
 static void ts_tls__set_err2(ts_tls_t* tls) {
   tls->ssl_state = TLS_STATE_DISCONNECTED;
-  tls->ssl_err = ERR_get_error();
+  int ssl_err = ERR_get_error();
   
   // ref: https://en.wikibooks.org/wiki/OpenSSL/Error_handling
   BIO* bio = BIO_new(BIO_s_mem());
   ERR_print_errors(bio);
   char *errmsg;
-  size_t errmsg_len = BIO_get_mem_data(bio, &errmsg);
-  tls->ssl_err_msg = ts_buf__create(0);
-  ts_buf__set_str(tls->ssl_err_msg, errmsg, errmsg_len);
+  /*size_t errmsg_len = */BIO_get_mem_data(bio, &errmsg);
+  ts_error__set_msg(&tls->err, ssl_err, errmsg);
   BIO_free(bio);
 }
 
@@ -109,8 +108,7 @@ int ts_tls__init(ts_tls_t* tls) {
   SSL_set_bio(tls->ssl, tls->sslbio, tls->sslbio);
   
   tls->ssl_state = TLS_STATE_HANDSHAKING;
-  tls->ssl_err = 0;
-  tls->ssl_err_msg = NULL;
+  ts_error__init(&tls->err);
 
   tls->ssl_buf = ts_buf__create(0);
   if (tls->ssl_buf == NULL) {
@@ -132,19 +130,19 @@ int ts_tls__set_cert_files(ts_tls_t* tls, const char* cert, const char* key) {
   err = SSL_CTX_use_certificate_file(ctx, cert, SSL_FILETYPE_PEM);
   if (err != 1) {
     ts_tls__set_err2(tls);
-    return tls->ssl_err;
+    return tls->err.err;
   }
   
   err = SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM);
   if (err != 1) {
     ts_tls__set_err2(tls);
-    return tls->ssl_err;
+    return tls->err.err;
   }
   
   err = SSL_CTX_check_private_key(ctx);
   if (err != 1) {
     ts_tls__set_err2(tls);
-    return tls->ssl_err;
+    return tls->err.err;
   }
   
   return 0;
@@ -173,7 +171,7 @@ static int ts_tls__get_pending_ssl_data_to_send(ts_tls_t* tls, ts_buf_t* output)
   }
   return 0;
 }
-static int ts_tls__write_data_to_ssl(ts_tls_t* tls, ts_ro_buf_t* input) {
+static void ts_tls__write_data_to_ssl(ts_tls_t* tls, ts_ro_buf_t* input) {
   if (input->len > 0) {
     int written = BIO_write(tls->appbio, input->buf, input->len);
     if (written > 0) {
@@ -181,7 +179,6 @@ static int ts_tls__write_data_to_ssl(ts_tls_t* tls, ts_ro_buf_t* input) {
       input->len -= written;
     }
   }
-  return 0;
 }
 static int ts_tls__more_action(ts_tls_t* tls, int hs_err, ts_ro_buf_t* input, ts_buf_t* output) {
   int err;
@@ -196,6 +193,7 @@ static int ts_tls__more_action(ts_tls_t* tls, int hs_err, ts_ro_buf_t* input, ts
     case SSL_ERROR_ZERO_RETURN:
       // The TLS/SSL peer has closed the connection for writing by sending the close_notify alert.
       // No more data can be read.
+      // Note that SSL_ERROR_ZERO_RETURN does not necessarily indicate that the underlying transport has been closed.
       
       if (tls->ssl_state == TLS_STATE_HANDSHAKING) {
         ts_tls__set_err(tls, UV__ENOTCONN); // not connected successfully
@@ -203,16 +201,12 @@ static int ts_tls__more_action(ts_tls_t* tls, int hs_err, ts_ro_buf_t* input, ts
         // tls->ssl_state == TLS_STATE_CONNECTED;
         ts_tls__set_err(tls, 0);
       }
-      return tls->ssl_err;
+      return tls->err.err;
       
     case SSL_ERROR_WANT_READ:
     case SSL_ERROR_WANT_WRITE:
       
-      err = ts_tls__write_data_to_ssl(tls, input);
-      if (err) {
-        ts_tls__set_err(tls, err);
-        return err;
-      }
+      ts_tls__write_data_to_ssl(tls, input);
       
       err = ts_tls__get_pending_ssl_data_to_send(tls, output);
       if (err) {
@@ -224,7 +218,7 @@ static int ts_tls__more_action(ts_tls_t* tls, int hs_err, ts_ro_buf_t* input, ts
     
     default:
       ts_tls__set_err(tls, ts_tls__get_openssl_error(ssl_err));
-      return tls->ssl_err;
+      return tls->err.err;
   }
 
   return 0;
@@ -241,7 +235,7 @@ int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
   } else if (hs_err == 0) {
     // The TLS/SSL handshake was not successful but was shut down controlled and by the specifications of the TLS/SSL protocol.
     ts_tls__set_err(tls, SSL_get_error(tls->ssl, hs_err));
-    return tls->ssl_err;
+    return tls->err.err;
   } else {
     // The TLS/SSL handshake was not successful because a fatal error occurred either at the
     // protocol level or a connection failure occurred. The shutdown was not clean. It can also
@@ -257,11 +251,7 @@ int ts_tls__decrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
   char ssl_buf[2048];
   
   if (input->len > 0) {
-    err = ts_tls__write_data_to_ssl(tls, input);
-    if (err) {
-      ts_tls__set_err(tls, err);
-      return err;
-    }
+    ts_tls__write_data_to_ssl(tls, input);
   
     ssl_read_ret = SSL_read(tls->ssl, ssl_buf, 2048);
     if (ssl_read_ret > 0) {
@@ -272,7 +262,7 @@ int ts_tls__decrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
       ts_tls__set_err(tls, 0);
     } else {
       ts_tls__set_err(tls, ts_tls__get_openssl_error(ssl_read_ret));
-      return tls->ssl_err;
+      return tls->err.err;
     }
   }
   
