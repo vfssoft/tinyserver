@@ -5,9 +5,14 @@ static ts_error_t pre_def_errs[] = {
     { TS_ERR_OUT_OF_MEMORY, (char*)"out of memory" }
 };
 
-static int ts_error__is_pre_defined_err(int err) {
+static BOOL ts_error__is_pre_defined_err(int err) {
   int pre_def_errs_len = sizeof(pre_def_errs) / sizeof(ts_error_t);
-  return err < pre_def_errs_len;
+  for (int i = 0; i < pre_def_errs_len; i++) {
+    if (pre_def_errs[i].err == err) {
+      return TRUE;
+    }
+  }
+  return FALSE;
 }
 
 void ts_error__init(ts_error_t* errt) {

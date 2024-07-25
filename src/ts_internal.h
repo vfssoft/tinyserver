@@ -18,6 +18,18 @@
 #define CONTAINER_OF(ptr, type, member) \
     ((type *)((char *)(ptr) - offsetof(type, member)))
 
+#ifndef BOOL
+#define BOOL int
+#endif
+
+#ifndef FALSE
+#define FALSE 0
+#endif
+
+#ifndef TRUE
+#define TRUE 1
+#endif
+
 typedef struct ts_data_queue_s ts_data_queue_t;
 typedef struct ts_stream_block_s ts_stream_block_t;
 typedef struct ts_filter_cb_s ts_filter_cb_t;
