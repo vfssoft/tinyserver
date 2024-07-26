@@ -191,69 +191,70 @@ static void ts_tls__write_data_to_ssl(ts_tls_t* tls, ts_ro_buf_t* input) {
     }
   }
 }
-static int ts_tls__more_action(ts_tls_t* tls, int hs_err, ts_ro_buf_t* input, ts_buf_t* output) {
-  int err;
-  int ssl_err;
-  
-  ssl_err = SSL_get_error(tls->ssl, hs_err);
-  
-  switch (ssl_err) {
-    case SSL_ERROR_NONE:
-      break;
-    
-    case SSL_ERROR_ZERO_RETURN:
-      // The TLS/SSL peer has closed the connection for writing by sending the close_notify alert.
-      // No more data can be read.
-      // Note that SSL_ERROR_ZERO_RETURN does not necessarily indicate that the underlying transport has been closed.
-      
-      if (tls->ssl_state == TLS_STATE_HANDSHAKING) {
-        ts_tls__set_err(tls, UV__ENOTCONN); // not connected successfully
-      } else {
-        // tls->ssl_state == TLS_STATE_CONNECTED;
-        ts_tls__set_err(tls, 0);
-      }
-      return tls->err.err;
-      
-    case SSL_ERROR_WANT_READ:
-    case SSL_ERROR_WANT_WRITE:
-      
-      ts_tls__write_data_to_ssl(tls, input);
-      
-      err = ts_tls__get_pending_ssl_data_to_send(tls, output);
-      if (err) {
-        ts_tls__set_err(tls, err);
-        return err;
-      }
 
-      break;
-    
-    default:
-      ts_tls__set_err(tls, ts_tls__get_openssl_error(ssl_err));
-      return tls->err.err;
-  }
-
-  return 0;
-}
 int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
   int err;
   int hs_err;
+  int ssl_err;
+  BOOL should_continue = TRUE;
   
-  hs_err = SSL_do_handshake(tls->ssl);
-  if (hs_err == 1) {
-    // The TLS/SSL handshake was successfully completed, a TLS/SSL connection has been established.
-    tls->ssl_state = TLS_STATE_CONNECTED;
-    return 0;
-  } else if (hs_err == 0) {
-    // The TLS/SSL handshake was not successful but was shut down controlled and by the specifications of the TLS/SSL protocol.
-    ts_tls__set_err(tls, SSL_get_error(tls->ssl, hs_err));
-    return tls->err.err;
-  } else {
+  while (should_continue) {
+    should_continue = FALSE;
+    
+    hs_err = SSL_do_handshake(tls->ssl);
+  
+    if (hs_err == 1) {
+      // The TLS/SSL handshake was successfully completed, a TLS/SSL connection has been established.
+      tls->ssl_state = TLS_STATE_CONNECTED;
+      return 0;
+    }
+  
+    if (hs_err == 0) {
+      // The TLS/SSL handshake was not successful but was shut down controlled and by the specifications of the TLS/SSL protocol.
+      ts_tls__set_err(tls, SSL_get_error(tls->ssl, hs_err));
+      return tls->err.err;
+    }
+  
     // The TLS/SSL handshake was not successful because a fatal error occurred either at the
     // protocol level or a connection failure occurred. The shutdown was not clean. It can also
     // occur if action is needed to continue the operation for non-blocking BIOs.
-    err = ts_tls__more_action(tls, hs_err, input, output);
-    return err;
+  
+    ssl_err = SSL_get_error(tls->ssl, hs_err);
+    
+    switch (ssl_err) {
+      case SSL_ERROR_ZERO_RETURN:
+        // The TLS/SSL peer has closed the connection for writing by sending the close_notify alert.
+        // No more data can be read.
+        // Note that SSL_ERROR_ZERO_RETURN does not necessarily indicate that the underlying transport has been closed.
+    
+        if (tls->ssl_state == TLS_STATE_HANDSHAKING) {
+          ts_tls__set_err(tls, UV__ENOTCONN); // not connected successfully
+        } else {
+          // tls->ssl_state == TLS_STATE_CONNECTED;
+          ts_tls__set_err(tls, 0);
+        }
+        return tls->err.err;
+  
+      case SSL_ERROR_WANT_READ:
+      case SSL_ERROR_WANT_WRITE:
+        
+        should_continue = input->len > 0;
+        ts_tls__write_data_to_ssl(tls, input);
+        
+        err = ts_tls__get_pending_ssl_data_to_send(tls, output);
+        if (err) {
+          return err;
+        }
+        break;
+  
+      default:
+        ts_tls__set_err(tls, ts_tls__get_openssl_error(ssl_err));
+        return tls->err.err;
+    }
+
   }
+  
+  return 0;
 }
 
 int ts_tls__decrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
