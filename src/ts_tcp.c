@@ -125,6 +125,7 @@ int ts_server__start(ts_server_t* server) {
     listener = &(server->listeners[i]);
     err = ts_server_listener__start(listener, server, uv_on_new_tcp_connection);
     if (err) {
+      ts_error__copy(&server->err, &listener->err);
       goto done;
     }
   }

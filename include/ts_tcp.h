@@ -112,7 +112,8 @@ struct ts_server_listener_s {
     uv_tcp_t uvtcp;
     uv_loop_t *uvloop;
     ts_server_t* server;
-
+    SSL_CTX* ssl_ctx;
+    
     const char* host;
     int port;
     int use_ipv6;
@@ -122,6 +123,8 @@ struct ts_server_listener_s {
     const char* cert;
     const char* key;
     int tls_verify_mode;
+    
+    ts_error_t err;
 };
 struct ts_server_s {
     ts_server_listener_t* listeners;

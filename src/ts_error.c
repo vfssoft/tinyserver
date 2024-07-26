@@ -47,3 +47,7 @@ void ts_error__set_msgf(ts_error_t* errt, int err, const char* format, ...) {
   errt->err = err;
   errt->msg = ts__strdup(buf);
 }
+
+void ts_error__copy(ts_error_t* dst, ts_error_t* src) {
+  ts_error__set_msg(dst, src->err, src->msg);
+}

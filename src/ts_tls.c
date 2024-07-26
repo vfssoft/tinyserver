@@ -31,13 +31,14 @@ static void ts_tls__destroy_openssl() {
   openssl_lib_initialized = 0;
 }
 
-static void ts_tls__set_err(ts_tls_t* tls, int err) {
-  // don't process the error, convert error should be done out side of this function
-  tls->ssl_state = TLS_STATE_DISCONNECTED;
-  ts_error__set_msg(&tls->err, err, "TLS Error");
+static int ts_tls__get_openssl_error(int err) {
+  if (err == 0 || err == -1 || err == 1) {
+    return (int) ERR_get_error();
+  } else {
+    return err;
+  }
 }
-static void ts_tls__set_err2(ts_tls_t* tls) {
-  tls->ssl_state = TLS_STATE_DISCONNECTED;
+static void ts_tls__print_openssl_errors(ts_error_t* errt) {
   int ssl_err = ERR_get_error();
   
   // ref: https://en.wikibooks.org/wiki/OpenSSL/Error_handling
@@ -45,16 +46,45 @@ static void ts_tls__set_err2(ts_tls_t* tls) {
   ERR_print_errors(bio);
   char *errmsg;
   /*size_t errmsg_len = */BIO_get_mem_data(bio, &errmsg);
-  ts_error__set_msg(&tls->err, ssl_err, errmsg);
+  ts_error__set_msg(errt, ssl_err, errmsg);
   BIO_free(bio);
 }
 
-static SSL_CTX* ts_tls__create_ssl_ctx() {
+static void ts_tls__set_err(ts_tls_t* tls, int err) {
+  // don't process the error, convert error should be done out side of this function
+  tls->ssl_state = TLS_STATE_DISCONNECTED;
+  ts_error__set_msg(&tls->err, err, "TLS Error");
+}
+static void ts_tls__set_err2(ts_tls_t* tls) {
+  tls->ssl_state = TLS_STATE_DISCONNECTED;
+  ts_tls__print_openssl_errors(&tls->err);
+}
+
+static void ts_tls__free_ssl_ctx(SSL_CTX* ctx) {
+  SSL_CTX_free(ctx);
+  ctx = NULL;
+}
+
+static int ts_tls__verify_cb(int ok, X509_STORE_CTX* ctx) {
+  return 1; // TODO:
+}
+
+void ts_tls__ctx_init(
+    SSL_CTX** ssl_ctx,
+    ts_error_t* errt,
+    const char* cert,
+    const char* key,
+    int verify_mode
+) {
   ts_tls__init_openssl();
+  
+  int err;
+  ts_error__init(errt);
   
   SSL_CTX* ctx = SSL_CTX_new(TLS_method());
   if (ctx == NULL) {
-    return NULL;
+    ts_error__set_msg(errt, TS_ERR_OUT_OF_MEMORY, "Failed to create SSL_CTX");
+    goto done;
   }
   
   SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2);
@@ -72,33 +102,44 @@ static SSL_CTX* ts_tls__create_ssl_ctx() {
   // #define CIPHERS    "ALL:!EXPORT:!LOW"
   // SSL_CTX_set_cipher_list(ctx, CIPHERS);
   
-  return ctx;
-}
-
-static void ts_tls__free_ssl_ctx(SSL_CTX* ctx) {
-  SSL_CTX_free(ctx);
-  ctx = NULL;
-}
-
-static int ts_tls__verify_cb(int ok, X509_STORE_CTX* ctx) {
-  return 1; // TODO:
-}
-
-static int ts_tls__get_openssl_error(int err) {
-  if (err == 0 || err == -1 || err == 1) {
-    return (int) ERR_get_error();
-  } else {
-    return err;
-  }
-}
-
-int ts_tls__init(ts_tls_t* tls) {
-  tls->ctx = ts_tls__create_ssl_ctx();
-  if (tls->ctx == NULL) {
-    return TS_ERR_OUT_OF_MEMORY;
+  err = SSL_CTX_use_certificate_file(ctx, cert, SSL_FILETYPE_PEM);
+  if (err != 1) {
+    ts_tls__print_openssl_errors(errt);
+    goto done;
   }
   
-  tls->ssl = SSL_new(tls->ctx);
+  err = SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM);
+  if (err != 1) {
+    ts_tls__print_openssl_errors(errt);
+    goto done;
+  }
+  
+  err = SSL_CTX_check_private_key(ctx);
+  if (err != 1) {
+    ts_tls__print_openssl_errors(errt);
+    goto done;
+  }
+  
+  // no callback is exposed here, we will handle the certificate verification internally
+  SSL_CTX_set_verify(ctx, verify_mode, ts_tls__verify_cb);
+
+done:
+  if (errt->err != 0) {
+    SSL_CTX_free(ctx);
+    ctx = NULL;
+  }
+  
+  *ssl_ctx = ctx;
+}
+
+void ts_tls__ctx_destroy(SSL_CTX* ctx) {
+  if (ctx) {
+    SSL_CTX_free(ctx);
+  }
+}
+
+int ts_tls__init(ts_tls_t* tls, SSL_CTX* ssl_ctx) {
+  tls->ssl = SSL_new(ssl_ctx);
   if (tls->ssl == NULL) {
     return TS_ERR_OUT_OF_MEMORY;
   }
@@ -121,37 +162,6 @@ int ts_tls__init(ts_tls_t* tls) {
 int ts_tls__destroy(ts_tls_t* tls) {
   // TODO:
   return -1;
-}
-
-int ts_tls__set_cert_files(ts_tls_t* tls, const char* cert, const char* key) {
-  int err;
-  SSL_CTX* ctx = tls->ctx;
-  
-  err = SSL_CTX_use_certificate_file(ctx, cert, SSL_FILETYPE_PEM);
-  if (err != 1) {
-    ts_tls__set_err2(tls);
-    return tls->err.err;
-  }
-  
-  err = SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM);
-  if (err != 1) {
-    ts_tls__set_err2(tls);
-    return tls->err.err;
-  }
-  
-  err = SSL_CTX_check_private_key(ctx);
-  if (err != 1) {
-    ts_tls__set_err2(tls);
-    return tls->err.err;
-  }
-  
-  return 0;
-}
-
-int ts_tls__set_verify_mode(ts_tls_t* tls, int mode) {
-  // no callback is exposed here, we will handle the certificate verification internally
-  SSL_CTX_set_verify(tls->ctx, mode, ts_tls__verify_cb);
-  return 0;
 }
 
 static int ts_tls__connected(ts_tls_t* tls) {

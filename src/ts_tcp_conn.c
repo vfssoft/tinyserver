@@ -19,17 +19,7 @@ int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
         goto done;
       }
       
-      err = ts_tls__init(conn->tls);
-      if (err) {
-        goto done;
-      }
-      
-      err = ts_tls__set_cert_files(conn->tls, listener->cert, listener->key);
-      if (err) {
-        goto done;
-      }
-      
-      err = ts_tls__set_verify_mode(conn->tls, listener->tls_verify_mode);
+      err = ts_tls__init(conn->tls, listener->ssl_ctx);
       if (err) {
         goto done;
       }
