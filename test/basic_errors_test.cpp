@@ -22,3 +22,14 @@ TEST(TCPServer, InvalidLocalHost2Test) {
   ASSERT_TRUE(r == -4090);
   ASSERT_STREQ(server.err.msg, "address not available");
 }
+
+TEST(TCPServer, InvalidSSLCertTest) {
+  ts_server_t server;
+  ts_server__init(&server);
+  ts_server__set_listener_count(&server, 1);
+  ts_server__set_listener_protocol(&server, 0, TS_PROTO_TLS);
+  ts_server__set_listener_certs(&server, 0, "fakepath.crt", "fakekey.pem");
+  
+  int r = ts_server__start(&server);
+  ASSERT_TRUE(r == 33558530);
+}

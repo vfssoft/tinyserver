@@ -45,7 +45,8 @@ static void ts_tls__print_openssl_errors(ts_error_t* errt) {
   BIO* bio = BIO_new(BIO_s_mem());
   ERR_print_errors(bio);
   char *errmsg;
-  /*size_t errmsg_len = */BIO_get_mem_data(bio, &errmsg);
+  size_t errmsg_len = BIO_get_mem_data(bio, &errmsg);
+  errmsg[errmsg_len] = '\0';
   ts_error__set_msg(errt, ssl_err, errmsg);
   BIO_free(bio);
 }
