@@ -112,10 +112,11 @@ static int ts_server__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* inpu
       if (err) {
         goto done;
       }
-      *decrypted = tls->ssl_buf;
     }
-
+    
   }
+  
+  *decrypted = tls->ssl_buf;
 
   done:
   return err;
@@ -157,9 +158,10 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
       input.buf = ssl_decrypted->buf;
       input.len = ssl_decrypted->len;
     }
-
-    server->read_cb(server->cb_ctx, server, conn, input.buf, input.len);
-
+    
+    if (input.len > 0) {
+      server->read_cb(server->cb_ctx, server, conn, input.buf, input.len);
+    }
   }
 
   if (nread < 0) {
