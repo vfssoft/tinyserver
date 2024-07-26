@@ -16,7 +16,7 @@ static void uv_on_tcp_conn_close(uv_handle_t* handle) {
   ts__free(conn);
 }
 static void uv_on_listener_close(uv_handle_t* handle) {
-  ts_server_listener_t* listener = (ts_server_listener_t*)handle;
+  ts_server_listener_t* listener = CONTAINER_OF(handle, ts_server_listener_t, uvtcp);
   ts_server_t* server = listener->server;
   
   server->listener_count--;
@@ -49,7 +49,7 @@ static void uv_on_new_tcp_connection(uv_stream_t *stream, int status) {
   }
   
   int err;
-  ts_server_listener_t* listener = (ts_server_listener_t*) stream;
+  ts_server_listener_t* listener = CONTAINER_OF(stream, ts_server_listener_t, uvtcp);
   ts_server_t* server = listener->server;
   ts_conn_t* conn;
   
