@@ -143,3 +143,63 @@ TEST(TCPServer, SSLServerDisconnectTest) {
 
   ts_server__stop(&server);
 }
+
+static void ssl_client_connect_disconnect_quick_cb(void *arg) {
+  
+  int err;
+  mytcp_t client;
+  mytcp__init(&client);
+  client.use_ssl = 1;
+  
+  err = mytcp__connect(&client, "127.0.0.1", 12345);
+  ASSERT_EQ(err, 0);
+  
+  if (arg) {
+    int* afterSec = (int*)arg;
+    uv_sleep(afterSec[0]);
+  }
+  
+  err = mytcp__disconnect(&client);
+  ASSERT_EQ(err, 0);
+
+}
+
+static void tcp_server__ssl_connect_disconnect_impl(int afterSec) {
+  test_conn_info_t conn_info;
+  memset(&conn_info, 0, sizeof(conn_info));
+  
+  ts_server_t server;
+  start_server(&server);
+  ts_server__set_cb_ctx(&server, &conn_info);
+  ts_server__set_connected_cb(&server, ssl_connected_cb);
+  ts_server__set_disconnected_cb(&server, ssl_disconnected_cb);
+  
+  uv_thread_t client_thread;
+  uv_thread_create(&client_thread, ssl_client_connect_disconnect_quick_cb, NULL);
+  
+  int r = ts_server__start(&server);
+  ASSERT_EQ(r, 0);
+  while (conn_info.connected_fired == 0) {
+    ts_server__run(&server);
+  }
+  ASSERT_EQ(conn_info.connected_fired, 1);
+  ASSERT_EQ(conn_info.server, &server);
+  ASSERT_TRUE(conn_info.conn != NULL);
+  
+  while (conn_info.disconnected_fired == 0) {
+    ts_server__run(&server);
+  }
+  
+  ASSERT_EQ(conn_info.disconnected_fired, 1);
+  ASSERT_EQ(conn_info.server, &server);
+  ASSERT_TRUE(conn_info.conn != NULL);
+  
+  ts_server__stop(&server);
+}
+
+TEST(TCPServer, SSLConnectDisconnectQuickTest) {
+  tcp_server__ssl_connect_disconnect_impl(0);
+}
+TEST(TCPServer, SSLConnectDisconnect1sTest) {
+  tcp_server__ssl_connect_disconnect_impl(1000);
+}
