@@ -220,6 +220,16 @@ int ts_conn__read_tcp_data(ts_conn_t* conn, uv_read_cb cb) {
   return err;
 }
 int ts_conn__close(ts_conn_t* conn, uv_close_cb cb) {
+  int err;
+  
+  if (conn->tls) {
+    ts_tls_t* tls = conn->tls;
+    ts_buf__set_length(tls->ssl_buf, 0);
+    err = ts_tls__disconnect(tls, tls->ssl_buf);
+    err = ts_conn__send_tcp_data(conn, tls->ssl_buf);
+    // TODO: log the error
+  }
+  
   uv_handle_t* h = (uv_handle_t*)&conn->uvtcp;
   if (h && !uv_is_closing(h)) {
     uv_close(h, cb);

@@ -100,6 +100,9 @@ int ts_server_listener__start(ts_server_listener_t* listener, ts_server_t* serve
   return 0;
 }
 int ts_server_listener__stop(ts_server_listener_t* listener, uv_close_cb cb) {
+  if (listener->protocol == TS_PROTO_TLS) {
+    ts_tls__ctx_destroy(listener->ssl_ctx);
+  }
   uv_close((uv_handle_t*)&(listener->uvtcp), cb);
   return 0;
 }

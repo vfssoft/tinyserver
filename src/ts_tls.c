@@ -161,7 +161,11 @@ int ts_tls__init(ts_tls_t* tls, SSL_CTX* ssl_ctx) {
 }
 
 int ts_tls__destroy(ts_tls_t* tls) {
-  // TODO:
+  if (tls->ssl) {
+    SSL_free(tls->ssl);
+  }
+  tls->ssl = NULL;
+  tls->ctx = NULL; // it's a reference, so don't need to free it.
   return -1;
 }
 
@@ -279,6 +283,17 @@ int ts_tls__decrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
   }
   
   return 0;
+}
+
+int ts_tls__disconnect(ts_tls_t* tls, ts_buf_t* output) {
+  int err;
+  // TODO: log errors
+  
+  if (tls->ssl_state == TLS_STATE_CONNECTED) {
+    err = SSL_shutdown(tls->ssl);
+    err = ts_tls__get_pending_ssl_data_to_send(tls, output);
+  }
+  return ts_tls__destroy(tls);
 }
 
 /*
