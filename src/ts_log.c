@@ -27,26 +27,20 @@ int ts_log__init(ts_log_t* log) {
 
   log->log_timestamp = 1;
   log->log_timestamp_format = NULL;
+  
+  uv_mutex_init_recursive(&log->mutex);
   return 0;
 }
 
 int ts_log__destroy(ts_log_t* log) {
+  uv_mutex_destroy(&log->mutex);
+  
   if (log->log_dir) {
     ts__free(log->log_dir);
   }
   if (log->log_timestamp_format) {
     ts__free(log->log_timestamp_format);
   }
-  return 0;
-}
-
-
-int ts_log__open(ts_log_t* log) {
-  uv_mutex_init_recursive(&log->mutex);
-  return 0;
-}
-int ts_log__close(ts_log_t* log) {
-  uv_mutex_destroy(&log->mutex);
   return 0;
 }
 

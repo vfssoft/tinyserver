@@ -4,6 +4,7 @@
 
 #include "ts_tcp.h"
 #include "ts_tls.h"
+#include "ts_log.h"
 #include "ts_mem.h"
 #include "utlist.h"
 
@@ -91,9 +92,6 @@ void ts_error__set(ts_error_t* errt, int err);
 void ts_error__set_msg(ts_error_t* errt, int err, const char* msg);
 void ts_error__set_msgf(ts_error_t* errt, int err, const char* format, ...);
 void ts_error__copy(ts_error_t* dst, ts_error_t* src);
-
-int ts_log__init(ts_log_t* log);
-int ts_log__destroy(ts_log_t* log);
 
 ts_buf_t* ts_buf__create(int cap);
 void ts_buf__destroy(ts_buf_t* buf);
