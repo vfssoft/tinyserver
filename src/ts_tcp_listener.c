@@ -64,6 +64,12 @@ static int ts_server_listener__bind(ts_server_listener_t* listener) {
 int ts_server_listener__start(ts_server_listener_t* listener, ts_server_t* server, uv_connection_cb cb) {
   int err;
   
+  LOG_INFO("Start listener: %s %s:%d %s",
+           ts_proto__str(listener->protocol),
+           listener->host, listener->port,
+           ts_ipv6__str(listener->use_ipv6)
+  );
+  
   listener->server = server;
   listener->uvloop = server->uvloop;
   
@@ -76,33 +82,52 @@ int ts_server_listener__start(ts_server_listener_t* listener, ts_server_t* serve
       listener->tls_verify_mode
     );
     if (listener->err.err != 0) {
-      return listener->err.err;
+      goto done;
     }
   }
   
   err = uv_tcp_init(listener->uvloop, &listener->uvtcp);
   if (err) {
     ts_error__set_msg(&(listener->err), err, uv_strerror(err));
-    return err;
+    goto done;
   }
   
   err = ts_server_listener__bind(listener);
   if (err) {
-    return err;
+    goto done;
   }
   
   err = uv_listen((uv_stream_t*)&(listener->uvtcp), listener->backlog, cb);
   if (err) {
     ts_error__set_msg(&(listener->err), err, uv_strerror(err));
-    return err;
+    goto done;
   }
   
-  return 0;
+done:
+  
+  if (listener->err.err == 0) {
+    LOG_INFO("Listener started");
+  } else {
+    LOG_INFO("Listener started failed: %d %s", listener->err.err, listener->err.msg);
+  }
+  
+  return listener->err.err;
 }
 int ts_server_listener__stop(ts_server_listener_t* listener, uv_close_cb cb) {
+  ts_server_t* server = listener->server;
+  
+  LOG_INFO("Stop listener: %s %s:%d %s",
+           ts_proto__str(listener->protocol),
+           listener->host, listener->port,
+           ts_ipv6__str(listener->use_ipv6)
+  );
+  
   if (listener->protocol == TS_PROTO_TLS) {
     ts_tls__ctx_destroy(listener->ssl_ctx);
   }
   uv_close((uv_handle_t*)&(listener->uvtcp), cb);
+  
+done:
+  LOG_INFO("Listener stopped");
   return 0;
 }

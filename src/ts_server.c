@@ -121,6 +121,8 @@ int ts_server__start(ts_server_t* server) {
   int err;
   ts_server_listener_t* listener;
   
+  LOG_INFO("Start server");
+  
   for (int i = 0; i < server->listener_count; i++) {
     listener = &(server->listeners[i]);
     err = ts_server_listener__start(listener, server, uv_on_new_tcp_connection);
@@ -136,12 +138,20 @@ int ts_server__start(ts_server_t* server) {
   }
   
 done:
+  if (err == 0) {
+    LOG_INFO("Server started");
+  } else {
+    LOG_ERROR("Server started failed: %d %s", server->err.err, server->err.msg);
+  }
+  
   return err;
 }
 int ts_server__run(ts_server_t* server) {
   return uv_run(server->uvloop, UV_RUN_NOWAIT);
 }
 int ts_server__stop(ts_server_t* server) {
+  
+  LOG_INFO("Stop server");
   ts_server_idle__stop(server);
   
   // TODO: add a stop flag to stop accepting new connections
@@ -160,6 +170,8 @@ int ts_server__stop(ts_server_t* server) {
   
   while (uv_run(server->uvloop, UV_RUN_NOWAIT) != 0) {}
   
+done:
+  LOG_INFO("Server stopped");
   return 0;
 }
 int ts_server__write(ts_server_t* server, ts_conn_t* conn, const char* data, int len) {
