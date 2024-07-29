@@ -19,7 +19,11 @@ static int ts_log__default_log_cb(void* ctx, int level, const char* msg) {
 
 
 int ts_log__init(ts_log_t* log) {
+#if _DEBUG
+  log->log_level = TS_LOG_LEVEL_DEBUG;
+#else
   log->log_level = TS_LOG_LEVEL_INFO;
+#endif
   log->log_dest = TS_LOG_DEST_EVENT;
   log->log_dir = NULL;
   log->log_ctx = NULL;

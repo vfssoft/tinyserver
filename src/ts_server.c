@@ -21,6 +21,7 @@ static void uv_on_listener_close(uv_handle_t* handle) {
   
   server->listener_count--;
   assert(server->listener_count >= 0);
+  LOG_DEBUG("Current listener count: %d", server->listener_count);
   if (server->listener_count == 0) {
     ts__free(server->listeners);
     server->listeners = NULL;
