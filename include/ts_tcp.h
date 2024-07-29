@@ -158,7 +158,6 @@ struct ts_conn_write_req_s {
 
 struct ts_conn_s {
     uv_tcp_t uvtcp;
-    uv_loop_t* uvloop;
     ts_server_listener_t* listener;
     
     ts_conn_write_req_t* write_reqs;

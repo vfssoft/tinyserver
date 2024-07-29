@@ -45,7 +45,9 @@ int ts_conn__destroy(ts_server_listener_t* listener, ts_conn_t* conn) {
   if (conn->tls) {
     ts_tls__destroy(conn->tls);
     ts__free(conn->tls);
+    conn->tls = NULL;
   }
+  conn->listener = NULL;
   return 0;
 }
 

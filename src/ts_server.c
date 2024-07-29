@@ -11,6 +11,7 @@ static void uv_on_tcp_conn_close(uv_handle_t* handle) {
 
   uv_read_stop((uv_stream_t*)&conn->uvtcp);
   
+  LOG_DEBUG_EX("[%s] Remove connection from connections collection", conn->remote_addr);
   DL_DELETE(server->conns, conn);
   
   LOG_DEBUG("[%s] Free connection", conn->remote_addr);
@@ -25,6 +26,7 @@ static void uv_on_listener_close(uv_handle_t* handle) {
   assert(server->listener_count >= 0);
   LOG_DEBUG("Current listener count: %d", server->listener_count);
   if (server->listener_count == 0) {
+    LOG_DEBUG_EX("All listeners are stopped, free listeners");
     ts__free(server->listeners);
     server->listeners = NULL;
   }
@@ -149,7 +151,11 @@ int ts_server__stop(ts_server_t* server) {
   ts_server_idle__stop(server);
   
   // TODO: add a stop flag to stop accepting new connections
+  int conn_count = 0;
   ts_conn_t* cur_conn = NULL;
+  DL_COUNT(server->conns, cur_conn, conn_count);
+  LOG_DEBUG("Close all connections: %d", conn_count);
+
   DL_FOREACH(server->conns, cur_conn) {
     ts_server__disconnect(server, cur_conn);
   }
@@ -158,11 +164,13 @@ int ts_server__stop(ts_server_t* server) {
     uv_run(server->uvloop, UV_RUN_NOWAIT);
   }
   
+  LOG_DEBUG("Stop all listeners: %d", server->listener_count);
   for (int i = 0; i < server->listener_count; i++) {
     ts_server_listener__stop(&(server->listeners[i]), uv_on_listener_close);
   }
-  
-  while (uv_run(server->uvloop, UV_RUN_NOWAIT) != 0) {}
+  while (server->listeners != NULL) {
+    uv_run(server->uvloop, UV_RUN_NOWAIT);
+  }
   
 done:
   LOG_INFO("Server stopped");
@@ -180,7 +188,7 @@ int ts_server__write(ts_server_t* server, ts_conn_t* conn, const char* data, int
 }
 int ts_server__disconnect(ts_server_t* server, ts_conn_t* conn) {
   int err;
-  LOG_VERB("[%s] Disconnect from the peer", conn->remote_addr);
+  LOG_VERB("[%s] Disconnect from the peer(user initiated)", conn->remote_addr);
   err = ts_conn__close(conn, uv_on_tcp_conn_close);
   return err;
 }
