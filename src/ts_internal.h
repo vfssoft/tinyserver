@@ -97,6 +97,4 @@ int ts_buf__set(ts_buf_t* buf, const char* data, int len);
 int ts_buf__set_str(ts_buf_t* buf, const char* str, int len);
 int ts_buf__set_const(ts_buf_t* buf, const char* data, int len);
 
-int ts_tcp__getaddrinfo(const char* host, int use_ipv6, struct addrinfo* ret);
-
 #endif //TINYSERVER_TS_INTERNAL_H

@@ -26,3 +26,27 @@ void ts_sockaddr__str(struct sockaddr_storage* addr, char* buf, int buflen) {
     snprintf(buf, buflen, "%s:%d", ipstr, ntohs(ipv6->sin6_port));
   }
 }
+
+int ts_tcp__getaddrinfo(const char* host, int use_ipv6, struct sockaddr_storage* ret) {
+  struct addrinfo hints, *result, *rp;
+  int status;
+
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = use_ipv6 ? AF_INET : AF_INET6;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = IPPROTO_TCP;
+
+  status = getaddrinfo(host, NULL, &hints, &result);
+  if (status != 0) {
+    return UV_EINVAL;
+  }
+
+  for (rp = result; rp != NULL; rp = rp->ai_next) {
+    memcpy(ret, rp, sizeof(*rp));
+    break;
+  }
+
+  freeaddrinfo(result);
+  return 0;
+}
+

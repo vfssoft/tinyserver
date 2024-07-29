@@ -18,7 +18,7 @@ int ts_server_listener__init_default(ts_server_listener_t* listener) {
 static int ts_server_listener__bind(ts_server_listener_t* listener) {
   int err;
 
-  struct sockaddr addr = { 0 };
+  struct sockaddr_storage addr = { 0 };
   struct sockaddr_in* in4 = (struct sockaddr_in*)&addr;
   struct sockaddr_in6* in6 = (struct sockaddr_in6*)&addr;
 
@@ -54,7 +54,7 @@ static int ts_server_listener__bind(ts_server_listener_t* listener) {
     in4->sin_port = htons(port);
   }
 
-  err = uv_tcp_bind(&listener->uvtcp, &addr, 0);
+  err = uv_tcp_bind(&listener->uvtcp, (const struct sockaddr*)&addr, 0);
   if (err) {
     ts_error__set_msg(&(listener->err), err, uv_strerror(err));
   }
