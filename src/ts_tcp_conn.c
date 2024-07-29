@@ -6,6 +6,7 @@ int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
   
   conn->listener = listener;
   conn->write_reqs = NULL;
+  ts_error__init(&conn->err);
 
   memset(conn->local_addr, 0, sizeof(conn->local_addr));
   memset(conn->remote_addr, 0, sizeof(conn->remote_addr));
@@ -133,6 +134,8 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
   ts_buf_t* ssl_decrypted = NULL;
   ts_ro_buf_t input;
   int ssl_state = 0;
+  
+  LOG_VERB("[%s] data received: %d", conn->remote_addr, nread);
 
   input.buf = buf->base;
   input.len = (int)nread;
@@ -168,6 +171,7 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
   }
 
   if (nread < 0) {
+    LOG_ERROR("[%s] connection error: %d %s", conn->remote_addr, nread, uv_strerror(nread));
     ts_server__disconnect(server, conn);
   }
 
@@ -210,6 +214,8 @@ int ts_conn__tcp_connected(ts_conn_t* conn) {
   if (err) {
     return err;
   }
+  
+  LOG_VERB("[%s] New connection accepted", conn->remote_addr);
 
   if (listener->protocol == TS_PROTO_TCP) {
     err = server->connected_cb(server->cb_ctx, server, conn, 0);
@@ -218,9 +224,7 @@ int ts_conn__tcp_connected(ts_conn_t* conn) {
     }
   }
 
-  err = ts_conn__read_tcp_data(conn, uv_on_read);
-
-  return err;
+  return ts_conn__read_tcp_data(conn, uv_on_read);
 }
 int ts_conn__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
   int err;
@@ -249,6 +253,9 @@ int ts_conn__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
 int ts_conn__read_tcp_data(ts_conn_t* conn, uv_read_cb cb) {
   int err;
   err = uv_read_start((uv_stream_t*) &conn->uvtcp, uv_on_alloc_buffer, cb);
+  if (err) {
+    ts_error__set_msg(&conn->err, err, uv_strerror(err));
+  }
   return err;
 }
 int ts_conn__close(ts_conn_t* conn, uv_close_cb cb) {

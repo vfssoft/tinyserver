@@ -12,6 +12,8 @@ static void uv_on_tcp_conn_close(uv_handle_t* handle) {
   uv_read_stop((uv_stream_t*)&conn->uvtcp);
   
   DL_DELETE(server->conns, conn);
+  
+  LOG_DEBUG("[%s] Free connection", conn->remote_addr);
   ts_conn__destroy(listener, conn);
   ts__free(conn);
 }
@@ -29,35 +31,24 @@ static void uv_on_listener_close(uv_handle_t* handle) {
   return;
 }
 
-
-static ts_conn_t* ts_server__new_conn(ts_server_listener_t* listener) {
-  ts_server_t* server = listener->server;
-  ts_conn_t* conn;
-  
-  conn = (ts_conn_t*) ts__malloc(sizeof(ts_conn_t));
-  if (conn == NULL) {
-    return NULL;
-  }
-  
-  DL_APPEND(server->conns, conn);
-  
-  return conn;
-}
-
 static void uv_on_new_tcp_connection(uv_stream_t *stream, int status) {
-  if (status < 0) {
-    return;
-  }
-  
   int err;
   ts_server_listener_t* listener = CONTAINER_OF(stream, ts_server_listener_t, uvtcp);
   ts_server_t* server = listener->server;
   ts_conn_t* conn;
   
-  conn = ts_server__new_conn(listener);
-  if (conn == NULL) {
-    return; // TODO: no memory, what should we do?
+  if (status < 0) {
+    LOG_ERROR("New connection error: %d %s", status, uv_strerror(status));
+    return;
   }
+  
+  conn = (ts_conn_t*) ts__malloc(sizeof(ts_conn_t));
+  if (conn == NULL) {
+    LOG_ERROR("New connection error: Out of memory");
+    return;
+  }
+  
+  DL_APPEND(server->conns, conn);
   
   err = ts_conn__init(listener, conn);
   if (err) {
@@ -67,14 +58,16 @@ static void uv_on_new_tcp_connection(uv_stream_t *stream, int status) {
   err = uv_accept((uv_stream_t*) &listener->uvtcp, (uv_stream_t*) &conn->uvtcp);
   if (err == 0) {
     err = ts_conn__tcp_connected(conn);
+  } else {
+    ts_error__set_msg(&conn->err, err, uv_strerror(err));
+    goto done;
   }
   
 done:
   if (err) {
+    LOG_ERROR("Accept new connection failed: %d %s, disconnect it", err, conn->err.msg);
     ts_server__disconnect(server, conn);
   }
-  
-  return;
 }
 
 static int ts_server__default_connected_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status) {
@@ -187,6 +180,7 @@ int ts_server__write(ts_server_t* server, ts_conn_t* conn, const char* data, int
 }
 int ts_server__disconnect(ts_server_t* server, ts_conn_t* conn) {
   int err;
+  LOG_VERB("[%s] Disconnect from the peer", conn->remote_addr);
   err = ts_conn__close(conn, uv_on_tcp_conn_close);
   return err;
 }

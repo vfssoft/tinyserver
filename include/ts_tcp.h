@@ -162,8 +162,9 @@ struct ts_conn_s {
     ts_server_listener_t* listener;
     
     ts_conn_write_req_t* write_reqs;
-    
     ts_tls_t* tls;
+    ts_error_t err;
+    
 
     char local_addr[64]; // Maybe a little small, but let's see
     char remote_addr[64];
