@@ -6,6 +6,9 @@ int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
   
   conn->listener = listener;
   conn->write_reqs = NULL;
+
+  memset(conn->local_addr, 0, sizeof(conn->local_addr));
+  memset(conn->remote_addr, 0, sizeof(conn->remote_addr));
   
   switch (listener->protocol) {
     case TS_PROTO_TCP:
@@ -174,10 +177,39 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
   return;
 }
 
+static int ts_conn__populate_addrs(ts_conn_t* conn) {
+  int err;
+  struct sockaddr_storage local_addr_storage;
+  struct sockaddr_storage remote_addr_storage;
+
+  int namelen = sizeof(local_addr_storage);
+  err = uv_tcp_getsockname(&conn->uvtcp, (struct sockaddr*)&local_addr_storage, &namelen);
+  if (err) {
+    return err;
+  }
+
+  ts_sockaddr__str(&local_addr_storage, conn->local_addr, sizeof(conn->local_addr));
+
+  namelen = sizeof(remote_addr_storage);
+  err = uv_tcp_getpeername(&conn->uvtcp, (struct sockaddr*)&remote_addr_storage, &namelen);
+  if (err) {
+    return err;
+  }
+
+  ts_sockaddr__str(&remote_addr_storage, conn->remote_addr, sizeof(conn->remote_addr));
+
+  return 0;
+}
+
 int ts_conn__tcp_connected(ts_conn_t* conn) {
   int err;
   ts_server_listener_t* listener = conn->listener;
   ts_server_t* server = listener->server;
+
+  err = ts_conn__populate_addrs(conn);
+  if (err) {
+    return err;
+  }
 
   if (listener->protocol == TS_PROTO_TCP) {
     err = server->connected_cb(server->cb_ctx, server, conn, 0);

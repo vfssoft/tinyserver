@@ -164,7 +164,10 @@ struct ts_conn_s {
     ts_conn_write_req_t* write_reqs;
     
     ts_tls_t* tls;
-    
+
+    char local_addr[64]; // Maybe a little small, but let's see
+    char remote_addr[64];
+
     ts_conn_t* prev;
     ts_conn_t* next;
 };
