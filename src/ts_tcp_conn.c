@@ -137,7 +137,7 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
   ts_ro_buf_t input;
   int ssl_state = 0;
   
-  LOG_VERB("[%s] data received: %d", conn->remote_addr, nread);
+  LOG_DEBUG("[%s] Data received: %d", conn->remote_addr, nread);
 
   input.buf = buf->base;
   input.len = (int)nread;
@@ -173,7 +173,7 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
   }
 
   if (nread < 0) {
-    LOG_ERROR("[%s] connection error: %d %s", conn->remote_addr, nread, uv_strerror(nread));
+    LOG_ERROR("[%s] Connection error: %d %s", conn->remote_addr, nread, uv_strerror(nread));
     ts_server__disconnect(server, conn);
   }
 

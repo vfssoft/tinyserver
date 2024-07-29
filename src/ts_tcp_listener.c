@@ -11,6 +11,8 @@ int ts_server_listener__init_default(ts_server_listener_t* listener) {
   listener->cert = "";
   listener->key = "";
   listener->tls_verify_mode = 0;
+  listener->uvloop = NULL;
+  listener->server = NULL;
   ts_error__init(&(listener->err));
   return 0;
 }
