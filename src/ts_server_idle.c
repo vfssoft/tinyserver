@@ -7,7 +7,7 @@ static void uv_on_idle(uv_idle_t *handle) {
 
 int ts_server_idle__init(ts_server_t* server) {
   int err;
-  err = uv_idle_init(server->uvloop, &server->uvidle);
+  err = uv_idle_init(server->uvloop, &(server->uvidle));
   return err;
 }
 

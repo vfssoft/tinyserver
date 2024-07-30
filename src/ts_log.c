@@ -66,9 +66,9 @@ static int ts_log__vprintf(ts_log_t* log, int level, const char* func, int linen
     len += snprintf(line, sizeof(line), "[%s]", timestamp_buf);
   }
 
-  len += snprintf(&line[len], sizeof(line) - len, "[%s]", level_str);
+  //len += snprintf(&line[len], sizeof(line) - len, "[%s]", level_str);
 
-  len += snprintf(&line[len], sizeof(line) - len, "[%s(%d)]", func, lineno);
+  //len += snprintf(&line[len], sizeof(line) - len, "[%s(%d)]", func, lineno);
 
   vsnprintf(&line[len], sizeof(line) - len, fmt, va);
   line[sizeof(line)-1] = 0; // ensure string is null terminated.

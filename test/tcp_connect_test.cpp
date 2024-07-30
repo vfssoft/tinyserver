@@ -75,6 +75,7 @@ TEST(TCPServer, ConnectTest) {
   ASSERT_TRUE(conn_info.conn != NULL);
   
   ts_server__stop(&server);
+  uv_thread_join(&client_thread);
 }
 
 
@@ -123,6 +124,7 @@ TEST(TCPServer, ServerDisconnectTest) {
   ASSERT_EQ(conn_info.disconnected_fired, 1);
   
   ts_server__stop(&server);
+  uv_thread_join(&client_thread);
 }
 
 static void client_connect_disconnect_quick_cb(void *arg) {
@@ -175,6 +177,7 @@ static void tcp_server__connect_disconnect_impl(int afterSec) {
   ASSERT_TRUE(conn_info.conn != NULL);
   
   ts_server__stop(&server);
+  uv_thread_join(&client_thread);
 }
 
 TEST(TCPServer, ConnectDisconnectQuickTest) {
