@@ -89,8 +89,8 @@ TEST(TCPServer, SSLConnectTest) {
     ts_server__run(&server);
   }
 
-  ASSERT_EQ(conn_info.disconnected_fired, 1);
-  ASSERT_EQ(conn_info.server, &server);
+  ASSERT_TRUE(conn_info.disconnected_fired == 1);
+  ASSERT_TRUE(conn_info.server == &server);
   ASSERT_TRUE(conn_info.conn != NULL);
 
   ts_server__stop(&server);
@@ -139,7 +139,7 @@ TEST(TCPServer, SSLServerDisconnectTest) {
     ts_server__run(&server);
   }
 
-  ASSERT_EQ(conn_info.disconnected_fired, 1);
+  ASSERT_TRUE(conn_info.disconnected_fired == 1);
 
   ts_server__stop(&server);
 }
