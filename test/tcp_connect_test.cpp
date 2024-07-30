@@ -11,6 +11,7 @@ static void start_server(ts_server_t* server) {
 static void client_connect_cb(void *arg) {
   int err;
   mytcp_t client;
+  mytcp__init_mutex();
   mytcp__init(&client);
 
   err = mytcp__connect(&client, "127.0.0.1", 12345);
@@ -82,6 +83,7 @@ TEST(TCPServer, ConnectTest) {
 static void client_connect_wait_disconnect_cb(void *arg) {
   int err;
   mytcp_t client;
+  mytcp__init_mutex();
   mytcp__init(&client);
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
@@ -130,6 +132,7 @@ TEST(TCPServer, ServerDisconnectTest) {
 static void client_connect_disconnect_quick_cb(void *arg) {
   int err;
   mytcp_t client;
+  mytcp__init_mutex();
   mytcp__init(&client);
   
   err = mytcp__connect(&client, "127.0.0.1", 12345);

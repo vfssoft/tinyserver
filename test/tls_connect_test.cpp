@@ -29,6 +29,7 @@ static void start_server(ts_server_t* server) {
 static void ssl_client_connect_cb(void *arg) {
   int err;
   mytcp_t client;
+  mytcp__init_mutex();
   mytcp__init(&client);
   client.use_ssl = 1;
 
@@ -99,6 +100,7 @@ TEST(TCPServer, SSLConnectTest) {
 static void ssl_client_connect_wait_disconnect_cb(void *arg) {
   int err;
   mytcp_t client;
+  mytcp__init_mutex();
   mytcp__init(&client);
   client.use_ssl = 1;
   err = mytcp__connect(&client, "127.0.0.1", 12345);
@@ -148,6 +150,7 @@ static void ssl_client_connect_disconnect_quick_cb(void *arg) {
   
   int err;
   mytcp_t client;
+  mytcp__init_mutex();
   mytcp__init(&client);
   client.use_ssl = 1;
   

@@ -2,23 +2,49 @@
 #include "mytcp.h"
 
 static int WSA_START_UP = 0;
+static int OPENSSL_INITIALIZED = 0;
+static uv_mutex_t mutex;
+
+static void lock() {
+  uv_mutex_lock(&mutex);
+}
+static void unlock() {
+  uv_mutex_unlock(&mutex);
+}
+
+int mytcp__init_mutex() {
+  uv_mutex_init(&mutex);
+  return 0;
+}
+int mytcp__destroy_mutex() {
+  uv_mutex_destroy(&mutex);
+  return 0;
+}
 
 static void mytcp__wsa_startup() {
-  if (WSA_START_UP) { return ; }
-
+  lock();
+  if (!WSA_START_UP) {
 #ifdef _WIN32
-  WSADATA wsaData;
-  if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-    exit(-1);
-  }
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+      exit(-1);
+    }
 #endif
+  
+    WSA_START_UP = 1;
+  }
 
-  WSA_START_UP = 1;
+  unlock();
 }
 static void mytcp__init_openssl() {
-  SSL_library_init();
-  OpenSSL_add_all_algorithms();
-  SSL_load_error_strings();
+  lock();
+  if (!OPENSSL_INITIALIZED) {
+    SSL_library_init();
+    OpenSSL_add_all_algorithms();
+    SSL_load_error_strings();
+    OPENSSL_INITIALIZED = 1;
+  }
+  unlock();
 }
 
 static int mytcp__tcp_connect(mytcp_t* tcp, const char* host, int port) {
