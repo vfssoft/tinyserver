@@ -6,6 +6,7 @@ int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
   
   conn->listener = listener;
   conn->write_reqs = NULL;
+  memset(&(conn->uvtcp), 0, sizeof(uv_tcp_t));
   ts_error__init(&conn->err);
 
   memset(conn->local_addr, 0, sizeof(conn->local_addr));

@@ -13,6 +13,7 @@ int ts_server_listener__init_default(ts_server_listener_t* listener) {
   listener->tls_verify_mode = 0;
   listener->uvloop = NULL;
   listener->server = NULL;
+  memset(&(listener->uvtcp), 0, sizeof(uv_tcp_t));
   ts_error__init(&(listener->err));
   return 0;
 }
