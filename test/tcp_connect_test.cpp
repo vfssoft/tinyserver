@@ -187,4 +187,45 @@ TEST(TCPServer, ConnectDisconnect1sTest) {
   tcp_server__connect_disconnect_impl(1000);
 }
 
+static void tcp_server_clients_impl(int client_cnt) {
+  test_conn_info_t conn_info;
+  memset(&conn_info, 0, sizeof(conn_info));
+  
+  ts_server_t server;
+  start_server(&server);
+  ts_server__set_cb_ctx(&server, &conn_info);
+  ts_server__set_connected_cb(&server, connected_cb);
+  ts_server__set_disconnected_cb(&server, disconnected_cb);
+  
+  
+  uv_thread_t* client_threads = (uv_thread_t*) malloc(sizeof(uv_thread_t) * client_cnt);
+  for (int i = 0; i < client_cnt; i++) {
+    uv_thread_create(&client_threads[i], client_connect_cb, NULL);
+  }
+  
+  int r = ts_server__start(&server);
+  ASSERT_EQ(r, 0);
+  while (conn_info.connected_fired < client_cnt) {
+    ts_server__run(&server);
+  }
+  ASSERT_TRUE(conn_info.connected_fired == client_cnt);
+  
+  while (conn_info.disconnected_fired < client_cnt) {
+    ts_server__run(&server);
+  }
+  
+  ASSERT_TRUE(conn_info.disconnected_fired == client_cnt);
+  
+  ts_server__stop(&server);
+  for (int i = 0; i < client_cnt; i++) {
+    uv_thread_join(&client_threads[i]);
+  }
+}
+TEST(TCPServer, Clients10ConnectTest) {
+  tcp_server_clients_impl(10);
+}
+TEST(TCPServer, Clients100ConnectTest) {
+  tcp_server_clients_impl(100);
+}
+
 

@@ -67,7 +67,7 @@ TEST(TCPServer, EchoTest) {
   while (conn_info.read_fired == 0) {
     ts_server__run(&server);
   }
-  ASSERT_EQ(conn_info.read_fired, 1);
+  ASSERT_TRUE(conn_info.read_fired == 1);
   ASSERT_STREQ(conn_info.databuf, str);
   
   while (conn_info.write_fired == 0) {
