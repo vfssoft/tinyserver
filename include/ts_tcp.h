@@ -182,6 +182,7 @@ struct ts_tls_s {
     SSL*     ssl;
     SSL_CTX* ctx;
     int      ssl_state;
+    ts_conn_t* conn;
     ts_error_t err;
 
     ts_buf_t* ssl_buf; // used internal

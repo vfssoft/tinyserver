@@ -3,6 +3,7 @@
 
 int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
   int err = 0;
+  ts_server_t* server = listener->server;
   
   conn->listener = listener;
   conn->write_reqs = NULL;
@@ -20,11 +21,11 @@ int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
     case TS_PROTO_TLS:
       conn->tls = (ts_tls_t*) ts__malloc(sizeof(ts_tls_t));
       if (conn->tls == NULL) {
-        err = TS_ERR_OUT_OF_MEMORY;
+        ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
         goto done;
       }
       
-      err = ts_tls__init(conn->tls, listener->ssl_ctx);
+      err = ts_tls__init(conn->tls, conn);
       if (err) {
         goto done;
       }
@@ -34,10 +35,14 @@ int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
   
   err = uv_tcp_init(listener->uvloop, &conn->uvtcp);
   if (err) {
-    return err;
+    ts_error__set_msg(&(conn->err), err, uv_strerror(err));
+    goto done;
   }
   
 done:
+  if (err) {
+    LOG_ERROR("[%s] Initial connection failed: %d %s", conn->remote_addr, conn->err.err, conn->err.msg);
+  }
   
   return err;
 }
@@ -95,6 +100,7 @@ static void uv_on_free_buffer(const uv_buf_t* buf) {
 
 static int ts_server__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, ts_buf_t** decrypted) {
   int err = 0;
+  ts_server_t* server = conn->listener->server;
   ts_tls_t* tls = conn->tls;
 
   assert(tls->ssl_state == TLS_STATE_HANDSHAKING || tls->ssl_state == TLS_STATE_CONNECTED);
@@ -106,6 +112,7 @@ static int ts_server__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* inpu
     if (tls->ssl_state == TLS_STATE_HANDSHAKING) {
       err = ts_tls__handshake(tls, input, tls->ssl_buf);
       if (err) {
+        ts_error__copy(&(conn->err), &(tls->err));
         goto done;
       }
 
@@ -125,7 +132,10 @@ static int ts_server__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* inpu
   
   *decrypted = tls->ssl_buf;
 
-  done:
+done:
+  if (err) {
+    LOG_ERROR("[%s] TLS error: %d %s", conn->err.err, conn->err.msg);
+  }
   return err;
 }
 
@@ -230,28 +240,38 @@ int ts_conn__tcp_connected(ts_conn_t* conn) {
   return ts_conn__read_tcp_data(conn, uv_on_read);
 }
 int ts_conn__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
-  int err;
+  int err = 0;
+  ts_server_t* server = conn->listener->server;
   
   if (output->len > 0) {
+    LOG_DEBUG("[%s] Send data: %d", conn->remote_addr, output->len);
+    
     ts_conn_write_req_t* write_req = (ts_conn_write_req_t*) ts__malloc(sizeof(ts_conn_write_req_t));
     if (write_req == NULL) {
-      return TS_ERR_OUT_OF_MEMORY;
+      ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
+      goto done;
     }
     
     err = ts_conn__init_write_req(write_req, conn, output->buf, output->len);
     if (err) {
-      return err;
+      goto done;
     }
     
     err = uv_write((uv_write_t*)write_req, (uv_stream_t*)&conn->uvtcp, &write_req->buf, 1, uv_on_write);
     if (err) {
-      return err;
+      ts_error__set_msg(&(conn->err), err, uv_strerror(err));
+      goto done;
     }
     
     ts_buf__set_length(output, 0); // reset the buf for reuse
+    
+done:
+    if (err) {
+      LOG_ERROR("[%s] Send data failed: %d %s", conn->remote_addr, conn->err.err, conn->err.msg);
+    }
   }
   
-  return 0;
+  return err;
 }
 int ts_conn__read_tcp_data(ts_conn_t* conn, uv_read_cb cb) {
   int err;

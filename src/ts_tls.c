@@ -139,24 +139,35 @@ void ts_tls__ctx_destroy(SSL_CTX* ctx) {
   }
 }
 
-int ts_tls__init(ts_tls_t* tls, SSL_CTX* ssl_ctx) {
-  tls->ssl = SSL_new(ssl_ctx);
+int ts_tls__init(ts_tls_t* tls, ts_conn_t* conn) {
+  ts_server_listener_t* listener = conn->listener;
+  ts_server_t* server = listener->server;
+  
+  tls->conn = conn;
+  tls->ssl_state = TLS_STATE_HANDSHAKING;
+  ts_error__init(&tls->err);
+  
+  
+  tls->ssl = SSL_new(listener->ssl_ctx);
   if (tls->ssl == NULL) {
-    return TS_ERR_OUT_OF_MEMORY;
+    ts_error__set(&(tls->err), TS_ERR_OUT_OF_MEMORY);
+    goto done;
   }
   SSL_set_accept_state(tls->ssl); // server mode
   
   BIO_new_bio_pair(&(tls->sslbio), 0, &(tls->appbio), 0);
   SSL_set_bio(tls->ssl, tls->sslbio, tls->sslbio);
-  
-  tls->ssl_state = TLS_STATE_HANDSHAKING;
-  ts_error__init(&tls->err);
 
   tls->ssl_buf = ts_buf__create(0);
   if (tls->ssl_buf == NULL) {
-    return TS_ERR_OUT_OF_MEMORY;
+    ts_error__set(&(tls->err), TS_ERR_OUT_OF_MEMORY);
+    goto done;
   }
-  
+
+done:
+  if (tls->err.err) {
+    LOG_ERROR("[%s][TLS] Initial TLS for connection failed: %d %s", conn->remote_addr, tls->err.err, tls->err.msg);
+  }
   return 0;
 }
 
@@ -164,6 +175,7 @@ int ts_tls__destroy(ts_tls_t* tls) {
   if (tls->ssl) {
     SSL_free(tls->ssl);
   }
+  tls->conn = NULL;
   tls->ssl = NULL;
   tls->ctx = NULL; // it's a reference, so don't need to free it.
   return -1;
@@ -198,9 +210,13 @@ static void ts_tls__write_data_to_ssl(ts_tls_t* tls, ts_ro_buf_t* input) {
 
 int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
   int err;
+  ts_conn_t* conn = tls->conn;
+  ts_server_t* server = conn->listener->server;
   int hs_err;
   int ssl_err;
   BOOL should_continue = TRUE;
+  
+  LOG_VERB("[%s][TLS] TLS handshaking", conn->remote_addr);
   
   while (should_continue) {
     should_continue = FALSE;
@@ -210,13 +226,14 @@ int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
     if (hs_err == 1) {
       // The TLS/SSL handshake was successfully completed, a TLS/SSL connection has been established.
       tls->ssl_state = TLS_STATE_CONNECTED;
-      return 0;
+      LOG_VERB("[%s][TLS] TLS handshake ok", conn->remote_addr);
+      goto done;
     }
   
     if (hs_err == 0) {
       // The TLS/SSL handshake was not successful but was shut down controlled and by the specifications of the TLS/SSL protocol.
       ts_tls__set_err(tls, SSL_get_error(tls->ssl, hs_err));
-      return tls->err.err;
+      goto done;
     }
   
     // The TLS/SSL handshake was not successful because a fatal error occurred either at the
@@ -237,7 +254,7 @@ int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
           // tls->ssl_state == TLS_STATE_CONNECTED;
           ts_tls__set_err(tls, 0);
         }
-        return tls->err.err;
+        goto done;
   
       case SSL_ERROR_WANT_READ:
       case SSL_ERROR_WANT_WRITE:
@@ -247,15 +264,20 @@ int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
         
         err = ts_tls__get_pending_ssl_data_to_send(tls, output);
         if (err) {
-          return err;
+          goto done;
         }
         break;
   
       default:
         ts_tls__set_err(tls, ts_tls__get_openssl_error(ssl_err));
-        return tls->err.err;
+        goto done;
     }
 
+  }
+  
+done:
+  if (tls->err.err)  {
+    LOG_ERROR("[%s][TLS] TLS handshake failed: %d %s", conn->remote_addr, tls->err.err, tls->err.msg);
   }
   
   return 0;
@@ -263,10 +285,14 @@ int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
 
 int ts_tls__decrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
   int err;
+  ts_conn_t* conn = tls->conn;
+  ts_server_t* server = conn->listener->server;
   int ssl_read_ret;
   char ssl_buf[2048];
   
   if (input->len > 0) {
+    LOG_DEBUG("[%s][TLS] TLS decrypt cipher data: %d", conn->remote_addr, input->len);
+    
     ts_tls__write_data_to_ssl(tls, input);
   
     ssl_read_ret = SSL_read(tls->ssl, ssl_buf, 2048);
@@ -275,6 +301,7 @@ int ts_tls__decrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
     } else if (ssl_read_ret == 0) {
       // ref: https://www.openssl.org/docs/man1.1.1/man3/SSL_get_error.html BUGS section
       // peer disconnect first. This is not a real error
+      LOG_VERB("[%s][TLS] TLS peer disconnect", conn->remote_addr);
       ts_tls__set_err(tls, 0);
     } else {
       ts_tls__set_err(tls, ts_tls__get_openssl_error(ssl_read_ret));
