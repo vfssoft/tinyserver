@@ -12,6 +12,7 @@ add_executable(tests
         mytcp.cpp
         tcp_connect_test.cpp
         tcp_read_write_test.cpp
-        )
+        testutil.h
+        testutil.cpp)
 
 target_link_libraries(tests gtest gtest_main server_lib)
