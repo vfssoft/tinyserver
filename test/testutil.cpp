@@ -29,3 +29,12 @@ void start_server(ts_server_t* server, int proto) {
   }
   
 }
+
+
+void assert_bytes_equals(const char* d1, int d1len, const char* d2, int d2len) {
+  ASSERT_EQ(d1len, d2len);
+  
+  for (int i = 0; i < d1len; i++) {
+    ASSERT_EQ(d1[i], d2[i]);
+  }
+}

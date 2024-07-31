@@ -154,7 +154,7 @@ static int mytcp__ssl_write(mytcp_t* tcp, const char* data, int len) {
     return 1;
   }
 
-  return 0;
+  return len;
 }
 static int mytcp__ssl_read(mytcp_t* tcp, char* data, int len) {
   int err = 0;
@@ -166,7 +166,7 @@ static int mytcp__ssl_read(mytcp_t* tcp, char* data, int len) {
     return 1;
   }
 
-  return 0;
+  return err;
 }
 
 int mytcp__init(mytcp_t* tcp) {
