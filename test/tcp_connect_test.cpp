@@ -2,10 +2,32 @@
 #include <ts_tcp.h>
 #include "mytcp.h"
 
-static void start_server(ts_server_t* server) {
+static const char* cur_dir() {
+  char* file = strdup(__FILE__);
+  int idx = strlen(file) - 1;
+  while (file[idx] != '\\') idx--;
+  file[idx] = 0;
+  return file;
+}
+
+
+static void start_server(ts_server_t* server, int proto) {
   ts_server__init(server);
   ts_server__set_listener_count(server, 1);
   ts_server__set_listener_host_port(server, 0, "127.0.0.1", 12345);
+  ts_server__set_listener_protocol(server, 0, proto);
+  
+  if (proto == TS_PROTO_TLS) {
+    const char* dir_path = cur_dir();
+    char crtpath[1024];
+    char keypath[1024];
+  
+    sprintf(crtpath, "%s/certs/rsa_tinyserver.crt", dir_path);
+    sprintf(keypath, "%s/certs/rsa_tinyserver.key", dir_path);
+  
+    ts_server__set_listener_certs(server, 0, crtpath, keypath);
+  }
+  
 }
 
 static void client_connect_cb(void *arg) {
@@ -13,6 +35,7 @@ static void client_connect_cb(void *arg) {
   mytcp_t client;
   mytcp__init_mutex();
   mytcp__init(&client);
+  client.use_ssl = *(int*)arg == TS_PROTO_TLS;
 
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
@@ -45,18 +68,18 @@ static int disconnected_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int 
   return 0;
 }
 
-TEST(TCPServer, ConnectTest) {
+static void server_connect_impl(int proto) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
   
   ts_server_t server;
-  start_server(&server);
+  start_server(&server, proto);
   ts_server__set_cb_ctx(&server, &conn_info);
   ts_server__set_connected_cb(&server, connected_cb);
   ts_server__set_disconnected_cb(&server, disconnected_cb);
   
   uv_thread_t client_thread;
-  uv_thread_create(&client_thread, client_connect_cb, NULL);
+  uv_thread_create(&client_thread, client_connect_cb, (void*)&proto);
   
   int r = ts_server__start(&server);
   ASSERT_EQ(r, 0);
@@ -79,12 +102,20 @@ TEST(TCPServer, ConnectTest) {
   uv_thread_join(&client_thread);
 }
 
+TEST(TCPServer, TCPConnectTest) {
+  server_connect_impl(TS_PROTO_TCP);
+}
+TEST(TCPServer, TLSConnectTest) {
+  server_connect_impl(TS_PROTO_TLS);
+}
 
 static void client_connect_wait_disconnect_cb(void *arg) {
   int err;
   mytcp_t client;
   mytcp__init_mutex();
   mytcp__init(&client);
+  client.use_ssl = *(int*)arg == TS_PROTO_TLS;
+  
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
   
@@ -99,18 +130,18 @@ static int connected_reject_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, 
   return 0;
 }
 
-TEST(TCPServer, ServerDisconnectTest) {
+static void server_disconnect_impl(int proto) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
   
   ts_server_t server;
-  start_server(&server);
+  start_server(&server, proto);
   ts_server__set_cb_ctx(&server, &conn_info);
   ts_server__set_connected_cb(&server, connected_reject_cb);
   ts_server__set_disconnected_cb(&server, disconnected_cb);
   
   uv_thread_t client_thread;
-  uv_thread_create(&client_thread, client_connect_wait_disconnect_cb, NULL);
+  uv_thread_create(&client_thread, client_connect_wait_disconnect_cb, &proto);
   
   int r = ts_server__start(&server);
   ASSERT_EQ(r, 0);
@@ -127,40 +158,56 @@ TEST(TCPServer, ServerDisconnectTest) {
   
   ts_server__stop(&server);
   uv_thread_join(&client_thread);
+
 }
+
+TEST(TCPServer, TCPServerDisconnectTest) {
+  server_disconnect_impl(TS_PROTO_TCP);
+}
+TEST(TCPServer, TLSServerDisconnectTest) {
+  server_disconnect_impl(TS_PROTO_TLS);
+}
+
+typedef struct test_proto_aftersec_s {
+    int proto;
+    int after_sec;
+} test_proto_aftersec_t;
 
 static void client_connect_disconnect_quick_cb(void *arg) {
   int err;
+  test_proto_aftersec_t* client_args = (test_proto_aftersec_t*) arg;
   mytcp_t client;
   mytcp__init_mutex();
   mytcp__init(&client);
+  client.use_ssl = client_args->proto == TS_PROTO_TLS;
   
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
   
-  if (arg) {
-    int* afterSec = (int*)arg;
-    uv_sleep(afterSec[0]);
+  if (client_args->after_sec) {
+    uv_sleep(client_args->after_sec);
   }
   
   err = mytcp__disconnect(&client);
   ASSERT_EQ(err, 0);
 }
 
-static void tcp_server__connect_disconnect_impl(int afterSec) {
+static void tcp_server__connect_disconnect_impl(int proto, int afterSec) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
   
   ts_server_t server;
-  start_server(&server);
+  start_server(&server, proto);
   ts_server__set_cb_ctx(&server, &conn_info);
   ts_server__set_connected_cb(&server, connected_cb);
   ts_server__set_disconnected_cb(&server, disconnected_cb);
   
+  test_proto_aftersec_t client_args;
+  client_args.proto = proto;
+  client_args.after_sec = afterSec;
+  
   uv_thread_t client_thread;
-  int* sec = (int*)malloc(sizeof(int));
-  sec[0] = afterSec;
-  uv_thread_create(&client_thread, client_connect_disconnect_quick_cb, sec);
+  uv_thread_create(&client_thread, client_connect_disconnect_quick_cb, &client_args);
   
   int r = ts_server__start(&server);
   ASSERT_EQ(r, 0);
@@ -183,19 +230,25 @@ static void tcp_server__connect_disconnect_impl(int afterSec) {
   uv_thread_join(&client_thread);
 }
 
-TEST(TCPServer, ConnectDisconnectQuickTest) {
-  tcp_server__connect_disconnect_impl(0);
+TEST(TCPServer, TCPConnectDisconnectQuickTest) {
+  tcp_server__connect_disconnect_impl(TS_PROTO_TCP, 0);
 }
-TEST(TCPServer, ConnectDisconnect1sTest) {
-  tcp_server__connect_disconnect_impl(1000);
+TEST(TCPServer, TCPConnectDisconnect1sTest) {
+  tcp_server__connect_disconnect_impl(TS_PROTO_TCP, 1000);
+}
+TEST(TCPServer, TLSConnectDisconnectQuickTest) {
+  tcp_server__connect_disconnect_impl(TS_PROTO_TLS, 0);
+}
+TEST(TCPServer, TLSConnectDisconnect1sTest) {
+  tcp_server__connect_disconnect_impl(TS_PROTO_TLS, 1000);
 }
 
-static void tcp_server_clients_impl(int client_cnt) {
+static void tcp_server_clients_impl(int proto, int client_cnt) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
   
   ts_server_t server;
-  start_server(&server);
+  start_server(&server, proto);
   ts_server__set_cb_ctx(&server, &conn_info);
   ts_server__set_connected_cb(&server, connected_cb);
   ts_server__set_disconnected_cb(&server, disconnected_cb);
@@ -203,7 +256,7 @@ static void tcp_server_clients_impl(int client_cnt) {
   
   uv_thread_t* client_threads = (uv_thread_t*) malloc(sizeof(uv_thread_t) * client_cnt);
   for (int i = 0; i < client_cnt; i++) {
-    uv_thread_create(&client_threads[i], client_connect_cb, NULL);
+    uv_thread_create(&client_threads[i], client_connect_cb, &proto);
   }
   
   int r = ts_server__start(&server);
@@ -224,11 +277,17 @@ static void tcp_server_clients_impl(int client_cnt) {
     uv_thread_join(&client_threads[i]);
   }
 }
-TEST(TCPServer, Clients10ConnectTest) {
-  tcp_server_clients_impl(10);
+TEST(TCPServer, TCPClients10ConnectTest) {
+  tcp_server_clients_impl(TS_PROTO_TCP, 10);
 }
-TEST(TCPServer, Clients100ConnectTest) {
-  tcp_server_clients_impl(100);
+TEST(TCPServer, TCPClients100ConnectTest) {
+  tcp_server_clients_impl(TS_PROTO_TCP, 100);
+}
+TEST(TCPServer, TLSClients10ConnectTest) {
+  tcp_server_clients_impl(TS_PROTO_TLS, 10);
+}
+TEST(TCPServer, TLSClients100ConnectTest) {
+  tcp_server_clients_impl(TS_PROTO_TLS, 100);
 }
 
 

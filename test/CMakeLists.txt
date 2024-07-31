@@ -12,6 +12,6 @@ add_executable(tests
         mytcp.cpp
         tcp_connect_test.cpp
         tcp_read_write_test.cpp
-        tls_connect_test.cpp)
+        )
 
 target_link_libraries(tests gtest gtest_main server_lib)
