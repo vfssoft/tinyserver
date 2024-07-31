@@ -218,28 +218,7 @@ static int ts_conn__populate_addrs(ts_conn_t* conn) {
   return 0;
 }
 
-int ts_conn__tcp_connected(ts_conn_t* conn) {
-  int err;
-  ts_server_listener_t* listener = conn->listener;
-  ts_server_t* server = listener->server;
-
-  err = ts_conn__populate_addrs(conn);
-  if (err) {
-    return err;
-  }
-  
-  LOG_VERB("[%s] New connection accepted", conn->remote_addr);
-
-  if (listener->protocol == TS_PROTO_TCP) {
-    err = server->connected_cb(server->cb_ctx, server, conn, 0);
-    if (err) {
-      return err;
-    }
-  }
-
-  return ts_conn__read_tcp_data(conn, uv_on_read);
-}
-int ts_conn__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
+static int ts_conn__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
   int err = 0;
   ts_server_t* server = conn->listener->server;
   
@@ -273,13 +252,34 @@ done:
   
   return err;
 }
-int ts_conn__read_tcp_data(ts_conn_t* conn, uv_read_cb cb) {
+static int ts_conn__read_tcp_data(ts_conn_t* conn, uv_read_cb cb) {
   int err;
   err = uv_read_start((uv_stream_t*) &conn->uvtcp, uv_on_alloc_buffer, cb);
   if (err) {
     ts_error__set_msg(&conn->err, err, uv_strerror(err));
   }
   return err;
+}
+int ts_conn__tcp_connected(ts_conn_t* conn) {
+  int err;
+  ts_server_listener_t* listener = conn->listener;
+  ts_server_t* server = listener->server;
+  
+  err = ts_conn__populate_addrs(conn);
+  if (err) {
+    return err;
+  }
+  
+  LOG_VERB("[%s] New connection accepted", conn->remote_addr);
+  
+  if (listener->protocol == TS_PROTO_TCP) {
+    err = server->connected_cb(server->cb_ctx, server, conn, 0);
+    if (err) {
+      return err;
+    }
+  }
+  
+  return ts_conn__read_tcp_data(conn, uv_on_read);
 }
 int ts_conn__send_data(ts_conn_t* conn, ts_buf_t* input) {
   int err;
