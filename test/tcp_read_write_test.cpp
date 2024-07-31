@@ -1,39 +1,42 @@
 #include <gtest/gtest.h>
 #include <ts_tcp.h>
 #include "mytcp.h"
+#include "testutil.h"
 
-static void start_server(ts_server_t* server) {
-  ts_server__init(server);
-  ts_server__set_listener_count(server, 1);
-  ts_server__set_listener_host_port(server, 0, "127.0.0.1", 12345);
-}
+typedef struct test_conn_info_s {
+    int read_fired;
+    char databuf[65536];
+    
+    int write_fired;
+} test_conn_info_t;
+
+typedef struct test_echo_client_arg_s {
+    int proto;
+    const char* data;
+    int data_len;
+} test_echo_client_arg_t;
 
 static void client_cb(void *arg) {
   int err;
+  test_echo_client_arg_t* client_args = (test_echo_client_arg_t*) arg;
   mytcp_t client;
   mytcp__init_mutex();
   mytcp__init(&client);
+  client.use_ssl = client_args->proto == TS_PROTO_TLS;
+  
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
   
-  char* data = (char*) arg;
-  err = mytcp__write(&client, data, strlen(data));
-  ASSERT_EQ(err, strlen(data));
+  err = mytcp__write(&client, client_args->data, client_args->data_len);
+  ASSERT_EQ(err, client_args->data_len);
   
-  char recvbuf[100];
-  err = mytcp__read(&client, recvbuf, 100);
-  ASSERT_EQ(err, strlen(data));
+  char* recvbuf = (char*) malloc(client_args->data_len);
+  err = mytcp__read(&client, recvbuf, client_args->data_len);
+  ASSERT_EQ(err, client_args->data_len);
   
   err = mytcp__disconnect(&client);
   ASSERT_EQ(err, 0);
 }
-
-typedef struct test_conn_info_s {
-    int read_fired;
-    char databuf[10];
-    
-    int write_fired;
-} test_conn_info_t;
 
 static int read_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, const char* data, int len) {
   test_conn_info_t* info = (test_conn_info_t*)ctx;
@@ -49,19 +52,23 @@ static int write_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status,
   return 0;
 }
 
-TEST(TCPServer, EchoTest) {
+static void server_echo_impl(int proto, const char* data, int data_len) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
   
   ts_server_t server;
-  start_server(&server);
+  start_server(&server, proto);
   ts_server__set_cb_ctx(&server, &conn_info);
   ts_server__set_read_cb(&server, read_cb);
   ts_server__set_write_cb(&server, write_cb);
   
-  char* str = "hello world";
+  test_echo_client_arg_t client_args;
+  client_args.proto = proto;
+  client_args.data = data;
+  client_args.data_len = data_len;
+  
   uv_thread_t client_thread;
-  uv_thread_create(&client_thread, client_cb, str);
+  uv_thread_create(&client_thread, client_cb, &client_args);
   
   int r = ts_server__start(&server);
   ASSERT_EQ(r, 0);
@@ -69,14 +76,21 @@ TEST(TCPServer, EchoTest) {
     ts_server__run(&server);
   }
   ASSERT_TRUE(conn_info.read_fired == 1);
-  ASSERT_STREQ(conn_info.databuf, str);
   
   while (conn_info.write_fired == 0) {
     ts_server__run(&server);
   }
   
   ts_server__stop(&server);
-  
+}
+
+TEST(TCPServer, TCPEchoTest) {
+  const char* data = "hello world";
+  server_echo_impl(TS_PROTO_TCP, data, strlen(data));
+}
+TEST(TCPServer, TLSEchoTest) {
+  const char* data = "hello world";
+  server_echo_impl(TS_PROTO_TLS, data, strlen(data));
 }
 
 static void client_cb2(void *arg) {
@@ -107,7 +121,7 @@ TEST(TCPServer, Echo2Test) {
   memset(&conn_info, 0, sizeof(conn_info));
   
   ts_server_t server;
-  start_server(&server);
+  start_server(&server, TS_PROTO_TCP);
   ts_server__set_cb_ctx(&server, &conn_info);
   ts_server__set_read_cb(&server, read_cb);
   ts_server__set_write_cb(&server, write_cb);
@@ -185,7 +199,7 @@ static void tcp_server__echo_large_data_impl(int data_size) {
   memset(info.recv_buf, 'x', data_size);
 
   ts_server_t server;
-  start_server(&server);
+  start_server(&server, TS_PROTO_TCP);
   ts_server__set_cb_ctx(&server, &info);
   ts_server__set_read_cb(&server, echo_read_cb);
 

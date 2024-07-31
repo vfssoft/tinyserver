@@ -312,6 +312,51 @@ int ts_tls__decrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
   return 0;
 }
 
+int ts_tls__encrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
+  int err;
+  ts_conn_t* conn = tls->conn;
+  ts_server_t* server = conn->listener->server;
+  int ssl_write_ret;
+  int ssl_err;
+  int write_offset = 0;
+  
+  LOG_DEBUG("[%s][TLS] TLS encrypt plain data: %d", conn->remote_addr, input->len);
+  
+  while (write_offset < input->len) {
+    ssl_write_ret = SSL_write(tls->ssl, input->buf + write_offset, input->len - write_offset);
+    if (ssl_write_ret > 0) {
+      write_offset += ssl_write_ret;
+    } else {
+      //The write operation was not successful, because either the connection was closed, an error occurred or action
+      // must be taken by the calling process. Call SSL_get_error() with the return value ret to find out the reason.
+      //
+      // Old documentation indicated a difference between 0 and -1, and that -1 was retryable.
+      // You should instead call SSL_get_error() to find out if it's retryable.
+  
+      ssl_err = SSL_get_error(tls->ssl, ssl_write_ret);
+      switch (ssl_err) {
+        //case SSL_ERROR_NONE:
+        //case SSL_ERROR_ZERO_RETURN:
+        case SSL_ERROR_WANT_READ:
+        case SSL_ERROR_WANT_WRITE:
+          break;
+        default:
+          ts_tls__set_err(tls, ts_tls__get_openssl_error(ssl_write_ret));
+          return tls->err.err;
+      }
+    }
+  }
+  
+  if (tls->err.err == 0) {
+    err = ts_tls__get_pending_ssl_data_to_send(tls, output);
+    if (err) {
+      return err;
+    }
+  }
+  
+  return 0;
+}
+
 int ts_tls__disconnect(ts_tls_t* tls, ts_buf_t* output) {
   int err;
   // TODO: log errors
@@ -322,25 +367,3 @@ int ts_tls__disconnect(ts_tls_t* tls, ts_buf_t* output) {
   }
   return ts_tls__destroy(tls);
 }
-
-/*
-int ts_tls__process_app_data(ts_tls_t* tls, ts_buf_t* input, ts_buf_t* output) {
-  int err = 0;
-  
-  if (input->len > 0) {
-    err = ts_tls__write_or_pending_data_to_ssl(tls, input);
-    if (err) {
-      ts_tls__set_err(tls, err);
-      return err;
-    }
-  }
-  
-  err = ts_tls__get_pending_ssl_data_to_send(tls, output);
-  if (err) {
-    ts_tls__set_err(tls, err);
-    return err;
-  }
-  
-  return 0;
-}
- */

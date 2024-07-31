@@ -281,6 +281,36 @@ int ts_conn__read_tcp_data(ts_conn_t* conn, uv_read_cb cb) {
   }
   return err;
 }
+int ts_conn__send_data(ts_conn_t* conn, ts_buf_t* input) {
+  int err;
+  if (conn->tls) {
+    ts_ro_buf_t roinput;
+    roinput.buf = input->buf;
+    roinput.len = input->len;
+  
+    ts_buf__set_length(conn->tls->ssl_buf, 0);
+    
+    err = ts_tls__encrypt(conn->tls, &roinput, conn->tls->ssl_buf);
+    if (err) {
+      ts_error__copy(&(conn->err), &(conn->tls->err));
+      return err;
+    }
+    
+    err = ts_conn__send_tcp_data(conn, conn->tls->ssl_buf);
+    if (err) {
+      return err;
+    }
+  
+    ts_buf__set_length(input, 0);
+  } else {
+    err = ts_conn__send_tcp_data(conn, input);
+    if (err) {
+      return err;
+    }
+  }
+  
+  return 0;
+}
 int ts_conn__close(ts_conn_t* conn, uv_close_cb cb) {
   int err;
   
