@@ -88,9 +88,19 @@ TEST(TCPServer, TCPEchoTest) {
   const char* data = "hello world";
   server_echo_impl(TS_PROTO_TCP, data, strlen(data));
 }
+TEST(TCPServer, TCPEcho1KTest) {
+  char* data = (char*) malloc(1024);
+  memset(data, 'x', 1024);
+  server_echo_impl(TS_PROTO_TCP, data, 1024);
+}
 TEST(TCPServer, TLSEchoTest) {
   const char* data = "hello world";
   server_echo_impl(TS_PROTO_TLS, data, strlen(data));
+}
+TEST(TCPServer, TLSEcho1KTest) {
+  char* data = (char*) malloc(1024);
+  memset(data, 'x', 1024);
+  server_echo_impl(TS_PROTO_TLS, data, 1024);
 }
 
 static void client_cb2(void *arg) {
