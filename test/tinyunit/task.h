@@ -1,7 +1,65 @@
 
-#ifndef TINYSERVER_TINYUNIT_H
-#define TINYSERVER_TINYUNIT_H
+/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 
+#ifndef TASK_H_
+#define TASK_H_
+
+#include <stdio.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+#include <inttypes.h>
+#include <stdint.h>
+
+#if !defined(_WIN32)
+# include <sys/time.h>
+# include <sys/resource.h>  /* setrlimit() */
+#endif
+
+#ifdef __clang__
+# pragma clang diagnostic ignored "-Wvariadic-macros"
+# pragma clang diagnostic ignored "-Wc99-extensions"
+#endif
+
+#ifdef __GNUC__
+# pragma GCC diagnostic ignored "-Wvariadic-macros"
+#endif
+
+#ifdef _WIN32
+# include <io.h>
+# ifndef S_IRUSR
+#  define S_IRUSR _S_IREAD
+# endif
+# ifndef S_IWUSR
+#  define S_IWUSR _S_IWRITE
+# endif
+#endif
+
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
+#define container_of(ptr, type, member) \
+  ((type *) ((char *) (ptr) - offsetof(type, member)))
+
+/* Die with fatal error. */
 #define FATAL(msg)                                        \
   do {                                                    \
     fprintf(stderr,                                       \
@@ -13,7 +71,9 @@
     abort();                                              \
   } while (0)
 
-
+/* Have our own assert, so we are sure it does not get optimized away in
+ * a release build.
+ */
 #define ASSERT(expr)                                      \
  do {                                                     \
   if (!(expr)) {                                          \
@@ -166,6 +226,83 @@
 #define ASSERT_PTR_LT(a, b) \
   ASSERT_BASE(a, <, b, void*, "p")
 
+/* This macro cleans up the event loop. This is used to avoid valgrind
+ * warnings about memory being "leaked" by the event loop.
+ */
+#define MAKE_VALGRIND_HAPPY(loop)                   \
+  do {                                              \
+    close_loop(loop);                               \
+    ASSERT_EQ(0, uv_loop_close(loop));              \
+    uv_library_shutdown();                          \
+  } while (0)
 
+/* Just sugar for wrapping the main() for a task or helper. */
+#define TEST_IMPL(name)                                                       \
+  int run_test_##name(void);                                                  \
+  int run_test_##name(void)
 
-#endif //TINYSERVER_TINYUNIT_H
+#define BENCHMARK_IMPL(name)                                                  \
+  int run_benchmark_##name(void);                                             \
+  int run_benchmark_##name(void)
+
+#define HELPER_IMPL(name)                                                     \
+  int run_helper_##name(void);                                                \
+  int run_helper_##name(void)
+
+/* Format big numbers nicely. */
+char* fmt(char (*buf)[32], double d);
+
+/* Reserved test exit codes. */
+enum test_status {
+  TEST_OK = 0,
+  TEST_SKIP = 7
+};
+
+#define RETURN_OK()                                                           \
+  do {                                                                        \
+    return TEST_OK;                                                           \
+  } while (0)
+
+#define RETURN_SKIP(explanation)                                              \
+  do {                                                                        \
+    fprintf(stderr, "%s\n", explanation);                                     \
+    fflush(stderr);                                                           \
+    return TEST_SKIP;                                                         \
+  } while (0)
+
+#if !defined(_WIN32)
+
+# define TEST_FILE_LIMIT(num)                                                 \
+    do {                                                                      \
+      struct rlimit lim;                                                      \
+      lim.rlim_cur = (num);                                                   \
+      lim.rlim_max = lim.rlim_cur;                                            \
+      if (setrlimit(RLIMIT_NOFILE, &lim))                                     \
+        RETURN_SKIP("File descriptor limit too low.");                        \
+    } while (0)
+
+#else  /* defined(_WIN32) */
+
+# define TEST_FILE_LIMIT(num) do {} while (0)
+
+#endif
+
+#if !defined(snprintf) && defined(_MSC_VER) && _MSC_VER < 1900
+extern int snprintf(char*, size_t, const char*, ...);
+#endif
+
+#if defined(__clang__) ||                                \
+    defined(__GNUC__) ||                                 \
+    defined(__INTEL_COMPILER)
+# define UNUSED __attribute__((unused))
+#else
+# define UNUSED
+#endif
+
+#if defined(_WIN32)
+#define notify_parent_process() ((void) 0)
+#else
+extern void notify_parent_process(void);
+#endif
+
+#endif /* TASK_H_ */
