@@ -13,6 +13,8 @@ add_executable(tests
         tcp_connect_test.cpp
         tcp_read_write_test.cpp
         testutil.h
-        testutil.cpp)
+        testutil.cpp 
+        tinyunit.h 
+        tinyunit.c)
 
 target_link_libraries(tests gtest gtest_main server_lib)
