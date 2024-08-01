@@ -82,6 +82,7 @@ static void server_echo_impl(int proto, const char* data, int data_len) {
   }
   
   ts_server__stop(&server);
+  uv_thread_join(&client_thread);
 }
 
 TEST(TCPServer, TCPEchoTest) {
@@ -105,54 +106,71 @@ TEST(TCPServer, TLSEcho1KTest) {
 
 static void client_cb2(void *arg) {
   int err;
+  test_echo_client_arg_t* client_args = (test_echo_client_arg_t*) arg;
   mytcp_t client;
   mytcp__init_mutex();
   mytcp__init(&client);
+  client.use_ssl = client_args->proto == TS_PROTO_TLS;
+
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
   
-  char* data = (char*) arg;
-  char recvbuf[100];
+  const char* data = client_args->data;
+  int data_len = client_args->data_len;
+  char* recvbuf = (char*)malloc(data_len);
   
   for (int i = 0; i < 3; i++) {
-    err = mytcp__write(&client, data, strlen(data));
+    err = mytcp__write(&client, data, data_len);
     ASSERT_EQ(err, strlen(data));
   
-    err = mytcp__read(&client, recvbuf, 100);
-    ASSERT_EQ(err, strlen(data));
+    err = mytcp__read(&client, recvbuf, data_len);
+    ASSERT_EQ(err, data_len);
   }
   
   err = mytcp__disconnect(&client);
   ASSERT_EQ(err, 0);
 }
 
-TEST(TCPServer, Echo2Test) {
+static void server_echo2_impl(int proto, const char* data, int data_len) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
-  
+
   ts_server_t server;
-  start_server(&server, TS_PROTO_TCP);
+  start_server(&server, proto);
   ts_server__set_cb_ctx(&server, &conn_info);
   ts_server__set_read_cb(&server, read_cb);
   ts_server__set_write_cb(&server, write_cb);
-  
-  char* str = "hello world";
+
+  test_echo_client_arg_t client_args;
+  client_args.proto = proto;
+  client_args.data = data;
+  client_args.data_len = data_len;
+
   uv_thread_t client_thread;
-  uv_thread_create(&client_thread, client_cb2, str);
-  
+  uv_thread_create(&client_thread, client_cb2, &client_args);
+
   int r = ts_server__start(&server);
   ASSERT_EQ(r, 0);
   while (conn_info.read_fired < 3) {
     ts_server__run(&server);
   }
-  ASSERT_EQ(conn_info.read_fired, 3);
-  
+  ASSERT_TRUE(conn_info.read_fired == 3);
+
   while (conn_info.write_fired < 3) {
     ts_server__run(&server);
   }
-  
+
   ts_server__stop(&server);
-  
+  uv_thread_join(&client_thread);
+}
+
+TEST(TCPServer, Echo2Test) {
+  const char* data = "hello world!!!";
+  server_echo2_impl(TS_PROTO_TCP, data, strlen(data));
+}
+TEST(TCPServer, TLSEcho2Test) {
+  const char* data = "hello world!!!";
+  server_echo2_impl(TS_PROTO_TLS, data, strlen(data));
 }
 
 
