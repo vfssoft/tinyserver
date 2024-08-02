@@ -170,7 +170,7 @@
 
 typedef struct {
     char* name;
-    char categories[8][64]; // at most 8 categories, and each category name should not be longer than 64
+    char* categories;
     int (*entry)(void);
 } test_entry_t;
 
