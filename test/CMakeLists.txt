@@ -11,6 +11,7 @@ add_executable(tests
         mytcp.h
         mytcp.cpp
         tcp_connect_test.c
+        tcp_read_write_test.c
         testutil.h
         testutil.c
         tinyunit.h

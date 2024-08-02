@@ -1,12 +1,13 @@
-#include <gtest/gtest.h>
+
 #include <ts_tcp.h>
 #include "mytcp.h"
 #include "testutil.h"
+#include "tinyunit.h"
 
 typedef struct test_conn_info_s {
     int read_fired;
     char databuf[65536];
-    
+
     int write_fired;
 } test_conn_info_t;
 
@@ -23,17 +24,17 @@ static void client_cb(void *arg) {
   mytcp__init_mutex();
   mytcp__init(&client);
   client.use_ssl = client_args->proto == TS_PROTO_TLS;
-  
+
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
-  
+
   err = mytcp__write(&client, client_args->data, client_args->data_len);
   ASSERT_EQ(err, client_args->data_len);
-  
+
   char* recvbuf = (char*) malloc(client_args->data_len);
   err = mytcp__read(&client, recvbuf, client_args->data_len);
   ASSERT_EQ(err, client_args->data_len);
-  
+
   err = mytcp__disconnect(&client);
   ASSERT_EQ(err, 0);
 }
@@ -42,7 +43,7 @@ static int read_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, const char* 
   test_conn_info_t* info = (test_conn_info_t*)ctx;
   info->read_fired++;
   memcpy(info->databuf, data, len);
-  
+
   ts_server__write(server, conn, data, len);
   return 0;
 }
@@ -55,50 +56,50 @@ static int write_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status,
 static void server_echo_impl(int proto, const char* data, int data_len) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
-  
+
   ts_server_t server;
   start_server(&server, proto);
   ts_server__set_cb_ctx(&server, &conn_info);
   ts_server__set_read_cb(&server, read_cb);
   ts_server__set_write_cb(&server, write_cb);
-  
+
   test_echo_client_arg_t client_args;
   client_args.proto = proto;
   client_args.data = data;
   client_args.data_len = data_len;
-  
+
   uv_thread_t client_thread;
   uv_thread_create(&client_thread, client_cb, &client_args);
-  
+
   int r = ts_server__start(&server);
   ASSERT_EQ(r, 0);
   while (conn_info.read_fired == 0) {
     ts_server__run(&server);
   }
-  ASSERT_TRUE(conn_info.read_fired == 1);
-  
+  ASSERT_EQ(conn_info.read_fired, 1);
+
   while (conn_info.write_fired == 0) {
     ts_server__run(&server);
   }
-  
+
   ts_server__stop(&server);
   uv_thread_join(&client_thread);
 }
 
-TEST(TCPServer, TCPEchoTest) {
+TEST_IMPL(tcp_echo) {
   const char* data = "hello world";
   server_echo_impl(TS_PROTO_TCP, data, strlen(data));
 }
-TEST(TCPServer, TCPEcho1KTest) {
+TEST_IMPL(tcp_echo_1k) {
   char* data = (char*) malloc(1024);
   memset(data, 'x', 1024);
   server_echo_impl(TS_PROTO_TCP, data, 1024);
 }
-TEST(TCPServer, TLSEchoTest) {
+TEST_IMPL(tls_echo) {
   const char* data = "hello world";
   server_echo_impl(TS_PROTO_TLS, data, strlen(data));
 }
-TEST(TCPServer, TLSEcho1KTest) {
+TEST_IMPL(tls_echo_1k) {
   char* data = (char*) malloc(1024);
   memset(data, 'x', 1024);
   server_echo_impl(TS_PROTO_TLS, data, 1024);
@@ -114,19 +115,19 @@ static void client_cb2(void *arg) {
 
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
-  
+
   const char* data = client_args->data;
   int data_len = client_args->data_len;
   char* recvbuf = (char*)malloc(data_len);
-  
+
   for (int i = 0; i < 3; i++) {
     err = mytcp__write(&client, data, data_len);
     ASSERT_EQ(err, strlen(data));
-  
+
     err = mytcp__read(&client, recvbuf, data_len);
     ASSERT_EQ(err, data_len);
   }
-  
+
   err = mytcp__disconnect(&client);
   ASSERT_EQ(err, 0);
 }
@@ -154,7 +155,7 @@ static void server_echo2_impl(int proto, const char* data, int data_len) {
   while (conn_info.read_fired < 3) {
     ts_server__run(&server);
   }
-  ASSERT_TRUE(conn_info.read_fired == 3);
+  ASSERT_EQ(conn_info.read_fired, 3);
 
   while (conn_info.write_fired < 3) {
     ts_server__run(&server);
@@ -164,15 +165,14 @@ static void server_echo2_impl(int proto, const char* data, int data_len) {
   uv_thread_join(&client_thread);
 }
 
-TEST(TCPServer, Echo2Test) {
+TEST_IMPL(tcp_echo2) {
   const char* data = "hello world!!!";
   server_echo2_impl(TS_PROTO_TCP, data, strlen(data));
 }
-TEST(TCPServer, TLSEcho2Test) {
+TEST_IMPL(tls_echo2) {
   const char* data = "hello world!!!";
   server_echo2_impl(TS_PROTO_TLS, data, strlen(data));
 }
-
 
 typedef struct test_echo_data_s {
     char* recv_buf;
@@ -244,9 +244,9 @@ static void tcp_server__echo_large_data_impl(int data_size) {
   ts_server__stop(&server);
 }
 
-TEST(TCPServer, Echo1KDataTest) {
+TEST_IMPL(tcp_echo_1k_data) {
   tcp_server__echo_large_data_impl(1024);
 }
-TEST(TCPServer, Echo10MDataTest) {
+TEST_IMPL(tcp_echo_10m_data) {
   tcp_server__echo_large_data_impl(10 * 1024 * 1024);
 }
