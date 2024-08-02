@@ -2,6 +2,7 @@
 #ifndef TINYSERVER_TINYUNIT_H
 #define TINYSERVER_TINYUNIT_H
 
+#include <inttypes.h>
 
 #define FATAL(msg)                                        \
   do {                                                    \
@@ -189,7 +190,7 @@ typedef struct {
   int run_test_##name(void)
 
 #define TEST_ENTRY(name, categories)   \
-    { #name, #categories, &run_test_##name },
+    { #name, categories, &run_test_##name },
 
 
 extern test_entry_t TESTS[];

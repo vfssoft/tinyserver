@@ -1,29 +1,29 @@
-#include <gtest/gtest.h>
 #include <ts_tcp.h>
+#include "tinyunit.h"
 
-TEST(TCPServer, InvalidLocalHostTest) {
+TEST_IMPL(invalid_local_host) {
   ts_server_t server;
   ts_server__init(&server);
   ts_server__set_listener_count(&server, 1);
   ts_server__set_listener_host_port(&server, 0, "333.0.0.0", 1234);
   
   int r = ts_server__start(&server);
-  ASSERT_TRUE(r == -4071);
-  ASSERT_STREQ(server.err.msg, "invalid host");
+  ASSERT_EQ(r, -4071);
+  ASSERT_STR_EQ(server.err.msg, "invalid host");
 }
 
-TEST(TCPServer, InvalidLocalHost2Test) {
+TEST_IMPL(invalid_local_host_2) {
   ts_server_t server;
   ts_server__init(&server);
   ts_server__set_listener_count(&server, 1);
   ts_server__set_listener_host_port(&server, 0, "192.168.22.22", 1234);
   
   int r = ts_server__start(&server);
-  ASSERT_TRUE(r == -4090);
-  ASSERT_STREQ(server.err.msg, "address not available");
+  ASSERT_EQ(r, -4090);
+  ASSERT_STR_EQ(server.err.msg, "address not available");
 }
 
-TEST(TCPServer, InvalidSSLCertTest) {
+TEST_IMPL(invalid_ssl_cert) {
   ts_server_t server;
   ts_server__init(&server);
   ts_server__set_listener_count(&server, 1);
@@ -31,5 +31,5 @@ TEST(TCPServer, InvalidSSLCertTest) {
   ts_server__set_listener_certs(&server, 0, "fakepath.crt", "fakekey.pem");
   
   int r = ts_server__start(&server);
-  ASSERT_TRUE(r == 33558530);
+  ASSERT_EQ(r, 33558530);
 }
