@@ -128,7 +128,12 @@ int ts_server_listener__stop(ts_server_listener_t* listener, uv_close_cb cb) {
   if (listener->protocol == TS_PROTO_TLS) {
     ts_tls__ctx_destroy(listener->ssl_ctx);
   }
-  uv_close((uv_handle_t*)&(listener->uvtcp), cb);
+  if (listener->uvtcp.loop != NULL) {
+    // if listener->uvtcp.loop is NULL, it means the uvtcp is not initialized yet, no need to close
+    uv_close((uv_handle_t*)&(listener->uvtcp), cb);
+  } else {
+    cb((uv_handle_t*)&(listener->uvtcp));
+  }
   
 done:
   LOG_INFO("Listener stopped");

@@ -120,8 +120,8 @@ struct ts_server_listener_s {
     int backlog;
     int protocol;
 
-    const char* cert;
-    const char* key;
+    char* cert;
+    char* key;
     int tls_verify_mode;
     
     ts_error_t err;
