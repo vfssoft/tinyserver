@@ -172,6 +172,12 @@ int ts_server__stop(ts_server_t* server) {
     uv_run(server->uvloop, UV_RUN_NOWAIT);
   }
   
+  // wait all events are processed.
+  uv_run(server->uvloop, UV_RUN_DEFAULT);
+  
+  uv_loop_close(server->uvloop);
+  server->uvloop = NULL;
+  
 done:
   LOG_INFO("Server stopped");
   return 0;

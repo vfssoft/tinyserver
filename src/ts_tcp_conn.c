@@ -272,6 +272,11 @@ int ts_conn__tcp_connected(ts_conn_t* conn) {
   
   LOG_VERB("[%s] New connection accepted", conn->remote_addr);
   
+  err = ts_conn__read_tcp_data(conn, uv_on_read);
+  if (err) {
+    return err;
+  }
+  
   if (listener->protocol == TS_PROTO_TCP) {
     err = server->connected_cb(server->cb_ctx, server, conn, 0);
     if (err) {
@@ -279,7 +284,7 @@ int ts_conn__tcp_connected(ts_conn_t* conn) {
     }
   }
   
-  return ts_conn__read_tcp_data(conn, uv_on_read);
+  return 0;
 }
 int ts_conn__send_data(ts_conn_t* conn, ts_buf_t* input) {
   int err;
