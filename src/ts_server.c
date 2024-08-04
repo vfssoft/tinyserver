@@ -174,6 +174,10 @@ int ts_server__stop(ts_server_t* server) {
     uv_run(server->uvloop, UV_RUN_NOWAIT);
   }
   
+  // Run uv_run as least once so that the uv_idle_t handle will be closed.
+  // The above uv_run are guarded with if statements, it may not be run.
+  uv_run(server->uvloop, UV_RUN_NOWAIT);
+  
   err = uv_loop_close(server->uvloop);
   server->uvloop = NULL;
   if (err) {
