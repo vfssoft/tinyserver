@@ -41,7 +41,7 @@ static int disconnected_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int 
   return 0;
 }
 
-static void server_connect_impl(int proto) {
+static int server_connect_impl(int proto) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
 
@@ -73,13 +73,15 @@ static void server_connect_impl(int proto) {
 
   ts_server__stop(&server);
   uv_thread_join(&client_thread);
+  
+  return 0;
 }
 
 TEST_IMPL(tcp_connect) {
-  server_connect_impl(TS_PROTO_TCP);
+  return server_connect_impl(TS_PROTO_TCP);
 }
 TEST_IMPL(tls_connect) {
-  server_connect_impl(TS_PROTO_TLS);
+  return server_connect_impl(TS_PROTO_TLS);
 }
 
 static void client_connect_wait_disconnect_cb(void *arg) {
@@ -103,7 +105,7 @@ static int connected_reject_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, 
   return 0;
 }
 
-static void server_disconnect_impl(int proto) {
+static int server_disconnect_impl(int proto) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
 
@@ -131,14 +133,14 @@ static void server_disconnect_impl(int proto) {
 
   ts_server__stop(&server);
   uv_thread_join(&client_thread);
-
+  return 0;
 }
 
 TEST_IMPL(tcp_server_disconnect) {
-  server_disconnect_impl(TS_PROTO_TCP);
+  return server_disconnect_impl(TS_PROTO_TCP);
 }
 TEST_IMPL(tls_server_disconnect) {
-  server_disconnect_impl(TS_PROTO_TLS);
+  return server_disconnect_impl(TS_PROTO_TLS);
 }
 
 
@@ -166,7 +168,7 @@ static void client_connect_disconnect_quick_cb(void *arg) {
   ASSERT_EQ(err, 0);
 }
 
-static void tcp_server__connect_disconnect_impl(int proto, int afterSec) {
+static int tcp_server__connect_disconnect_impl(int proto, int afterSec) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
 
@@ -202,23 +204,24 @@ static void tcp_server__connect_disconnect_impl(int proto, int afterSec) {
 
   ts_server__stop(&server);
   uv_thread_join(&client_thread);
+  return 0;
 }
 
 TEST_IMPL(tcp_connect_disconnect_quick) {
-  tcp_server__connect_disconnect_impl(TS_PROTO_TCP, 0);
+  return tcp_server__connect_disconnect_impl(TS_PROTO_TCP, 0);
 }
 TEST_IMPL(tcp_connect_disconnect_1s) {
-  tcp_server__connect_disconnect_impl(TS_PROTO_TCP, 1000);
+  return tcp_server__connect_disconnect_impl(TS_PROTO_TCP, 1000);
 }
 TEST_IMPL(tls_connect_disconnect_quick) {
-  tcp_server__connect_disconnect_impl(TS_PROTO_TLS, 0);
+  return tcp_server__connect_disconnect_impl(TS_PROTO_TLS, 0);
 }
 TEST_IMPL(tls_connect_disconnect_1s) {
-  tcp_server__connect_disconnect_impl(TS_PROTO_TLS, 1000);
+  return tcp_server__connect_disconnect_impl(TS_PROTO_TLS, 1000);
 }
 
 
-static void tcp_server_clients_impl(int proto, int client_cnt) {
+static int tcp_server_clients_impl(int proto, int client_cnt) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
 
@@ -251,18 +254,19 @@ static void tcp_server_clients_impl(int proto, int client_cnt) {
   for (int i = 0; i < client_cnt; i++) {
     uv_thread_join(&client_threads[i]);
   }
+  return 0;
 }
 
 TEST_IMPL(tcp_10clients_connect) {
-  tcp_server_clients_impl(TS_PROTO_TCP, 10);
+  return tcp_server_clients_impl(TS_PROTO_TCP, 10);
 }
 TEST_IMPL(tcp_100clients_connect) {
-  tcp_server_clients_impl(TS_PROTO_TCP, 100);
+  return tcp_server_clients_impl(TS_PROTO_TCP, 100);
 }
 TEST_IMPL(tls_10clients_connect) {
-  tcp_server_clients_impl(TS_PROTO_TLS, 10);
+  return tcp_server_clients_impl(TS_PROTO_TLS, 10);
 }
 TEST_IMPL(tls_100clients_connect) {
-  tcp_server_clients_impl(TS_PROTO_TLS, 100);
+  return tcp_server_clients_impl(TS_PROTO_TLS, 100);
 }
 

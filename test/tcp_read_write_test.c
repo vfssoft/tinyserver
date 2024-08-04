@@ -53,7 +53,7 @@ static int write_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status,
   return 0;
 }
 
-static void server_echo_impl(int proto, const char* data, int data_len) {
+static int server_echo_impl(int proto, const char* data, int data_len) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
 
@@ -84,25 +84,27 @@ static void server_echo_impl(int proto, const char* data, int data_len) {
 
   ts_server__stop(&server);
   uv_thread_join(&client_thread);
+  
+  return 0;
 }
 
 TEST_IMPL(tcp_echo) {
   const char* data = "hello world";
-  server_echo_impl(TS_PROTO_TCP, data, strlen(data));
+  return server_echo_impl(TS_PROTO_TCP, data, strlen(data));
 }
 TEST_IMPL(tcp_echo_1k) {
   char* data = (char*) malloc(1024);
   memset(data, 'x', 1024);
-  server_echo_impl(TS_PROTO_TCP, data, 1024);
+  return server_echo_impl(TS_PROTO_TCP, data, 1024);
 }
 TEST_IMPL(tls_echo) {
   const char* data = "hello world";
-  server_echo_impl(TS_PROTO_TLS, data, strlen(data));
+  return server_echo_impl(TS_PROTO_TLS, data, strlen(data));
 }
 TEST_IMPL(tls_echo_1k) {
   char* data = (char*) malloc(1024);
   memset(data, 'x', 1024);
-  server_echo_impl(TS_PROTO_TLS, data, 1024);
+  return server_echo_impl(TS_PROTO_TLS, data, 1024);
 }
 
 static void client_cb2(void *arg) {
@@ -132,7 +134,7 @@ static void client_cb2(void *arg) {
   ASSERT_EQ(err, 0);
 }
 
-static void server_echo2_impl(int proto, const char* data, int data_len) {
+static int server_echo2_impl(int proto, const char* data, int data_len) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
 
@@ -163,15 +165,17 @@ static void server_echo2_impl(int proto, const char* data, int data_len) {
 
   ts_server__stop(&server);
   uv_thread_join(&client_thread);
+  
+  return 0;
 }
 
 TEST_IMPL(tcp_echo2) {
   const char* data = "hello world!!!";
-  server_echo2_impl(TS_PROTO_TCP, data, strlen(data));
+  return server_echo2_impl(TS_PROTO_TCP, data, strlen(data));
 }
 TEST_IMPL(tls_echo2) {
   const char* data = "hello world!!!";
-  server_echo2_impl(TS_PROTO_TLS, data, strlen(data));
+  return server_echo2_impl(TS_PROTO_TLS, data, strlen(data));
 }
 
 typedef struct test_echo_data_s {
@@ -222,7 +226,7 @@ static void client_large_data_cb(void *arg) {
   info->client_done = 1;
 }
 
-static void tcp_server__echo_large_data_impl(int proto, int data_size) {
+static int tcp_server__echo_large_data_impl(int proto, int data_size) {
   test_echo_data_t info;
   memset(&info, 0, sizeof(info));
   info.proto = proto;
@@ -246,17 +250,18 @@ static void tcp_server__echo_large_data_impl(int proto, int data_size) {
   }
 
   ts_server__stop(&server);
+  return 0;
 }
 
 TEST_IMPL(tcp_echo_1k_data) {
-  tcp_server__echo_large_data_impl(TS_PROTO_TCP, 1024);
+  return tcp_server__echo_large_data_impl(TS_PROTO_TCP, 1024);
 }
 TEST_IMPL(tcp_echo_10m_data) {
-  tcp_server__echo_large_data_impl(TS_PROTO_TCP, 10 * 1024 * 1024);
+  return tcp_server__echo_large_data_impl(TS_PROTO_TCP, 10 * 1024 * 1024);
 }
 TEST_IMPL(tls_echo_1k_data) {
-  tcp_server__echo_large_data_impl(TS_PROTO_TLS, 1024);
+  return tcp_server__echo_large_data_impl(TS_PROTO_TLS, 1024);
 }
 TEST_IMPL(tls_echo_10m_data) {
-  tcp_server__echo_large_data_impl(TS_PROTO_TLS, 10 * 1024 * 1024);
+  return tcp_server__echo_large_data_impl(TS_PROTO_TLS, 10 * 1024 * 1024);
 }

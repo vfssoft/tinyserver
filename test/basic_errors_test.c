@@ -12,6 +12,7 @@ TEST_IMPL(invalid_local_host) {
   ASSERT_STR_EQ(server.err.msg, "invalid host");
   r = ts_server__stop(&server);
   ASSERT_EQ(r, 0);
+  return 0;
 }
 
 TEST_IMPL(invalid_local_host_2) {
@@ -25,6 +26,7 @@ TEST_IMPL(invalid_local_host_2) {
   ASSERT_STR_EQ(server.err.msg, "address not available");
   r = ts_server__stop(&server);
   ASSERT_EQ(r, 0);
+  return 0;
 }
 
 TEST_IMPL(invalid_ssl_cert) {
@@ -38,4 +40,5 @@ TEST_IMPL(invalid_ssl_cert) {
   ASSERT_EQ(r, 33558530);
   r = ts_server__stop(&server);
   ASSERT_EQ(r, 0);
+  return 0;
 }
