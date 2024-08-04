@@ -87,6 +87,7 @@ static int ts_server__default_idle_cb(void* ctx, ts_server_t* server) {
 
 
 int ts_server__init(ts_server_t* server) {
+  memset(server, 0, sizeof(ts_server_t));
   server->listeners = NULL;
   server->listener_count = 0;
   
@@ -146,6 +147,7 @@ int ts_server__run(ts_server_t* server) {
   return uv_run(server->uvloop, UV_RUN_NOWAIT);
 }
 int ts_server__stop(ts_server_t* server) {
+  int err = 0;
   
   LOG_INFO("Stop server");
   ts_server_idle__stop(server);
@@ -172,15 +174,20 @@ int ts_server__stop(ts_server_t* server) {
     uv_run(server->uvloop, UV_RUN_NOWAIT);
   }
   
-  // wait all events are processed.
-  uv_run(server->uvloop, UV_RUN_DEFAULT);
-  
-  uv_loop_close(server->uvloop);
+  err = uv_loop_close(server->uvloop);
   server->uvloop = NULL;
+  if (err) {
+    ts_error__set_msg(&(server->err), err, uv_strerror(err));
+  }
   
 done:
-  LOG_INFO("Server stopped");
-  return 0;
+  if (err == 0) {
+    LOG_INFO("Server stopped");
+  } else {
+    LOG_ERROR("Server stopped failed: %d %s", server->err.err, server->err.msg);
+  }
+
+  return err;
 }
 int ts_server__write(ts_server_t* server, ts_conn_t* conn, const char* data, int len) {
   int err;
