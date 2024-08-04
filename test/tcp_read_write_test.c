@@ -175,6 +175,8 @@ TEST_IMPL(tls_echo2) {
 }
 
 typedef struct test_echo_data_s {
+    int proto;
+    
     char* recv_buf;
     int   recv_buf_off;
     int   to_recv;
@@ -200,6 +202,7 @@ static void client_large_data_cb(void *arg) {
   test_echo_data_t* info = (test_echo_data_t*)arg;
   mytcp_t client;
   mytcp__init_mutex();
+  client.use_ssl = info->proto == TS_PROTO_TLS;
   mytcp__init(&client);
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
@@ -219,15 +222,16 @@ static void client_large_data_cb(void *arg) {
   info->client_done = 1;
 }
 
-static void tcp_server__echo_large_data_impl(int data_size) {
+static void tcp_server__echo_large_data_impl(int proto, int data_size) {
   test_echo_data_t info;
   memset(&info, 0, sizeof(info));
+  info.proto = proto;
   info.to_recv = data_size;
   info.recv_buf = (char*) malloc(data_size);
   memset(info.recv_buf, 'x', data_size);
 
   ts_server_t server;
-  start_server(&server, TS_PROTO_TCP);
+  start_server(&server, proto);
   ts_server__set_cb_ctx(&server, &info);
   ts_server__set_read_cb(&server, echo_read_cb);
 
@@ -245,8 +249,14 @@ static void tcp_server__echo_large_data_impl(int data_size) {
 }
 
 TEST_IMPL(tcp_echo_1k_data) {
-  tcp_server__echo_large_data_impl(1024);
+  tcp_server__echo_large_data_impl(TS_PROTO_TCP, 1024);
 }
 TEST_IMPL(tcp_echo_10m_data) {
-  tcp_server__echo_large_data_impl(10 * 1024 * 1024);
+  tcp_server__echo_large_data_impl(TS_PROTO_TCP, 10 * 1024 * 1024);
+}
+TEST_IMPL(tls_echo_1k_data) {
+  tcp_server__echo_large_data_impl(TS_PROTO_TLS, 1024);
+}
+TEST_IMPL(tls_echo_10m_data) {
+  tcp_server__echo_large_data_impl(TS_PROTO_TLS, 10 * 1024 * 1024);
 }
