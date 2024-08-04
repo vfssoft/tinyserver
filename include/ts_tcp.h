@@ -137,7 +137,7 @@ struct ts_server_s {
     ts_server_idle_cb idle_cb;
     void* cb_ctx;
   
-    uv_idle_t *uvidle;
+    uv_idle_t uvidle;
     uv_loop_t *uvloop;
     
     ts_conn_t* conns;
