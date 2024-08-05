@@ -104,10 +104,9 @@ static int ts_server__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* inpu
   ts_tls_t* tls = conn->tls;
 
   assert(tls->ssl_state == TLS_STATE_HANDSHAKING || tls->ssl_state == TLS_STATE_CONNECTED);
-
+  ts_buf__set_length(tls->ssl_buf, 0);
+  
   while (input->len > 0) { // we have to consume all input data here
-
-    ts_buf__set_length(tls->ssl_buf, 0);
 
     if (tls->ssl_state == TLS_STATE_HANDSHAKING) {
       err = ts_tls__handshake(tls, input, tls->ssl_buf);

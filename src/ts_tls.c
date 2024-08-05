@@ -288,24 +288,40 @@ int ts_tls__decrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
   ts_conn_t* conn = tls->conn;
   ts_server_t* server = conn->listener->server;
   int ssl_read_ret;
-  char ssl_buf[2048];
+  int ssl_err;
+  char ssl_buf[16 * 1024];
   
-  if (input->len > 0) {
-    LOG_DEBUG("[%s][TLS] TLS decrypt cipher data: %d", conn->remote_addr, input->len);
+  while (input->len > 0) {
+    LOG_DEBUG_EX("[%s][TLS] TLS decrypt cipher data: %d", conn->remote_addr, input->len);
     
     ts_tls__write_data_to_ssl(tls, input);
+    
+    while (1) {
+      ssl_read_ret = SSL_read(tls->ssl, ssl_buf, sizeof(ssl_buf));
+      if (ssl_read_ret > 0) {
+        ts_buf__write(output, ssl_buf, ssl_read_ret);
+      } else {
+        ssl_err = SSL_get_error(tls->ssl, ssl_read_ret);
   
-    ssl_read_ret = SSL_read(tls->ssl, ssl_buf, 2048);
-    if (ssl_read_ret > 0) {
-      ts_buf__write(output, ssl_buf, ssl_read_ret);
-    } else if (ssl_read_ret == 0) {
-      // ref: https://www.openssl.org/docs/man1.1.1/man3/SSL_get_error.html BUGS section
-      // peer disconnect first. This is not a real error
-      LOG_VERB("[%s][TLS] TLS peer disconnect", conn->remote_addr);
-      ts_tls__set_err(tls, 0);
-    } else {
-      ts_tls__set_err(tls, ts_tls__get_openssl_error(ssl_read_ret));
-      return tls->err.err;
+        switch (ssl_err) {
+          //case SSL_ERROR_NONE:
+          case SSL_ERROR_ZERO_RETURN:
+            // The TLS/SSL peer has closed the connection for writing by sending the close_notify alert.
+            // No more data can be read. Note that SSL_ERROR_ZERO_RETURN does not necessarily indicate
+            // that the underlying transport has been closed.
+            LOG_VERB("[%s][TLS] TLS peer disconnect", conn->remote_addr);
+            ts_tls__set_err(tls, 0);
+            return 0;
+            
+          case SSL_ERROR_WANT_READ:
+          case SSL_ERROR_WANT_WRITE:
+            return 0;
+          
+          default:
+            ts_tls__set_err(tls, ts_tls__get_openssl_error(ssl_read_ret));
+            return tls->err.err;
+        }
+      }
     }
   }
   
