@@ -158,15 +158,24 @@ static int mytcp__ssl_write(mytcp_t* tcp, const char* data, int len) {
 }
 static int mytcp__ssl_read(mytcp_t* tcp, char* data, int len) {
   int err = 0;
-
-  err = SSL_read(tcp->ssl, data, len);
-  if (err <= 0) {
-    printf("Failed to receive data\n");
-    ERR_print_errors_fp(stderr);
-    return 1;
+  int roffset = 0;
+  
+  while (roffset < len) {
+    err = SSL_read(tcp->ssl, data + roffset, len - roffset);
+    if (err <= 0) {
+      printf("Failed to receive data\n");
+      ERR_print_errors_fp(stderr);
+      return 1;
+    } else {
+      roffset += err;
+      printf("client received: %d, cur: %d\n", roffset, err);
+      if (roffset == 10469376) {
+        int c = 0;
+      }
+    }
   }
 
-  return err;
+  return len;
 }
 
 int mytcp__init(mytcp_t* tcp) {

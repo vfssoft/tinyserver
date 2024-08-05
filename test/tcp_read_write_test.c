@@ -206,8 +206,8 @@ static void client_large_data_cb(void *arg) {
   test_echo_data_t* info = (test_echo_data_t*)arg;
   mytcp_t client;
   mytcp__init_mutex();
-  client.use_ssl = info->proto == TS_PROTO_TLS;
   mytcp__init(&client);
+  client.use_ssl = info->proto == TS_PROTO_TLS;
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
 

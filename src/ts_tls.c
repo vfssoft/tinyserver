@@ -355,6 +355,10 @@ int ts_tls__encrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
         //case SSL_ERROR_ZERO_RETURN:
         case SSL_ERROR_WANT_READ:
         case SSL_ERROR_WANT_WRITE:
+          err = ts_tls__get_pending_ssl_data_to_send(tls, output);
+          if (err) {
+            return err;
+          }
           break;
         default:
           ts_tls__set_err(tls, ts_tls__get_openssl_error(ssl_write_ret));
