@@ -168,10 +168,6 @@ static int mytcp__ssl_read(mytcp_t* tcp, char* data, int len) {
       return 1;
     } else {
       roffset += err;
-      printf("client received: %d, cur: %d\n", roffset, err);
-      if (roffset == 10469376) {
-        int c = 0;
-      }
     }
   }
 
