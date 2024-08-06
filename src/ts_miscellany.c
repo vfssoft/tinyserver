@@ -50,3 +50,27 @@ int ts_tcp__getaddrinfo(const char* host, int use_ipv6, struct sockaddr_storage*
   return 0;
 }
 
+static BOOL str_contains_char(const char* str, char c) {
+  const char* p = str;
+  while (*p != 0 && *p != c) p++;
+  return *p != 0;
+}
+
+char* str_trim_left(char* str, const char* spaces) {
+  while (*str != 0 && str_contains_char(spaces, *str)) str++;
+  return str; // may be empty string
+}
+char* str_trim_right(char* str, const char* spaces) {
+  char* end = str + strlen(str) - 1;
+  while (end > str && str_contains_char(spaces, *end)) end--;
+  *(end+1) = '\0';
+  return str;
+}
+char* str_trim(char* str, const char* spaces){
+  char* p = str;
+  p = str_trim_left(p, spaces);
+  p = str_trim_right(p, spaces);
+  return p;
+}
+
+

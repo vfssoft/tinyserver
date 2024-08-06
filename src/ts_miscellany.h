@@ -10,4 +10,9 @@ void ts_sockaddr__str(struct sockaddr_storage* addr, char* buf, int buflen);
 
 int ts_tcp__getaddrinfo(const char* host, int use_ipv6, struct sockaddr_storage* ret);
 
+char* str_trim_left(char* str, const char* spaces);
+char* str_trim_right(char* str, const char* spaces);
+char* str_trim(char* str, const char* spaces);
+
+
 #endif //TINYSERVER_TS_MISCELLANY_H
