@@ -101,8 +101,10 @@ int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
   char *header_name, *header_value;
   char* end_of_headers = NULL;
   char line[1024];
-  char seckey[32] = { 0 };
+  char seckey[80] = { 0 };
+  char seckey_accept[20];
   char sub_protocols[64] = { 0 };
+  char resp_buf[2048] = { 0 };
 
   BOOL has_host_hdr = FALSE;
   BOOL has_upgrade_hdr = FALSE;
@@ -112,7 +114,7 @@ int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
   ts_conn_t* conn = ws->conn;
   ts_server_t* server = conn->listener->server;
   
-  LOG_VERB("[%s][WS] WS handshaking", conn->remote_addr);
+  LOG_VERB("[%s][WS] Websocket handshaking", conn->remote_addr);
   
   ts_buf__write_str(ws->in_buf, input->buf, input->len);
   
@@ -182,12 +184,36 @@ int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
     goto bad_request;
   }
 
+  // calc sec key accept
+  strcpy(seckey + strlen(seckey), "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+  crypto__sha1(seckey, strlen(seckey), seckey_accept);
+  b64_encode(seckey_accept, 20, seckey); // reuse seckey buf to store the encoded Sec-WebSocket-Accept
 
+  // send 101
+  sprintf(
+      resp_buf,
+
+      "HTTP/1.1 101 Switching Protocols\r\n"
+      "Upgrade: websocket\r\n"
+      "Connection: Upgrade\r\n"
+      "Sec-WebSocket-Accept: %s\r\n"
+      "\r\n",
+
+      seckey
+  );
+
+  ts_buf__write(output, resp_buf, strlen(resp_buf));
+  ws->state == TS_WS_STATE_CONNECTED;
 
 bad_request:
+  if (ws->err.err) {
 
+  }
 
-  
 done:
+  if (ws->err.err) {
+    LOG_ERROR("[%s][WS] Websocket handshake failed: %d %s", conn->remote_addr, ws->err.err, ws->err.msg);
+    ws->state == TS_WS_STATE_DISCONNECTED;
+  }
   return ws->err.err;
 }

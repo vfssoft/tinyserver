@@ -73,4 +73,11 @@ char* str_trim(char* str, const char* spaces){
   return p;
 }
 
+int b64_encode(const char* data, int data_len, char* encoded) {
+  return EVP_EncodeBlock((unsigned char *)encoded, (unsigned char*)data, data_len);
+}
+int b64_decode(const char* str, int str_len, char* decoded) {
+  return EVP_DecodeBlock((unsigned char*)decoded, (unsigned char*)str, str_len);
+}
+
 

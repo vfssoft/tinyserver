@@ -7,6 +7,7 @@
 #include "ts_tls.h"
 #include "ts_log.h"
 #include "ts_miscellany.h"
+#include "ts_crypto.h"
 #include "ts_mem.h"
 #include "utlist.h"
 
