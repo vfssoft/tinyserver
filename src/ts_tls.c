@@ -178,7 +178,7 @@ int ts_tls__destroy(ts_tls_t* tls) {
   tls->conn = NULL;
   tls->ssl = NULL;
   tls->ctx = NULL; // it's a reference, so don't need to free it.
-  return -1;
+  return 0;
 }
 
 static int ts_tls__connected(ts_tls_t* tls) {
