@@ -4,6 +4,7 @@
 #include "ts_internal.h"
 
 typedef struct ts_ws_s ts_ws_t;
+typedef struct ts_ws_frame_s ts_ws_frame_t;
 
 struct ts_ws_s {
   ts_conn_t* conn;
@@ -12,6 +13,14 @@ struct ts_ws_s {
   ts_error_t err;
   ts_buf_t* out_buf; // used internal
   ts_buf_t* in_buf;
+};
+
+// TODO: may not need this struct
+struct ts_ws_frame_s {
+  BOOL fin;
+  int  opcode;
+  ts_buf_t* payload_data;
+  // no extension is supported for now
 };
 
 int ts_ws__init(ts_ws_t* ws, ts_conn_t* conn);

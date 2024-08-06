@@ -1,9 +1,31 @@
 
 #include "ts_ws.h"
 
-#define TS_WS_STATE_HANDSHAKING  0
-#define TS_WS_STATE_CONNECTED    1
-#define TS_WS_STATE_DISCONNECTED 2
+#define TS_WS_STATE_HANDSHAKING   0
+#define TS_WS_STATE_CONNECTED     1
+#define TS_WS_STATE_DISCONNECTING 2
+#define TS_WS_STATE_DISCONNECTED  3
+
+
+#define TS_WS_OPCODE_CONTINUATION_FRAME 0
+#define TS_WS_OPCODE_TEXT_FRAME         1
+#define TS_WS_OPCODE_BINARY_FRAME       2
+// 3-7 are reserved
+#define TS_WS_OPCODE_CONNECTION_CLOSE   8
+#define TS_WS_OPCODE_PING               9
+#define TS_WS_OPCODE_PONG               10
+
+#define TS_WS_STATUS_CODE_NORMAL_CLOSURE        1000
+#define TS_WS_STATUS_CODE_GOING_AWAY            1001
+#define TS_WS_STATUS_CODE_PROTOCOL_ERROR        1002
+#define TS_WS_STATUS_CODE_DATA_UNACCEPTABLE     1003
+// 1004-1006 reserved
+#define TS_WS_STATUS_CODE_MSG_TYPE_INCONSISTENT 1007
+#define TS_WS_STATUS_CODE_POLICY_VIOLATED       1008
+#define TS_WS_STATUS_CODE_MSG_TOO_BIG           1009
+#define TS_WS_STATUS_CODE_EXTENSION_NEGOTIATE   1010
+#define TS_WS_STATUS_CODE_UNEXPECTED_CONDITION  1011
+
 
 static char* ts_ws__parse_line(char* p, char* ret_line) {
   char* end_of_line = NULL;
@@ -62,6 +84,157 @@ static void ts_ws__parse_header(char* line, char** key, char** value) {
 
   *key = str_trim(*key, " \t");
   *value = str_trim(*value, " \t");
+}
+
+static int ts_ws_frame__init(ts_ws_frame_t* frame) {
+  memset(frame, 0, sizeof(ts_ws_frame_t));
+  
+  frame->payload_data = ts_buf__create(0);
+  if (frame->payload_data == NULL) {
+    return TS_ERR_OUT_OF_MEMORY;
+  }
+  
+  return 0;
+}
+static int ts_ws_frame__destroy(ts_ws_frame_t* frame) {
+  if (frame->payload_data) {
+    ts_buf__destroy(frame->payload_data);
+    frame->payload_data = NULL;
+  }
+  return 0;
+}
+static int ts_ws__decode_frame(ts_ws_t* ws, ts_ws_frame_t* frame, BOOL* ok) {
+  int err = 0;
+  ts_buf_t* buf = ws->in_buf;
+  int offset = 0; // next byte to read
+  BOOL masked = FALSE;
+  char masking_key[4];
+  
+  *ok = FALSE;
+  
+  if (buf->len < 2) return 0;
+  
+  frame->fin    = (buf->buf[0] & 0x80) == 0x80;
+  frame->opcode = (buf->buf[0] & 0x0F);
+  masked        = (buf->buf[1] & 0x80) == 0x80;
+  
+  unsigned long long payload_len = buf->buf[1] & 0x7F;
+  if (payload_len <= 125) {
+    // payload_len is current value
+    offset = 2;
+  } else if (payload_len == 126) {
+    if (buf->len < 4) {
+      return 0;
+    }
+    payload_len =
+        (buf->buf[2] << 8) |
+        buf->buf[3];
+    offset = 4;
+  } else if (payload_len == 127) {
+    if (buf->len < 10) {
+      return 0;
+    }
+    payload_len =
+        ((unsigned long long)buf->buf[2] << 56) |
+        ((unsigned long long)buf->buf[3] << 48) |
+        ((unsigned long long)buf->buf[4] << 40) |
+        ((unsigned long long)buf->buf[5] << 32) |
+        ((unsigned long long)buf->buf[6] << 24) |
+        ((unsigned long long)buf->buf[7] << 16) |
+        ((unsigned long long)buf->buf[8] <<  8) |
+        buf->buf[9];
+  
+    offset = 10;
+  }
+  
+  if (masked) {
+    if (offset + 4 >= buf->len) return 0;
+    memcpy(masking_key, buf->buf + offset, 4);
+    offset += 4;
+  } else {
+    ts_error__set_msg(&(ws->err), TS_ERR_INVALID_WS_FRAME, "Websocket frame is not masked");
+    goto done;
+  }
+  
+  if (offset + payload_len >= buf->len) return 0;
+  
+  ts_buf__set(frame->payload_data, buf->buf + offset, payload_len);
+  offset += payload_len;
+  
+  ts_buf__read(buf, NULL, &offset);
+  
+  // unmake the data
+  for (int i = 0; i < payload_len; i++) {
+    frame->payload_data->buf[i] ^= masking_key[i%4];
+  }
+  
+  *ok = TRUE;
+  
+done:
+  return ws->err.err;
+}
+static int ts_ws__encode_frame(ts_ws_t* ws, int opcode, const char* payload, int payload_len, ts_buf_t* output) {
+  // for simply, encode all payload into a single frame
+  int err;
+  char one_byte[1] = { 0x80 }; // FIN
+  one_byte[0] |= (char)opcode;
+  
+  char payload_len_bytes[9];
+  int payload_len_bytes_cnt = 1;
+  
+  err = ts_buf__write(output, one_byte, 1);
+  if (err) {
+    goto done;
+  }
+
+  if (payload_len <= 125) {
+    payload_len_bytes[0]= (char)(payload_len & 0x7F);
+    payload_len_bytes_cnt = 1;
+  } else if (payload_len <= 0xFFFF) {
+    payload_len_bytes[0]= 126;
+    payload_len_bytes[1] = (char)((payload_len & 0xFF00) >> 8);
+    payload_len_bytes[1] = (char)((payload_len & 0x00FF));
+    payload_len_bytes_cnt = 3;
+  } else {
+    // we're the writer, we will never send data more than max int 32
+    payload_len_bytes[0]= 127;
+    payload_len_bytes[1] = 0;
+    payload_len_bytes[2] = 0;
+    payload_len_bytes[3] = 0;
+    payload_len_bytes[4] = 0;
+    payload_len_bytes[5] = (char)((payload_len & 0xFF000000) >> 24);
+    payload_len_bytes[6] = (char)((payload_len & 0x00FF0000) >> 16);
+    payload_len_bytes[7] = (char)((payload_len & 0x0000FF00) >> 8);
+    payload_len_bytes[8] = (char)((payload_len & 0x000000FF));
+    payload_len_bytes_cnt = 9;
+  }
+  
+  err = ts_buf__write(output, payload_len_bytes, payload_len_bytes_cnt);
+  if (err) {
+    goto done;
+  }
+  
+  // As the server side, the application data is not masked.
+  // no masking key
+  
+  err = ts_buf__write(output, payload, payload_len);
+  if (err) {
+    goto done;
+  }
+  
+done:
+  return err;
+}
+static void ts_ws__decode_close_error(ts_ws_t* ws, ts_ws_frame_t* frame) {
+  // it must contain as least two-byte integer if application data is included
+  if (frame->payload_data->len >= 2) {
+    int status_code = frame->payload_data->buf[0] << 8 | frame->payload_data->buf[1];
+    char* reason = (char*)"no reason";
+    if (frame->payload_data->len > 2) {
+      reason = frame->payload_data->buf + 2;
+    }
+    ts_error__set_msgf(&(ws->err), TS_ERR_WS_CLOSED, "status code: %d, reason: %s", status_code, reason);
+  }
 }
 
 int ts_ws__init(ts_ws_t* ws, ts_conn_t* conn) {
@@ -203,17 +376,104 @@ int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
   );
 
   ts_buf__write(output, resp_buf, strlen(resp_buf));
-  ws->state == TS_WS_STATE_CONNECTED;
+  ws->state = TS_WS_STATE_CONNECTED;
 
 bad_request:
   if (ws->err.err) {
-
+    // send 400
+    sprintf(
+        resp_buf,
+        "HTTP/1.1 400 Bad Request\r\n"
+        "Content-Length: 0\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+    );
+    ts_buf__write(output, resp_buf, strlen(resp_buf));
   }
 
 done:
   if (ws->err.err) {
     LOG_ERROR("[%s][WS] Websocket handshake failed: %d %s", conn->remote_addr, ws->err.err, ws->err.msg);
-    ws->state == TS_WS_STATE_DISCONNECTED;
+    ws->state = TS_WS_STATE_DISCONNECTED;
   }
+  ts_buf__set_length(ws->in_buf, 0); // clear buf
   return ws->err.err;
+}
+
+int ts_ws__unwrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
+  int err = 0;
+  ts_ws_frame_t frame;
+  BOOL ok = FALSE;
+  
+  err = ts_ws_frame__init(&frame);
+  if (err) {
+    ts_error__set(&(ws->err), TS_ERR_OUT_OF_MEMORY);
+    goto done;
+  }
+  
+  ts_buf__write(ws->in_buf, input->buf, input->len);
+  
+  while (1) {
+    err = ts_ws__decode_frame(ws, &frame, &ok);
+    if (err) {
+      goto done;
+    }
+    
+    if (!ok) {
+      // no more frame to decode
+      goto done;
+    }
+    
+    switch (frame.opcode) {
+      case TS_WS_OPCODE_CONTINUATION_FRAME:
+        if (frame.fin == 1) {
+          ts_error__set_msg(&(ws->err), TS_ERR_INVALID_WS_FRAME, "Continuation frame should set FIN to 0");
+          goto done;
+        }
+        // go through
+        
+      case TS_WS_OPCODE_TEXT_FRAME:
+      case TS_WS_OPCODE_BINARY_FRAME:
+        ts_buf__write(output, frame.payload_data->buf, frame.payload_data->len);
+        break;
+      
+      case TS_WS_OPCODE_CONNECTION_CLOSE:
+        if (ws->state == TS_WS_STATE_DISCONNECTING) {
+          ws->state = TS_WS_STATE_DISCONNECTED;
+          goto done;
+        } else {
+          ws->state = TS_WS_STATE_DISCONNECTING;
+          ts_ws__decode_close_error(ws, &frame);
+          err = ts_ws__encode_frame(ws, TS_WS_OPCODE_PONG, NULL, 0, output);
+          if (err) {
+            goto done;
+          }
+        }
+        break;
+      
+      case TS_WS_OPCODE_PING:
+        // send pong
+        err = ts_ws__encode_frame(ws, TS_WS_OPCODE_PONG, frame.payload_data->buf, frame.payload_data->len, output);
+        if (err) {
+          goto done;
+        }
+        break;
+      
+      case TS_WS_OPCODE_PONG:
+        // nothing for now, maybe should record the keep alive time.
+        break;
+      
+      default:
+        ts_error__set_msgf(&(ws->err), TS_ERR_INVALID_WS_FRAME, "Invalid frame type: %d", frame.opcode);
+        goto done;
+    }
+    
+    // clear the payload
+    ts_buf__set_length(frame.payload_data, 0);
+  }
+  
+done:
+  ts_ws_frame__destroy(&frame);
+  
+  return err;
 }
