@@ -174,8 +174,95 @@ static int mytcp__ssl_read(mytcp_t* tcp, char* data, int len) {
   return len;
 }
 
+static int mytcp__connect_tcp_ssl(mytcp_t* tcp, const char* host, int port) {
+  if (tcp->use_ssl) {
+    return mytcp__ssl_connect(tcp, host, port);
+  } else {
+    return mytcp__tcp_connect(tcp, host, port);
+  }
+}
+static int mytcp__write_tcp_ssl(mytcp_t* tcp, const char* data, int len) {
+  if (tcp->use_ssl) {
+    return mytcp__ssl_write(tcp, data, len);
+  } else {
+    return mytcp__tcp_write(tcp, data, len);
+  }
+}
+static int mytcp__read_tcp_ssl(mytcp_t* tcp, char* data, int len) {
+  if (tcp->use_ssl) {
+    return mytcp__ssl_read(tcp, data, len);
+  } else {
+    return mytcp__tcp_read(tcp, data, len);
+  }
+}
+static int mytcp__disconnect_tcp_ssl(mytcp_t* tcp) {
+  if (tcp->use_ssl) {
+    return mytcp__ssl_disconnect(tcp);
+  } else {
+    return mytcp__tcp_disconnect(tcp);
+  }
+}
+
+static int mytcp__ws_connect(mytcp_t* tcp, const char* host, int port) {
+  int err = 0;
+  char host_port_buf[64];
+  char buf[1024];
+  int buf_len = 0;
+  
+  const char* req =
+    "GET /mqtt HTTP/1.1"
+    "Sec-WebSocket-Version: 13"
+    "Sec-WebSocket-Key: fp/NuhTTdfYLAo4N2GB1cg=="
+    "Connection: Upgrade"
+    "Upgrade: websocket"
+    "Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits"
+    "Sec-WebSocket-Protocol: mqtt"
+    "Host: %s";
+  
+  snprintf(host_port_buf, sizeof(host_port_buf), "%s:%d", host, port);
+  buf_len = sprintf(buf, req, host_port_buf);
+  
+  err = mytcp__write_tcp_ssl(tcp, buf, buf_len);
+  if (err < 0) {
+    return err;
+  }
+  
+  buf_len = sizeof(buf);
+  
+  err = mytcp__read_tcp_ssl(tcp, buf, buf_len);
+  if (err < 0) {
+    return err;
+  }
+  
+  // expected response
+  /*
+   * HTTP/1.1 101 Switching Protocols
+   * connection: Upgrade
+   * date: Wed, 07 Aug 2024 14:38:48 GMT
+   * sec-websocket-accept: Yoh0hDNDSW1Me7uuyJ8XrujK7Qw=
+   * sec-websocket-protocol: mqtt
+   * server: Cowboy
+   * upgrade: websocket
+   */
+  if (strstr(buf, "HTTP/1.1 101 Switching Protocols") == NULL) {
+    return -1;
+  }
+  if (strstr(buf, "Yoh0hDNDSW1Me7uuyJ8XrujK7Qw=") == NULL) {
+    return -1;
+  }
+  if (strstr(buf, "websocket") == NULL) {
+    return -1;
+  }
+  if (strstr(buf, "Upgrade") == NULL) {
+    return -1;
+  }
+  
+  return 0;
+}
+
 int mytcp__init(mytcp_t* tcp) {
   tcp->use_ssl = 0;
+  tcp->use_ws = 0;
   return 0;
 }
 int mytcp__destroy(mytcp_t* tcp) {
@@ -184,30 +271,14 @@ int mytcp__destroy(mytcp_t* tcp) {
 
 
 int mytcp__connect(mytcp_t* tcp, const char* host, int port) {
-  if (tcp->use_ssl) {
-    return mytcp__ssl_connect(tcp, host, port);
-  } else {
-    return mytcp__tcp_connect(tcp, host, port);
-  }
+  return mytcp__connect_tcp_ssl(tcp, host, port);
 }
 int mytcp__disconnect(mytcp_t* tcp) {
-  if (tcp->use_ssl) {
-    return mytcp__ssl_disconnect(tcp);
-  } else {
-    return mytcp__tcp_disconnect(tcp);
-  }
+  return mytcp__disconnect_tcp_ssl(tcp);
 }
 int mytcp__write(mytcp_t* tcp, const char* data, int len) {
-  if (tcp->use_ssl) {
-    return mytcp__ssl_write(tcp, data, len);
-  } else {
-    return mytcp__tcp_write(tcp, data, len);
-  }
+  return mytcp__write_tcp_ssl(tcp, data, len);
 }
 int mytcp__read(mytcp_t* tcp, char* data, int len) {
-  if (tcp->use_ssl) {
-    return mytcp__ssl_read(tcp, data, len);
-  } else {
-    return mytcp__tcp_read(tcp, data, len);
-  }
+  return mytcp__read_tcp_ssl(tcp, data, len);
 }

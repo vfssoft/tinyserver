@@ -26,6 +26,7 @@ typedef struct mytcp_s mytcp_t;
 struct mytcp_s {
   int socket;
   int use_ssl;
+  int use_ws;
 
   SSL_CTX* sslctx;
   SSL*     ssl;
