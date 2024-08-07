@@ -30,6 +30,7 @@ typedef struct ts_server_s ts_server_t;
 typedef struct ts_conn_write_req_s ts_conn_write_req_t;
 typedef struct ts_conn_s ts_conn_t;
 typedef struct ts_tls_s ts_tls_t;
+typedef struct ts_ws_s ts_ws_t;
 typedef struct ts_log_s ts_log_t;
 
 typedef int (*ts_server_connected_cb)(void* ctx, ts_server_t* server, ts_conn_t* conn, int status);
@@ -167,6 +168,7 @@ struct ts_conn_s {
     
     ts_conn_write_req_t* write_reqs;
     ts_tls_t* tls;
+    ts_ws_t* ws;
     ts_error_t err;
     
 
@@ -191,6 +193,15 @@ struct ts_tls_s {
     ts_error_t err;
 
     ts_buf_t* ssl_buf; // used internal
+};
+
+struct ts_ws_s {
+    ts_conn_t* conn;
+    int state;
+    
+    ts_error_t err;
+    ts_buf_t* out_buf; // used internal
+    ts_buf_t* in_buf;
 };
 
 #ifdef __cplusplus
