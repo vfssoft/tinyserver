@@ -3,11 +3,6 @@
 
 #include "ts_internal.h"
 
-#define TS_WS_STATE_HANDSHAKING   0
-#define TS_WS_STATE_CONNECTED     1
-#define TS_WS_STATE_DISCONNECTING 2
-#define TS_WS_STATE_DISCONNECTED  3
-
 typedef struct ts_ws_frame_s ts_ws_frame_t;
 
 // TODO: may not need this struct
@@ -20,7 +15,7 @@ struct ts_ws_frame_s {
 
 int ts_ws__init(ts_ws_t* ws, ts_conn_t* conn);
 int ts_ws__destroy(ts_ws_t* ws);
-
+int ts_ws__state(ts_ws_t* ws);
 int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output);
 int ts_ws__unwrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output);
 int ts_ws__wrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output);

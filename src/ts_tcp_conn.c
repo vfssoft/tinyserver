@@ -118,12 +118,12 @@ static int ts_conn__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* input,
   ts_server_t* server = conn->listener->server;
   ts_tls_t* tls = conn->tls;
 
-  assert(tls->ssl_state == TLS_STATE_HANDSHAKING || tls->ssl_state == TLS_STATE_CONNECTED);
+  assert(ts_tls__state(tls) == TS_STATE_HANDSHAKING || ts_tls__state(tls) == TS_STATE_CONNECTED);
   ts_buf__set_length(tls->ssl_buf, 0);
   
   while (input->len > 0) { // we have to consume all input data here
 
-    if (tls->ssl_state == TLS_STATE_HANDSHAKING) {
+    if (ts_tls__state(tls) == TS_STATE_HANDSHAKING) {
       err = ts_tls__handshake(tls, input, tls->ssl_buf);
       if (err) {
         ts_error__copy(&(conn->err), &(tls->err));
@@ -158,12 +158,12 @@ static int ts_conn__process_ws_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, 
   ts_server_t* server = conn->listener->server;
   ts_ws_t* ws = conn->ws;
   
-  assert(ws->state == TS_WS_STATE_HANDSHAKING || ws->state == TS_WS_STATE_CONNECTED);
+  assert(ts_ws__state(ws) == TS_STATE_HANDSHAKING || ts_ws__state(ws) == TS_STATE_CONNECTED);
   ts_buf__set_length(ws->out_buf, 0);
   
   while (input->len > 0) { // we have to consume all input data here
     
-    if (ws->state == TS_WS_STATE_HANDSHAKING) {
+    if (ts_ws__state(ws) == TS_STATE_HANDSHAKING) {
       err = ts_ws__handshake(ws, input, ws->out_buf);
       if (err) {
         ts_error__copy(&(conn->err), &(ws->err));
@@ -217,19 +217,19 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
   if (nread > 0) {
 
     if (use_ssl) {
-      ssl_state = tls->ssl_state;
-      assert(ssl_state == TLS_STATE_HANDSHAKING || ssl_state == TLS_STATE_CONNECTED);
+      ssl_state = ts_tls__state(tls);
+      assert(ssl_state == TS_STATE_HANDSHAKING || ssl_state == TS_STATE_CONNECTED);
 
       err = ts_conn__process_ssl_socket_data(conn, &input, &ssl_decrypted);
       if (err) {
         goto done;
       }
 
-      if (tls->ssl_state == TLS_STATE_HANDSHAKING) {
+      if (ts_tls__state(tls) == TS_STATE_HANDSHAKING) {
         goto done; // handshake is not done, nothing can be done, wait for more tcp data
       }
 
-      if (ssl_state == TLS_STATE_HANDSHAKING && tls->ssl_state == TLS_STATE_CONNECTED) {
+      if (ssl_state == TS_STATE_HANDSHAKING && ts_tls__state(tls) == TS_STATE_CONNECTED) {
         // tls handshake is done
         if (!use_ws) {
           server->connected_cb(server->cb_ctx, server, conn, 0);
@@ -241,19 +241,19 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
     }
     
     if (ws) {
-      ws_state = ws->state;
-      assert(ws_state == TS_WS_STATE_HANDSHAKING || ws_state == TS_WS_STATE_CONNECTED);
+      ws_state = ts_ws__state(ws);
+      assert(ws_state == TS_STATE_HANDSHAKING || ws_state == TS_STATE_CONNECTED);
   
       err = ts_conn__process_ws_socket_data(conn, &input, &ws_unwrapped);
       if (err) {
         goto done;
       }
   
-      if (ws->state == TS_WS_STATE_HANDSHAKING) {
+      if (ts_ws__state(ws) == TS_STATE_HANDSHAKING) {
         goto done; // handshake is not done, nothing can be done, wait for more tcp data
       }
   
-      if (ws_state == TS_WS_STATE_HANDSHAKING && ws->state == TS_WS_STATE_CONNECTED) {
+      if (ws_state == TS_STATE_HANDSHAKING && ts_ws__state(ws) == TS_STATE_CONNECTED) {
         // ws handshake is done
         server->connected_cb(server->cb_ctx, server, conn, 0);
       }

@@ -237,7 +237,7 @@ int ts_ws__init(ts_ws_t* ws, ts_conn_t* conn) {
   ts_server_t* server = listener->server;
   
   ws->conn = conn;
-  ws->state = TS_WS_STATE_HANDSHAKING;
+  ws->state = TS_STATE_HANDSHAKING;
   ts_error__init(&ws->err);
   
   ws->out_buf = ts_buf__create(0);
@@ -261,6 +261,10 @@ done:
 int ts_ws__destroy(ts_ws_t* ws) {
   ws->conn = NULL;
   return 0;
+}
+
+int ts_ws__state(ts_ws_t* ws) {
+  return ws->state;
 }
 
 int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
@@ -373,7 +377,7 @@ int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
   );
 
   ts_buf__write(output, resp_buf, strlen(resp_buf));
-  ws->state = TS_WS_STATE_CONNECTED;
+  ws->state = TS_STATE_CONNECTED;
 
 bad_request:
   if (ws->err.err) {
@@ -391,7 +395,7 @@ bad_request:
 done:
   if (ws->err.err) {
     LOG_ERROR("[%s][WS] Websocket handshake failed: %d %s", conn->remote_addr, ws->err.err, ws->err.msg);
-    ws->state = TS_WS_STATE_DISCONNECTED;
+    ws->state = TS_STATE_DISCONNECTED;
   }
   ts_buf__set_length(ws->in_buf, 0); // clear buf
   return ws->err.err;
@@ -435,11 +439,11 @@ int ts_ws__unwrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
         break;
       
       case TS_WS_OPCODE_CONNECTION_CLOSE:
-        if (ws->state == TS_WS_STATE_DISCONNECTING) {
-          ws->state = TS_WS_STATE_DISCONNECTED;
+        if (ws->state == TS_STATE_DISCONNECTING) {
+          ws->state = TS_STATE_DISCONNECTED;
           goto done;
         } else {
-          ws->state = TS_WS_STATE_DISCONNECTING;
+          ws->state = TS_STATE_DISCONNECTING;
           ts_ws__decode_close_error(ws, &frame);
           err = ts_ws__encode_frame(ws, TS_WS_OPCODE_PONG, NULL, 0, output);
           if (err) {
@@ -488,6 +492,6 @@ int ts_ws__disconnect(ts_ws_t* ws, ts_buf_t* output) {
   }
 
 done:
-  ws->state = TS_WS_STATE_DISCONNECTING;
+  ws->state = TS_STATE_DISCONNECTING;
   return err;
 }

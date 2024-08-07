@@ -53,11 +53,11 @@ static void ts_tls__print_openssl_errors(ts_error_t* errt) {
 
 static void ts_tls__set_err(ts_tls_t* tls, int err) {
   // don't process the error, convert error should be done out side of this function
-  tls->ssl_state = TLS_STATE_DISCONNECTED;
+  tls->state = TS_STATE_DISCONNECTED;
   ts_error__set_msg(&tls->err, err, "TLS Error");
 }
 static void ts_tls__set_err2(ts_tls_t* tls) {
-  tls->ssl_state = TLS_STATE_DISCONNECTED;
+  tls->state = TS_STATE_DISCONNECTED;
   ts_tls__print_openssl_errors(&tls->err);
 }
 
@@ -144,7 +144,7 @@ int ts_tls__init(ts_tls_t* tls, ts_conn_t* conn) {
   ts_server_t* server = listener->server;
   
   tls->conn = conn;
-  tls->ssl_state = TLS_STATE_HANDSHAKING;
+  tls->state = TS_STATE_HANDSHAKING;
   ts_error__init(&tls->err);
   
   
@@ -181,10 +181,6 @@ int ts_tls__destroy(ts_tls_t* tls) {
   return 0;
 }
 
-static int ts_tls__connected(ts_tls_t* tls) {
-  return tls->ssl_state == TLS_STATE_CONNECTED;
-}
-
 static int ts_tls__get_pending_ssl_data_to_send(ts_tls_t* tls, ts_buf_t* output) {
   int pending = BIO_pending(tls->appbio);
   if (pending > 0) {
@@ -208,6 +204,10 @@ static void ts_tls__write_data_to_ssl(ts_tls_t* tls, ts_ro_buf_t* input) {
   }
 }
 
+int ts_tls__state(ts_tls_t* tls) {
+  return tls->state;
+}
+
 int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
   int err;
   ts_conn_t* conn = tls->conn;
@@ -225,7 +225,7 @@ int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
   
     if (hs_err == 1) {
       // The TLS/SSL handshake was successfully completed, a TLS/SSL connection has been established.
-      tls->ssl_state = TLS_STATE_CONNECTED;
+      tls->state = TS_STATE_CONNECTED;
       LOG_VERB("[%s][TLS] TLS handshake ok", conn->remote_addr);
       goto done;
     }
@@ -248,7 +248,7 @@ int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
         // No more data can be read.
         // Note that SSL_ERROR_ZERO_RETURN does not necessarily indicate that the underlying transport has been closed.
     
-        if (tls->ssl_state == TLS_STATE_HANDSHAKING) {
+        if (tls->state == TS_STATE_HANDSHAKING) {
           ts_tls__set_err(tls, UV__ENOTCONN); // not connected successfully
         } else {
           // tls->ssl_state == TLS_STATE_CONNECTED;
@@ -381,7 +381,7 @@ int ts_tls__disconnect(ts_tls_t* tls, ts_buf_t* output) {
   int err;
   // TODO: log errors
   
-  if (tls->ssl_state == TLS_STATE_CONNECTED) {
+  if (tls->state == TS_STATE_CONNECTED) {
     err = SSL_shutdown(tls->ssl);
     err = ts_tls__get_pending_ssl_data_to_send(tls, output);
   }

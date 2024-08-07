@@ -114,6 +114,12 @@ struct ts_log_s {
 #define TS_PROTO_WS    3
 #define TS_PROTO_WSS   4
 
+
+#define TS_STATE_HANDSHAKING   0
+#define TS_STATE_CONNECTED     1
+#define TS_STATE_DISCONNECTING 2
+#define TS_STATE_DISCONNECTED  3
+
 struct ts_server_listener_s {
     uv_tcp_t uvtcp;
     uv_loop_t *uvloop;
@@ -179,16 +185,12 @@ struct ts_conn_s {
     ts_conn_t* next;
 };
 
-#define TLS_STATE_HANDSHAKING  1
-#define TLS_STATE_CONNECTED    2
-#define TLS_STATE_DISCONNECTED 3
-
 struct ts_tls_s {
     BIO*     appbio; // Application BIO, all IO should be done by this
     BIO*     sslbio; // SSL BIO, only used by OpenSSL
     SSL*     ssl;
     SSL_CTX* ctx;
-    int      ssl_state;
+    int      state;
     ts_conn_t* conn;
     ts_error_t err;
 
