@@ -1,11 +1,6 @@
 
 #include "ts_ws.h"
 
-#define TS_WS_STATE_HANDSHAKING   0
-#define TS_WS_STATE_CONNECTED     1
-#define TS_WS_STATE_DISCONNECTING 2
-#define TS_WS_STATE_DISCONNECTED  3
-
 
 #define TS_WS_OPCODE_CONTINUATION_FRAME 0
 #define TS_WS_OPCODE_TEXT_FRAME         1

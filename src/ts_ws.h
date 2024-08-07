@@ -3,6 +3,11 @@
 
 #include "ts_internal.h"
 
+#define TS_WS_STATE_HANDSHAKING   0
+#define TS_WS_STATE_CONNECTED     1
+#define TS_WS_STATE_DISCONNECTING 2
+#define TS_WS_STATE_DISCONNECTED  3
+
 typedef struct ts_ws_frame_s ts_ws_frame_t;
 
 // TODO: may not need this struct
