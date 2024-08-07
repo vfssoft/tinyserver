@@ -279,6 +279,7 @@ int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
   char sub_protocols[64] = { 0 };
   char resp_buf[2048] = { 0 };
 
+  BOOL req_line_parsed = FALSE;
   BOOL has_host_hdr = FALSE;
   BOOL has_upgrade_hdr = FALSE;
   BOOL has_connection_hdr = FALSE;
@@ -304,7 +305,8 @@ int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
       break; // no more lines
     }
     
-    if (url[0] == 0) {
+    if (!req_line_parsed) {
+      req_line_parsed = TRUE;
       // parse the first line of the HTTP Upgrade request
       // Example: GET /chat HTTP/1.1
       ts_ws__parse_request_line(line, &method, &url, &version);
@@ -475,5 +477,22 @@ int ts_ws__unwrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
 done:
   ts_ws_frame__destroy(&frame);
   
+  return err;
+}
+
+int ts_ws__wrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
+  return ts_ws__encode_frame(ws, TS_WS_OPCODE_BINARY_FRAME, input->buf, input->len, output);
+}
+
+int ts_ws__disconnect(ts_ws_t* ws, ts_buf_t* output) {
+  int err = 0;
+
+  err = ts_ws__encode_frame(ws, TS_WS_OPCODE_PONG, NULL, 0, output);
+  if (err) {
+    goto done;
+  }
+
+done:
+  ws->state = TS_WS_STATE_DISCONNECTING;
   return err;
 }
