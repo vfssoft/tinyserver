@@ -6,10 +6,12 @@
 
 static void client_connect_cb(void *arg) {
   int err;
+  int proto = *(int*)arg;
   mytcp_t client;
   mytcp__init_mutex();
   mytcp__init(&client);
-  client.use_ssl = *(int*)arg == TS_PROTO_TLS;
+  client.use_ssl = ts_use_ssl(proto);
+  client.use_ws = ts_use_websocket(proto);
 
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
@@ -86,10 +88,12 @@ TEST_IMPL(tls_connect) {
 
 static void client_connect_wait_disconnect_cb(void *arg) {
   int err;
+  int proto = *(int*)arg;
   mytcp_t client;
   mytcp__init_mutex();
   mytcp__init(&client);
-  client.use_ssl = *(int*)arg == TS_PROTO_TLS;
+  client.use_ssl = ts_use_ssl(proto);
+  client.use_ws = ts_use_websocket(proto);
 
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
@@ -155,7 +159,8 @@ static void client_connect_disconnect_quick_cb(void *arg) {
   mytcp_t client;
   mytcp__init_mutex();
   mytcp__init(&client);
-  client.use_ssl = client_args->proto == TS_PROTO_TLS;
+  client.use_ssl = ts_use_ssl(client_args->proto);
+  client.use_ws = ts_use_websocket(client_args->proto);
 
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);

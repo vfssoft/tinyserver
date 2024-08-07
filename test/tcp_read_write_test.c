@@ -23,7 +23,8 @@ static void client_cb(void *arg) {
   mytcp_t client;
   mytcp__init_mutex();
   mytcp__init(&client);
-  client.use_ssl = client_args->proto == TS_PROTO_TLS;
+  client.use_ssl = ts_use_ssl(client_args->proto);
+  client.use_ws = ts_use_websocket(client_args->proto);
 
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
@@ -113,7 +114,8 @@ static void client_cb2(void *arg) {
   mytcp_t client;
   mytcp__init_mutex();
   mytcp__init(&client);
-  client.use_ssl = client_args->proto == TS_PROTO_TLS;
+  client.use_ssl = ts_use_ssl(client_args->proto);
+  client.use_ws = ts_use_websocket(client_args->proto);
 
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
@@ -207,7 +209,8 @@ static void client_large_data_cb(void *arg) {
   mytcp_t client;
   mytcp__init_mutex();
   mytcp__init(&client);
-  client.use_ssl = info->proto == TS_PROTO_TLS;
+  client.use_ssl = ts_use_ssl(info->proto);
+  client.use_ws = ts_use_websocket(info->proto);
   err = mytcp__connect(&client, "127.0.0.1", 12345);
   ASSERT_EQ(err, 0);
 

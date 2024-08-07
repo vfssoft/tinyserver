@@ -5,8 +5,17 @@ const char* ts_proto__str(int proto) {
   switch (proto) {
     case TS_PROTO_TCP: return "TCP";
     case TS_PROTO_TLS: return "TLS";
+    case TS_PROTO_WS:  return "WS";
+    case TS_PROTO_WSS: return "WSS";
   }
   return "";
+}
+
+BOOL ts_use_ssl(int proto) {
+  return proto == TS_PROTO_TLS || proto == TS_PROTO_WSS;
+}
+BOOL ts_use_websocket(int proto) {
+  return proto == TS_PROTO_WS || proto == TS_PROTO_WSS;
 }
 
 const char* ts_ipv6__str(int use_ipv6) {

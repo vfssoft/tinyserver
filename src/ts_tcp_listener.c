@@ -76,7 +76,7 @@ int ts_server_listener__start(ts_server_listener_t* listener, ts_server_t* serve
   listener->server = server;
   listener->uvloop = server->uvloop;
   
-  if (listener->protocol == TS_PROTO_TLS) {
+  if (ts_use_ssl(listener->protocol)) {
     ts_tls__ctx_init(
       &(listener->ssl_ctx),
       &(listener->err),
@@ -125,7 +125,7 @@ int ts_server_listener__stop(ts_server_listener_t* listener, uv_close_cb cb) {
            ts_ipv6__str(listener->use_ipv6)
   );
   
-  if (listener->protocol == TS_PROTO_TLS) {
+  if (ts_use_ssl(listener->protocol)) {
     ts_tls__ctx_destroy(listener->ssl_ctx);
   }
   if (listener->uvtcp.loop != NULL) {

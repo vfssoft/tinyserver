@@ -109,7 +109,9 @@ struct ts_log_s {
 };
 
 #define TS_PROTO_TCP   1
-#define TS_PROTO_TLS  2
+#define TS_PROTO_TLS   2
+#define TS_PROTO_WS    3
+#define TS_PROTO_WSS   4
 
 struct ts_server_listener_s {
     uv_tcp_t uvtcp;

@@ -18,7 +18,7 @@ void start_server(ts_server_t* server, int proto) {
   ts_server__set_listener_host_port(server, 0, "127.0.0.1", 12345);
   ts_server__set_listener_protocol(server, 0, proto);
 
-  if (proto == TS_PROTO_TLS) {
+  if (ts_use_ssl(proto)) {
     const char* dir_path = cur_dir();
     char crtpath[1024];
     char keypath[1024];
