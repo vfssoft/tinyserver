@@ -296,7 +296,11 @@ static int ts_conn__process_ws_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, 
         goto done;
       }
 
-      err = ts_conn__send_tcp_data(conn, conn->ws_buf);
+      if (ts_use_ssl(conn->listener->protocol)) {
+        err = ts_conn__send_tls_data(conn, conn->ws_buf);
+      } else {
+        err = ts_conn__send_tcp_data(conn, conn->ws_buf);
+      }
       if (err) {
         goto done;
       }
