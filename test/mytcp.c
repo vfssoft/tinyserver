@@ -168,6 +168,19 @@ static int mytcp__ssl_read(mytcp_t* tcp, char* data, int len) {
       return 1;
     } else {
       roffset += err;
+      if (roffset >= len) break;
+
+      // work like read timeout: 1s
+      for (int i = 0; i < 10; i++) {
+        if (SSL_pending(tcp->ssl) == 0) {
+          Sleep(100);
+        } else {
+          break;
+        }
+      }
+      if (SSL_pending(tcp->ssl) == 0) {
+        break;
+      }
     }
   }
 

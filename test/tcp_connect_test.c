@@ -85,6 +85,12 @@ TEST_IMPL(tcp_connect) {
 TEST_IMPL(tls_connect) {
   return server_connect_impl(TS_PROTO_TLS);
 }
+TEST_IMPL(ws_connect) {
+  return server_connect_impl(TS_PROTO_WS);
+}
+TEST_IMPL(wss_connect) {
+  return server_connect_impl(TS_PROTO_WSS);
+}
 
 static void client_connect_wait_disconnect_cb(void *arg) {
   int err;

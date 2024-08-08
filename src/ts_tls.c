@@ -221,7 +221,7 @@ int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
       // The TLS/SSL handshake was successfully completed, a TLS/SSL connection has been established.
       tls->state = TS_STATE_CONNECTED;
       LOG_VERB("[%s][TLS] TLS handshake ok", conn->remote_addr);
-      goto done;
+      break;
     }
   
     if (hs_err == 0) {
@@ -268,6 +268,15 @@ int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
     }
 
   }
+  
+  if (tls->state == TS_STATE_CONNECTED) {
+    // check if there are session tickets needs to send to clients
+    err = ts_tls__get_pending_ssl_data_to_send(tls, output);
+    if (err) {
+      return err;
+    }
+  }
+  
   
 done:
   if (tls->err.err)  {

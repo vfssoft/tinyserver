@@ -12,6 +12,8 @@ TEST_DECLARE(invalid_ssl_cert)
 
 TEST_DECLARE(tcp_connect)
 TEST_DECLARE(tls_connect)
+TEST_DECLARE(ws_connect)
+TEST_DECLARE(wss_connect)
 TEST_DECLARE(tcp_server_disconnect)
 TEST_DECLARE(tls_server_disconnect)
 
@@ -43,6 +45,8 @@ TEST_LIST_START
         
         TEST_ENTRY(tcp_connect, "TCP")
         TEST_ENTRY(tls_connect, "TLS")
+        TEST_ENTRY(ws_connect, "Websocket")
+        TEST_ENTRY(wss_connect, "Websocket,TLS")
         TEST_ENTRY(tcp_server_disconnect, "TCP")
         TEST_ENTRY(tcp_connect_disconnect_quick, "TCP")
         TEST_ENTRY(tcp_connect_disconnect_1s, "TCP")
