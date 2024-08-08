@@ -326,8 +326,8 @@ static int ts_conn__process_ws_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, 
       break;
   }
 
-  output->buf = conn->tls_buf->buf;
-  output->len = conn->tls_buf->len;
+  output->buf = conn->ws_buf->buf;
+  output->len = conn->ws_buf->len;
 
 done:
   if (err) {

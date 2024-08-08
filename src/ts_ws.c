@@ -143,7 +143,7 @@ static int ts_ws__decode_frame(ts_ws_t* ws, ts_ws_frame_t* frame, BOOL* ok) {
   }
   
   if (masked) {
-    if (offset + 4 >= buf->len) return 0;
+    if (offset + 4 > buf->len) return 0;
     memcpy(masking_key, buf->buf + offset, 4);
     offset += 4;
   } else {
@@ -151,7 +151,7 @@ static int ts_ws__decode_frame(ts_ws_t* ws, ts_ws_frame_t* frame, BOOL* ok) {
     goto done;
   }
   
-  if (offset + payload_len >= buf->len) return 0;
+  if (offset + payload_len > buf->len) return 0;
   
   ts_buf__set(frame->payload_data, buf->buf + offset, payload_len);
   offset += payload_len;
@@ -392,6 +392,7 @@ done:
     ws->state = TS_STATE_DISCONNECTED;
   }
   ts_buf__set_length(ws->in_buf, 0); // clear buf
+  input->len = 0;
   return ws->err.err;
 }
 
