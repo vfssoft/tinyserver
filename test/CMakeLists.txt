@@ -7,15 +7,16 @@ include_directories(../src ../include ../libuv/include ${OPENSSL_ROOT_DIR}/inclu
 
 add_executable(tests
         test.c
+		test-list.h
         basic_errors_test.c
-        mytcp.h
-        mytcp.cpp
         tcp_connect_test.c
         tcp_read_write_test.c
         testutil.h
         testutil.c
         tinyunit.h
         tinyunit.c
-        test-list.h)
+		mytcp.h
+        mytcp.c
+        )
 
 target_link_libraries(tests server_lib)
