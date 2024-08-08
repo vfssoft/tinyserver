@@ -135,14 +135,21 @@ static void uv_on_free_buffer(const uv_buf_t* buf) {
   ts__free(buf->base);
 }
 
-static int ts_conn__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, ts_buf_t** decrypted) {
+static int ts_conn__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, ts_ro_buf_t* output) {
   int err = 0;
-  ts_server_t* server = conn->listener->server;
+  int old_state;
+  ts_server_listener_t* listener = conn->listener;
+  ts_server_t* server = listener->server;
   ts_tls_t* tls = conn->tls;
 
-  assert(ts_tls__state(tls) == TS_STATE_HANDSHAKING || ts_tls__state(tls) == TS_STATE_CONNECTED);
+  old_state = ts_tls__state(tls);
+
+  assert(old_state == TS_STATE_HANDSHAKING || old_state == TS_STATE_CONNECTED);
   ts_buf__set_length(conn->tls_buf, 0);
-  
+
+  output->buf = NULL;
+  output->len = 0;
+
   while (input->len > 0) { // we have to consume all input data here
 
     if (ts_tls__state(tls) == TS_STATE_HANDSHAKING) {
@@ -163,10 +170,31 @@ static int ts_conn__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* input,
         goto done;
       }
     }
-    
+
   }
-  
-  *decrypted = conn->tls_buf;
+
+  switch (ts_tls__state(tls)) {
+    case TS_STATE_HANDSHAKING:
+      // After processing the input data, we're still in TLS handshaking state
+      goto done; // handshake is not done, nothing can be done, wait for more tcp data
+
+    case TS_STATE_CONNECTED:
+      if (old_state == TS_STATE_HANDSHAKING) {
+        // tls handshake is done
+        if (!ts_use_websocket(listener->protocol)) {
+          server->connected_cb(server->cb_ctx, server, conn, 0);
+        }
+      }
+      break;
+
+    case TS_STATE_DISCONNECTING:
+    case TS_STATE_DISCONNECTED:
+      // TODO: error happen
+      break;
+  }
+
+  output->buf = conn->tls_buf->buf;
+  output->len = conn->tls_buf->len;
 
 done:
   if (err) {
@@ -175,23 +203,28 @@ done:
   return err;
 }
 
-static int ts_conn__process_ws_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, ts_buf_t** unwrapped) {
+static int ts_conn__process_ws_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, ts_ro_buf_t* output) {
   int err = 0;
+  int old_state;
   ts_server_t* server = conn->listener->server;
   ts_ws_t* ws = conn->ws;
-  
-  assert(ts_ws__state(ws) == TS_STATE_HANDSHAKING || ts_ws__state(ws) == TS_STATE_CONNECTED);
+
+  old_state = ts_ws__state(ws);
+  assert(old_state == TS_STATE_HANDSHAKING || old_state == TS_STATE_CONNECTED);
   ts_buf__set_length(conn->ws_buf, 0);
-  
+
+  output->buf = NULL;
+  output->len = 0;
+
   while (input->len > 0) { // we have to consume all input data here
-    
+
     if (ts_ws__state(ws) == TS_STATE_HANDSHAKING) {
       err = ts_ws__handshake(ws, input, conn->ws_buf);
       if (err) {
         ts_error__copy(&(conn->err), &(ws->err));
         goto done;
       }
-      
+
       err = ts_conn__send_tcp_data(conn, conn->ws_buf);
       if (err) {
         goto done;
@@ -202,12 +235,31 @@ static int ts_conn__process_ws_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, 
         goto done;
       }
     }
-    
+
   }
-  
-  *unwrapped = conn->ws_buf;
-  
-  done:
+
+  switch (ts_ws__state(ws)) {
+    case TS_STATE_HANDSHAKING:
+      // After processing the input data, we're still in Websocket handshaking state
+      goto done; // handshake is not done, nothing can be done, wait for more data
+
+    case TS_STATE_CONNECTED:
+      if (old_state == TS_STATE_HANDSHAKING) {
+        // websocket handshake is done
+        server->connected_cb(server->cb_ctx, server, conn, 0);
+      }
+      break;
+
+    case TS_STATE_DISCONNECTING:
+    case TS_STATE_DISCONNECTED:
+      // TODO: error happen
+      break;
+  }
+
+  output->buf = conn->tls_buf->buf;
+  output->len = conn->tls_buf->len;
+
+done:
   if (err) {
     LOG_ERROR("[%s] Websocket error: %d %s", conn->err.err, conn->err.msg);
   }
@@ -219,16 +271,9 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
   ts_conn_t* conn = (ts_conn_t*) stream;
   ts_server_listener_t* listener = conn->listener;
   ts_server_t* server = listener->server;
-  ts_tls_t* tls = conn->tls;
-  ts_ws_t* ws = conn->ws;
-  ts_buf_t* ssl_decrypted = NULL;
   ts_buf_t* ws_unwrapped = NULL;
   ts_ro_buf_t input;
-  int ssl_state = 0;
   int ws_state = 0;
-  
-  BOOL use_ssl = ts_use_ssl(listener->protocol);
-  BOOL use_ws = ts_use_websocket(listener->protocol);
   
   LOG_DEBUG("[%s] Data received: %d", conn->remote_addr, nread);
 
@@ -238,50 +283,18 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
   // nread can be zero
   if (nread > 0) {
 
-    if (use_ssl) {
-      ssl_state = ts_tls__state(tls);
-      assert(ssl_state == TS_STATE_HANDSHAKING || ssl_state == TS_STATE_CONNECTED);
-
-      err = ts_conn__process_ssl_socket_data(conn, &input, &ssl_decrypted);
+    if (conn->tls) {
+      err = ts_conn__process_ssl_socket_data(conn, &input, &input);
       if (err) {
         goto done;
       }
-
-      if (ts_tls__state(tls) == TS_STATE_HANDSHAKING) {
-        goto done; // handshake is not done, nothing can be done, wait for more tcp data
-      }
-
-      if (ssl_state == TS_STATE_HANDSHAKING && ts_tls__state(tls) == TS_STATE_CONNECTED) {
-        // tls handshake is done
-        if (!use_ws) {
-          server->connected_cb(server->cb_ctx, server, conn, 0);
-        }
-      }
-
-      input.buf = ssl_decrypted->buf;
-      input.len = ssl_decrypted->len;
     }
     
-    if (ws) {
-      ws_state = ts_ws__state(ws);
-      assert(ws_state == TS_STATE_HANDSHAKING || ws_state == TS_STATE_CONNECTED);
-  
-      err = ts_conn__process_ws_socket_data(conn, &input, &ws_unwrapped);
+    if (conn->ws) {
+      err = ts_conn__process_ws_socket_data(conn, &input, &input);
       if (err) {
         goto done;
       }
-  
-      if (ts_ws__state(ws) == TS_STATE_HANDSHAKING) {
-        goto done; // handshake is not done, nothing can be done, wait for more tcp data
-      }
-  
-      if (ws_state == TS_STATE_HANDSHAKING && ts_ws__state(ws) == TS_STATE_CONNECTED) {
-        // ws handshake is done
-        server->connected_cb(server->cb_ctx, server, conn, 0);
-      }
-  
-      input.buf = ws_unwrapped->buf;
-      input.len = ws_unwrapped->len;
     }
     
     if (input.len > 0) {
@@ -296,7 +309,7 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
 
   uv_on_free_buffer(buf);
 
-  done:
+done:
   return;
 }
 
