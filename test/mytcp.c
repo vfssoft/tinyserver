@@ -210,14 +210,15 @@ static int mytcp__ws_connect(mytcp_t* tcp, const char* host, int port) {
   int buf_len = 0;
   
   const char* req =
-    "GET /mqtt HTTP/1.1"
-    "Sec-WebSocket-Version: 13"
-    "Sec-WebSocket-Key: fp/NuhTTdfYLAo4N2GB1cg=="
-    "Connection: Upgrade"
-    "Upgrade: websocket"
-    "Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits"
-    "Sec-WebSocket-Protocol: mqtt"
-    "Host: %s";
+    "GET /mqtt HTTP/1.1\r\n"
+    "Sec-WebSocket-Version: 13\r\n"
+    "Sec-WebSocket-Key: fp/NuhTTdfYLAo4N2GB1cg==\r\n"
+    "Connection: Upgrade\r\n"
+    "Upgrade: websocket\r\n"
+    "Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits\r\n"
+    "Sec-WebSocket-Protocol: mqtt\r\n"
+    "Host: %s\r\n"
+    "\r\n";
   
   snprintf(host_port_buf, sizeof(host_port_buf), "%s:%d", host, port);
   buf_len = sprintf(buf, req, host_port_buf);
@@ -259,6 +260,17 @@ static int mytcp__ws_connect(mytcp_t* tcp, const char* host, int port) {
   
   return 0;
 }
+static int mytcp__ws_disconnect(mytcp_t* tcp) {
+  int err;
+  
+  char buf[] = { 0x88, 0x80, 0x00, 0x00, 0x00, 0x00 };
+  err = mytcp__write_tcp_ssl(tcp, buf, sizeof(buf));
+  if (err < 0) {
+    return err;
+  }
+  return 0;
+}
+
 
 int mytcp__init(mytcp_t* tcp) {
   tcp->use_ssl = 0;
@@ -271,9 +283,19 @@ int mytcp__destroy(mytcp_t* tcp) {
 
 
 int mytcp__connect(mytcp_t* tcp, const char* host, int port) {
-  return mytcp__connect_tcp_ssl(tcp, host, port);
+  int err = 0;
+  err = mytcp__connect_tcp_ssl(tcp, host, port);
+  if (err) {
+    return err;
+  }
+  return mytcp__ws_connect(tcp, host, port);
 }
 int mytcp__disconnect(mytcp_t* tcp) {
+  int err;
+  err = mytcp__ws_disconnect(tcp);
+  if (err) {
+    return err;
+  }
   return mytcp__disconnect_tcp_ssl(tcp);
 }
 int mytcp__write(mytcp_t* tcp, const char* data, int len) {
