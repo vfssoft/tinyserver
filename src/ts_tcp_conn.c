@@ -218,9 +218,6 @@ static int ts_conn__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* input,
   assert(old_state == TS_STATE_HANDSHAKING || old_state == TS_STATE_CONNECTED);
   ts_buf__set_length(conn->tls_buf, 0);
 
-  output->buf = NULL;
-  output->len = 0;
-
   while (input->len > 0) { // we have to consume all input data here
 
     if (ts_tls__state(tls) == TS_STATE_HANDSHAKING) {
@@ -284,8 +281,6 @@ static int ts_conn__process_ws_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, 
   assert(old_state == TS_STATE_HANDSHAKING || old_state == TS_STATE_CONNECTED);
   ts_buf__set_length(conn->ws_buf, 0);
 
-  output->buf = NULL;
-  output->len = 0;
 
   while (input->len > 0) { // we have to consume all input data here
 
