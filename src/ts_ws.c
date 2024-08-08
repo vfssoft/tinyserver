@@ -240,12 +240,6 @@ int ts_ws__init(ts_ws_t* ws, ts_conn_t* conn) {
   ws->state = TS_STATE_HANDSHAKING;
   ts_error__init(&ws->err);
   
-  ws->out_buf = ts_buf__create(0);
-  if (ws->out_buf == NULL) {
-    ts_error__set(&(ws->err), TS_ERR_OUT_OF_MEMORY);
-    goto done;
-  }
-  
   ws->in_buf = ts_buf__create(0);
   if (ws->in_buf == NULL) {
     ts_error__set(&(ws->err), TS_ERR_OUT_OF_MEMORY);

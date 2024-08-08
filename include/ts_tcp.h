@@ -178,6 +178,7 @@ struct ts_conn_s {
     ts_error_t err;
     
     ts_buf_t* tls_buf;
+    ts_buf_t* ws_buf;
 
     char local_addr[64]; // Maybe a little small, but let's see
     char remote_addr[64];
@@ -201,7 +202,6 @@ struct ts_ws_s {
     int state;
     
     ts_error_t err;
-    ts_buf_t* out_buf; // used internal
     ts_buf_t* in_buf;
 };
 

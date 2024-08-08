@@ -12,6 +12,7 @@ int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
   conn->tls = NULL;
   conn->tls_buf = NULL;
   conn->ws = NULL;
+  conn->ws_buf = NULL;
   memset(&(conn->uvtcp), 0, sizeof(uv_tcp_t));
   ts_error__init(&conn->err);
 
@@ -38,6 +39,12 @@ int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
   }
   
   if (use_ws) {
+    conn->ws_buf = ts_buf__create(0);
+    if (conn->ws_buf == NULL) {
+      ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
+      goto done;
+    }
+
     conn->ws = (ts_ws_t*) ts__malloc(sizeof(ts_ws_t));
     if (conn->ws == NULL) {
       ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
@@ -78,6 +85,10 @@ int ts_conn__destroy(ts_server_listener_t* listener, ts_conn_t* conn) {
     ts_ws__destroy(conn->ws);
     ts__free(conn->ws);
     conn->ws = NULL;
+  }
+  if (conn->ws_buf) {
+    ts_buf__destroy(conn->ws_buf);
+    conn->ws_buf = NULL;
   }
   conn->listener = NULL;
   return 0;
@@ -170,23 +181,23 @@ static int ts_conn__process_ws_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, 
   ts_ws_t* ws = conn->ws;
   
   assert(ts_ws__state(ws) == TS_STATE_HANDSHAKING || ts_ws__state(ws) == TS_STATE_CONNECTED);
-  ts_buf__set_length(ws->out_buf, 0);
+  ts_buf__set_length(conn->ws_buf, 0);
   
   while (input->len > 0) { // we have to consume all input data here
     
     if (ts_ws__state(ws) == TS_STATE_HANDSHAKING) {
-      err = ts_ws__handshake(ws, input, ws->out_buf);
+      err = ts_ws__handshake(ws, input, conn->ws_buf);
       if (err) {
         ts_error__copy(&(conn->err), &(ws->err));
         goto done;
       }
       
-      err = ts_conn__send_tcp_data(conn, ws->out_buf);
+      err = ts_conn__send_tcp_data(conn, conn->ws_buf);
       if (err) {
         goto done;
       }
     } else {
-      err = ts_ws__unwrap(ws, input, ws->out_buf);
+      err = ts_ws__unwrap(ws, input, conn->ws_buf);
       if (err) {
         goto done;
       }
@@ -194,7 +205,7 @@ static int ts_conn__process_ws_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, 
     
   }
   
-  *unwrapped = ws->out_buf;
+  *unwrapped = conn->ws_buf;
   
   done:
   if (err) {
@@ -394,16 +405,16 @@ int ts_conn__send_data(ts_conn_t* conn, ts_buf_t* input) {
   roinput.len = input->len;
   
   if (use_ws) {
-    ts_buf__set_length(conn->ws->out_buf, 0);
+    ts_buf__set_length(conn->ws_buf, 0);
   
-    err = ts_ws__wrap(conn->ws, &roinput, conn->ws->out_buf);
+    err = ts_ws__wrap(conn->ws, &roinput, conn->ws_buf);
     if (err) {
       ts_error__copy(&(conn->err), &(conn->ws->err));
       return err;
     }
   
-    roinput.buf = conn->ws->out_buf->buf;
-    roinput.len = conn->ws->out_buf->len;
+    roinput.buf = conn->ws_buf->buf;
+    roinput.len = conn->ws_buf->len;
   }
   
   if (use_ssl) {
@@ -426,7 +437,7 @@ int ts_conn__send_data(ts_conn_t* conn, ts_buf_t* input) {
   
 done:
   if (use_ws) {
-    ts_buf__set_length(conn->ws->out_buf, 0);
+    ts_buf__set_length(conn->ws_buf, 0);
   }
   if (use_ssl) {
     ts_buf__set_length(conn->tls_buf, 0);
@@ -446,8 +457,8 @@ int ts_conn__close(ts_conn_t* conn, uv_close_cb cb) {
   
   if (use_ws) {
     ts_ws_t* ws = conn->ws;
-    ts_buf__set_length(ws->out_buf, 0);
-    err = ts_ws__disconnect(ws, ws->out_buf);
+    ts_buf__set_length(conn->ws_buf, 0);
+    err = ts_ws__disconnect(ws, conn->ws_buf);
     //err = ts_conn__send_data(conn, ws->out_buf);
     // TODO: log the error
   }
