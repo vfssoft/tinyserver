@@ -180,10 +180,13 @@ static int ts_conn__send_tls_data(ts_conn_t* conn, ts_buf_t* plain) {
   err = ts_tls__encrypt(conn->tls, &roinput, conn->tls_buf);
   if (err) {
     ts_error__copy(&(conn->err), &(conn->tls->err));
-    return err;
+    goto done;
   }
 
-  return ts_conn__send_tcp_data(conn, conn->tls_buf);
+  err = ts_conn__send_tcp_data(conn, conn->tls_buf);
+done:
+  ts_buf__set_length(plain, 0);
+  return err;
 }
 static int ts_conn__send_websocket_data(ts_conn_t* conn, ts_buf_t* plain) {
   int err;
@@ -374,11 +377,17 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
       if (err) {
         goto done;
       }
+      if (input.len == 0) {
+        goto done;
+      }
     }
     
     if (conn->ws) {
       err = ts_conn__process_ws_socket_data(conn, &input, &input);
       if (err) {
+        goto done;
+      }
+      if (input.len == 0) {
         goto done;
       }
     }

@@ -372,6 +372,7 @@ int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
 
   ts_buf__write(output, resp_buf, strlen(resp_buf));
   ws->state = TS_STATE_CONNECTED;
+  LOG_VERB("[%s][WS] Websocket handshake ok", conn->remote_addr);
 
 bad_request:
   if (ws->err.err) {
