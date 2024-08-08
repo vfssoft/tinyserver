@@ -276,11 +276,17 @@ static int ts_conn__process_ws_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, 
   int old_state;
   ts_server_t* server = conn->listener->server;
   ts_ws_t* ws = conn->ws;
+  ts_buf_t* output_sock = NULL;
 
   old_state = ts_ws__state(ws);
   assert(old_state == TS_STATE_HANDSHAKING || old_state == TS_STATE_CONNECTED);
   ts_buf__set_length(conn->ws_buf, 0);
 
+  output_sock = ts_buf__create(0);
+  if (output_sock == NULL) {
+    ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
+    goto done;
+  }
 
   while (input->len > 0) { // we have to consume all input data here
 
@@ -300,9 +306,16 @@ static int ts_conn__process_ws_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, 
         goto done;
       }
     } else {
-      err = ts_ws__unwrap(ws, input, conn->ws_buf);
+      err = ts_ws__unwrap(ws, input, conn->ws_buf, output_sock);
       if (err) {
         goto done;
+      }
+      if (output_sock->len > 0) {
+        if (ts_use_ssl(conn->listener->protocol)) {
+          err = ts_conn__send_tls_data(conn, output_sock);
+        } else {
+          err = ts_conn__send_tcp_data(conn, output_sock);
+        }
       }
     }
 
@@ -332,6 +345,9 @@ static int ts_conn__process_ws_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, 
 done:
   if (err) {
     LOG_ERROR("[%s] Websocket error: %d %s", conn->err.err, conn->err.msg);
+  }
+  if (output_sock) {
+    ts_buf__destroy(output_sock);
   }
   return err;
 }

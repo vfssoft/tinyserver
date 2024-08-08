@@ -17,7 +17,7 @@ int ts_ws__init(ts_ws_t* ws, ts_conn_t* conn);
 int ts_ws__destroy(ts_ws_t* ws);
 int ts_ws__state(ts_ws_t* ws);
 int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output);
-int ts_ws__unwrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output);
+int ts_ws__unwrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output_app, ts_buf_t* output_sock);
 int ts_ws__wrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output);
 int ts_ws__disconnect(ts_ws_t* ws, ts_buf_t* output);
 

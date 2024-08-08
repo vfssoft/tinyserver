@@ -396,7 +396,7 @@ done:
   return ws->err.err;
 }
 
-int ts_ws__unwrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
+int ts_ws__unwrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output_app, ts_buf_t* output_sock) {
   int err = 0;
   ts_ws_frame_t frame;
   BOOL ok = FALSE;
@@ -430,7 +430,7 @@ int ts_ws__unwrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
         
       case TS_WS_OPCODE_TEXT_FRAME:
       case TS_WS_OPCODE_BINARY_FRAME:
-        ts_buf__write(output, frame.payload_data->buf, frame.payload_data->len);
+        ts_buf__write(output_app, frame.payload_data->buf, frame.payload_data->len);
         break;
       
       case TS_WS_OPCODE_CONNECTION_CLOSE:
@@ -440,7 +440,7 @@ int ts_ws__unwrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
         } else {
           ws->state = TS_STATE_DISCONNECTING;
           ts_ws__decode_close_error(ws, &frame);
-          err = ts_ws__encode_frame(ws, TS_WS_OPCODE_PONG, NULL, 0, output);
+          err = ts_ws__encode_frame(ws, TS_WS_OPCODE_CONNECTION_CLOSE, NULL, 0, output_sock);
           if (err) {
             goto done;
           }
@@ -449,7 +449,7 @@ int ts_ws__unwrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
       
       case TS_WS_OPCODE_PING:
         // send pong
-        err = ts_ws__encode_frame(ws, TS_WS_OPCODE_PONG, frame.payload_data->buf, frame.payload_data->len, output);
+        err = ts_ws__encode_frame(ws, TS_WS_OPCODE_PONG, frame.payload_data->buf, frame.payload_data->len, output_sock);
         if (err) {
           goto done;
         }
@@ -470,7 +470,7 @@ int ts_ws__unwrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
   
 done:
   ts_ws_frame__destroy(&frame);
-  
+  input->len = 0;
   return err;
 }
 
