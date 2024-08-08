@@ -10,6 +10,7 @@ int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
   conn->listener = listener;
   conn->write_reqs = NULL;
   conn->tls = NULL;
+  conn->tls_buf = NULL;
   conn->ws = NULL;
   memset(&(conn->uvtcp), 0, sizeof(uv_tcp_t));
   ts_error__init(&conn->err);
@@ -18,6 +19,12 @@ int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
   memset(conn->remote_addr, 0, sizeof(conn->remote_addr));
   
   if (use_ssl) {
+    conn->tls_buf = ts_buf__create(0);
+    if (conn->tls_buf == NULL) {
+      ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
+      goto done;
+    }
+
     conn->tls = (ts_tls_t*) ts__malloc(sizeof(ts_tls_t));
     if (conn->tls == NULL) {
       ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
@@ -62,6 +69,10 @@ int ts_conn__destroy(ts_server_listener_t* listener, ts_conn_t* conn) {
     ts_tls__destroy(conn->tls);
     ts__free(conn->tls);
     conn->tls = NULL;
+  }
+  if (conn->tls_buf) {
+    ts_buf__destroy(conn->tls_buf);
+    conn->tls_buf = NULL;
   }
   if (conn->ws) {
     ts_ws__destroy(conn->ws);
@@ -119,24 +130,24 @@ static int ts_conn__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* input,
   ts_tls_t* tls = conn->tls;
 
   assert(ts_tls__state(tls) == TS_STATE_HANDSHAKING || ts_tls__state(tls) == TS_STATE_CONNECTED);
-  ts_buf__set_length(tls->ssl_buf, 0);
+  ts_buf__set_length(conn->tls_buf, 0);
   
   while (input->len > 0) { // we have to consume all input data here
 
     if (ts_tls__state(tls) == TS_STATE_HANDSHAKING) {
-      err = ts_tls__handshake(tls, input, tls->ssl_buf);
+      err = ts_tls__handshake(tls, input, conn->tls_buf);
       if (err) {
         ts_error__copy(&(conn->err), &(tls->err));
         goto done;
       }
 
-      err = ts_conn__send_tcp_data(conn, tls->ssl_buf);
+      err = ts_conn__send_tcp_data(conn, conn->tls_buf);
       if (err) {
         goto done;
       }
 
     } else {
-      err = ts_tls__decrypt(tls, input, tls->ssl_buf);
+      err = ts_tls__decrypt(tls, input, conn->tls_buf);
       if (err) {
         goto done;
       }
@@ -144,7 +155,7 @@ static int ts_conn__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* input,
     
   }
   
-  *decrypted = tls->ssl_buf;
+  *decrypted = conn->tls_buf;
 
 done:
   if (err) {
@@ -396,16 +407,16 @@ int ts_conn__send_data(ts_conn_t* conn, ts_buf_t* input) {
   }
   
   if (use_ssl) {
-    ts_buf__set_length(conn->tls->ssl_buf, 0);
+    ts_buf__set_length(conn->tls_buf, 0);
     
-    err = ts_tls__encrypt(conn->tls, &roinput, conn->tls->ssl_buf);
+    err = ts_tls__encrypt(conn->tls, &roinput, conn->tls_buf);
     if (err) {
       ts_error__copy(&(conn->err), &(conn->tls->err));
       return err;
     }
   
-    roinput.buf = conn->tls->ssl_buf->buf;
-    roinput.len = conn->tls->ssl_buf->len;
+    roinput.buf = conn->tls_buf->buf;
+    roinput.len = conn->tls_buf->len;
   }
   
   err = ts_conn__send_tcp_data(conn, input);
@@ -418,7 +429,7 @@ done:
     ts_buf__set_length(conn->ws->out_buf, 0);
   }
   if (use_ssl) {
-    ts_buf__set_length(conn->tls->ssl_buf, 0);
+    ts_buf__set_length(conn->tls_buf, 0);
   }
   
   ts_buf__set_length(input, 0);
@@ -443,9 +454,9 @@ int ts_conn__close(ts_conn_t* conn, uv_close_cb cb) {
   
   if (use_ssl) {
     ts_tls_t* tls = conn->tls;
-    ts_buf__set_length(tls->ssl_buf, 0);
-    err = ts_tls__disconnect(tls, tls->ssl_buf);
-    err = ts_conn__send_tcp_data(conn, tls->ssl_buf);
+    ts_buf__set_length(conn->tls_buf, 0);
+    err = ts_tls__disconnect(tls, conn->tls_buf);
+    err = ts_conn__send_tcp_data(conn, conn->tls_buf);
     // TODO: log the error
   }
   

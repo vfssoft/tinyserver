@@ -158,12 +158,6 @@ int ts_tls__init(ts_tls_t* tls, ts_conn_t* conn) {
   BIO_new_bio_pair(&(tls->sslbio), 0, &(tls->appbio), 0);
   SSL_set_bio(tls->ssl, tls->sslbio, tls->sslbio);
 
-  tls->ssl_buf = ts_buf__create(0);
-  if (tls->ssl_buf == NULL) {
-    ts_error__set(&(tls->err), TS_ERR_OUT_OF_MEMORY);
-    goto done;
-  }
-
 done:
   if (tls->err.err) {
     LOG_ERROR("[%s][TLS] Initial TLS for connection failed: %d %s", conn->remote_addr, tls->err.err, tls->err.msg);
