@@ -135,6 +135,77 @@ static void uv_on_free_buffer(const uv_buf_t* buf) {
   ts__free(buf->base);
 }
 
+static int ts_conn__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
+  int err = 0;
+  ts_server_t* server = conn->listener->server;
+
+  if (output->len > 0) {
+    LOG_DEBUG("[%s] Send data: %d", conn->remote_addr, output->len);
+
+    ts_conn_write_req_t* write_req = (ts_conn_write_req_t*) ts__malloc(sizeof(ts_conn_write_req_t));
+    if (write_req == NULL) {
+      ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
+      goto done;
+    }
+
+    err = ts_conn__init_write_req(write_req, conn, output->buf, output->len);
+    if (err) {
+      goto done;
+    }
+
+    err = uv_write((uv_write_t*)write_req, (uv_stream_t*)&conn->uvtcp, &write_req->buf, 1, uv_on_write);
+    if (err) {
+      ts_error__set_msg(&(conn->err), err, uv_strerror(err));
+      goto done;
+    }
+
+    ts_buf__set_length(output, 0); // reset the buf for reuse
+
+    done:
+    if (err) {
+      LOG_ERROR("[%s] Send data failed: %d %s", conn->remote_addr, conn->err.err, conn->err.msg);
+    }
+  }
+
+  return err;
+}
+static int ts_conn__send_tls_data(ts_conn_t* conn, ts_buf_t* plain) {
+  int err;
+  ts_ro_buf_t roinput = {
+      .buf = plain->buf,
+      .len = plain->len
+  };
+  ts_buf__set_length(conn->tls_buf, 0);
+
+  err = ts_tls__encrypt(conn->tls, &roinput, conn->tls_buf);
+  if (err) {
+    ts_error__copy(&(conn->err), &(conn->tls->err));
+    return err;
+  }
+
+  return ts_conn__send_tcp_data(conn, conn->tls_buf);
+}
+static int ts_conn__send_websocket_data(ts_conn_t* conn, ts_buf_t* plain) {
+  int err;
+  ts_ro_buf_t roinput = {
+      .buf = plain->buf,
+      .len = plain->len
+  };
+  ts_buf__set_length(conn->ws_buf, 0);
+
+  err = ts_ws__wrap(conn->ws, &roinput, conn->ws_buf);
+  if (err) {
+    ts_error__copy(&(conn->err), &(conn->ws->err));
+    return err;
+  }
+
+  if (ts_use_ssl(conn->listener->protocol)) {
+    return ts_conn__send_tls_data(conn, conn->ws_buf);
+  } else {
+    return ts_conn__send_tcp_data(conn, conn->ws_buf);
+  }
+}
+
 static int ts_conn__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, ts_ro_buf_t* output) {
   int err = 0;
   int old_state;
@@ -337,40 +408,6 @@ static int ts_conn__populate_addrs(ts_conn_t* conn) {
   return 0;
 }
 
-static int ts_conn__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
-  int err = 0;
-  ts_server_t* server = conn->listener->server;
-  
-  if (output->len > 0) {
-    LOG_DEBUG("[%s] Send data: %d", conn->remote_addr, output->len);
-    
-    ts_conn_write_req_t* write_req = (ts_conn_write_req_t*) ts__malloc(sizeof(ts_conn_write_req_t));
-    if (write_req == NULL) {
-      ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
-      goto done;
-    }
-    
-    err = ts_conn__init_write_req(write_req, conn, output->buf, output->len);
-    if (err) {
-      goto done;
-    }
-    
-    err = uv_write((uv_write_t*)write_req, (uv_stream_t*)&conn->uvtcp, &write_req->buf, 1, uv_on_write);
-    if (err) {
-      ts_error__set_msg(&(conn->err), err, uv_strerror(err));
-      goto done;
-    }
-    
-    ts_buf__set_length(output, 0); // reset the buf for reuse
-    
-done:
-    if (err) {
-      LOG_ERROR("[%s] Send data failed: %d %s", conn->remote_addr, conn->err.err, conn->err.msg);
-    }
-  }
-  
-  return err;
-}
 static int ts_conn__read_tcp_data(ts_conn_t* conn, uv_read_cb cb) {
   int err;
   err = uv_read_start((uv_stream_t*) &conn->uvtcp, uv_on_alloc_buffer, cb);
@@ -409,56 +446,21 @@ int ts_conn__send_data(ts_conn_t* conn, ts_buf_t* input) {
   int err;
   ts_server_listener_t* listener = conn->listener;
   ts_server_t* server = listener->server;
-  
-  BOOL use_ssl = ts_use_ssl(listener->protocol);
-  BOOL use_ws = ts_use_websocket(listener->protocol);
-  
-  ts_ro_buf_t roinput;
-  roinput.buf = input->buf;
-  roinput.len = input->len;
-  
-  if (use_ws) {
-    ts_buf__set_length(conn->ws_buf, 0);
-  
-    err = ts_ws__wrap(conn->ws, &roinput, conn->ws_buf);
-    if (err) {
-      ts_error__copy(&(conn->err), &(conn->ws->err));
-      return err;
-    }
-  
-    roinput.buf = conn->ws_buf->buf;
-    roinput.len = conn->ws_buf->len;
+
+  if (ts_use_websocket(conn->listener->protocol)) {
+    err = ts_conn__send_websocket_data(conn, input);
+  } else if (ts_use_ssl(conn->listener->protocol)) {
+    err = ts_conn__send_tls_data(conn, input);
+  } else {
+    err = ts_conn__send_tcp_data(conn, input);
   }
-  
-  if (use_ssl) {
-    ts_buf__set_length(conn->tls_buf, 0);
-    
-    err = ts_tls__encrypt(conn->tls, &roinput, conn->tls_buf);
-    if (err) {
-      ts_error__copy(&(conn->err), &(conn->tls->err));
-      return err;
-    }
-  
-    roinput.buf = conn->tls_buf->buf;
-    roinput.len = conn->tls_buf->len;
-  }
-  
-  err = ts_conn__send_tcp_data(conn, input);
-  if (err) {
-    return err;
-  }
-  
+
 done:
-  if (use_ws) {
-    ts_buf__set_length(conn->ws_buf, 0);
-  }
-  if (use_ssl) {
-    ts_buf__set_length(conn->tls_buf, 0);
+  if (err == 0) {
+    ts_buf__set_length(input, 0);
   }
   
-  ts_buf__set_length(input, 0);
-  
-  return 0;
+  return err;
 }
 int ts_conn__close(ts_conn_t* conn, uv_close_cb cb) {
   int err;
@@ -467,23 +469,23 @@ int ts_conn__close(ts_conn_t* conn, uv_close_cb cb) {
   
   BOOL use_ssl = ts_use_ssl(listener->protocol);
   BOOL use_ws = ts_use_websocket(listener->protocol);
-  
+
   if (use_ws) {
-    ts_ws_t* ws = conn->ws;
     ts_buf__set_length(conn->ws_buf, 0);
-    err = ts_ws__disconnect(ws, conn->ws_buf);
-    //err = ts_conn__send_data(conn, ws->out_buf);
+    err = ts_ws__disconnect(conn->ws, conn->ws_buf);
+    if (use_ssl) {
+      err = ts_conn__send_tls_data(conn, conn->ws_buf);
+    } else {
+      err = ts_conn__send_tcp_data(conn, conn->ws_buf);
+    }
     // TODO: log the error
-  }
-  
-  if (use_ssl) {
-    ts_tls_t* tls = conn->tls;
+  } else if (use_ssl) {
     ts_buf__set_length(conn->tls_buf, 0);
-    err = ts_tls__disconnect(tls, conn->tls_buf);
+    err = ts_tls__disconnect(conn->tls, conn->tls_buf);
     err = ts_conn__send_tcp_data(conn, conn->tls_buf);
     // TODO: log the error
   }
-  
+
   uv_handle_t* h = (uv_handle_t*)&conn->uvtcp;
   if (h && !uv_is_closing(h)) {
     uv_close(h, cb);
