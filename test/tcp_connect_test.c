@@ -152,6 +152,12 @@ TEST_IMPL(tcp_server_disconnect) {
 TEST_IMPL(tls_server_disconnect) {
   return server_disconnect_impl(TS_PROTO_TLS);
 }
+TEST_IMPL(ws_server_disconnect) {
+  return server_disconnect_impl(TS_PROTO_WS);
+}
+TEST_IMPL(wss_server_disconnect) {
+  return server_disconnect_impl(TS_PROTO_WSS);
+}
 
 
 typedef struct test_proto_aftersec_s {
@@ -221,16 +227,27 @@ static int tcp_server__connect_disconnect_impl(int proto, int afterSec) {
 TEST_IMPL(tcp_connect_disconnect_quick) {
   return tcp_server__connect_disconnect_impl(TS_PROTO_TCP, 0);
 }
-TEST_IMPL(tcp_connect_disconnect_1s) {
-  return tcp_server__connect_disconnect_impl(TS_PROTO_TCP, 1000);
-}
 TEST_IMPL(tls_connect_disconnect_quick) {
   return tcp_server__connect_disconnect_impl(TS_PROTO_TLS, 0);
+}
+TEST_IMPL(ws_connect_disconnect_quick) {
+  return tcp_server__connect_disconnect_impl(TS_PROTO_WS, 0);
+}
+TEST_IMPL(wss_connect_disconnect_quick) {
+  return tcp_server__connect_disconnect_impl(TS_PROTO_WSS, 0);
+}
+TEST_IMPL(tcp_connect_disconnect_1s) {
+  return tcp_server__connect_disconnect_impl(TS_PROTO_TCP, 1000);
 }
 TEST_IMPL(tls_connect_disconnect_1s) {
   return tcp_server__connect_disconnect_impl(TS_PROTO_TLS, 1000);
 }
-
+TEST_IMPL(ws_connect_disconnect_1s) {
+  return tcp_server__connect_disconnect_impl(TS_PROTO_WS, 1000);
+}
+TEST_IMPL(wss_connect_disconnect_1s) {
+  return tcp_server__connect_disconnect_impl(TS_PROTO_WSS, 1000);
+}
 
 static int tcp_server_clients_impl(int proto, int client_cnt) {
   test_conn_info_t conn_info;

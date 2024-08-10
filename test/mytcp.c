@@ -301,13 +301,18 @@ int mytcp__connect(mytcp_t* tcp, const char* host, int port) {
   if (err) {
     return err;
   }
+  if (!tcp->use_ws) {
+    return 0;
+  }
   return mytcp__ws_connect(tcp, host, port);
 }
 int mytcp__disconnect(mytcp_t* tcp) {
   int err;
-  err = mytcp__ws_disconnect(tcp);
-  if (err) {
-    return err;
+  if (tcp->use_ws) {
+    err = mytcp__ws_disconnect(tcp);
+    if (err) {
+      return err;
+    }
   }
   return mytcp__disconnect_tcp_ssl(tcp);
 }
