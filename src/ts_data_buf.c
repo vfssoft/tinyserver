@@ -151,7 +151,7 @@ int ts_buf__set_str(ts_buf_t* buf, const char* str, int len) {
 int ts_buf__write_str(ts_buf_t* buf, const char* str, int len) {
   int err;
   
-  err = ts_buf__ensure_cap(buf, buf->len + len);
+  err = ts_buf__ensure_cap(buf, buf->len + len + 1); // extra one byte for the NULL terminated char
   if (err) {
     return err;
   }
