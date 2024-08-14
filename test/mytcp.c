@@ -1,6 +1,9 @@
 
 #include "mytcp.h"
 
+#define TEST_CLIENT_READ_TIMEOUT 100
+#define TEST_CLIENT_WAIT_SLEEP_TIME 20
+
 static int WSA_START_UP = 0;
 static int OPENSSL_INITIALIZED = 0;
 static uv_mutex_t mutex;
@@ -39,9 +42,13 @@ static void mytcp__wsa_startup() {
 static void mytcp__init_openssl() {
   lock();
   if (!OPENSSL_INITIALIZED) {
-    SSL_library_init();
-    OpenSSL_add_all_algorithms();
-    SSL_load_error_strings();
+    // We're in the same process with the tls server
+    // and the server has initalized the OpenSSL library before the client
+    // So don't need to initialize the OpenSSL library again, it will cause errors.
+    
+    //SSL_library_init();
+    //OpenSSL_add_all_algorithms();
+    //SSL_load_error_strings();
     OPENSSL_INITIALIZED = 1;
   }
   unlock();
@@ -171,9 +178,9 @@ static int mytcp__ssl_read(mytcp_t* tcp, char* data, int len) {
       if (roffset >= len) break;
 
       // work like read timeout: 1s
-      for (int i = 0; i < 10; i++) {
+      for (int i = 0; i < TEST_CLIENT_READ_TIMEOUT / TEST_CLIENT_WAIT_SLEEP_TIME; i++) {
         if (SSL_pending(tcp->ssl) == 0) {
-          Sleep(100);
+          Sleep(TEST_CLIENT_WAIT_SLEEP_TIME);
         } else {
           break;
         }
@@ -400,8 +407,8 @@ static int mytcp__ws_read(mytcp_t* tcp, char* data, int len) {
     offset += err;
 
     if (err == 0) {
-      if (retry_count == 10) break;
-      Sleep(100);
+      if (retry_count == TEST_CLIENT_READ_TIMEOUT / TEST_CLIENT_WAIT_SLEEP_TIME) break;
+      Sleep(TEST_CLIENT_WAIT_SLEEP_TIME);
       retry_count++;
     }
   }
