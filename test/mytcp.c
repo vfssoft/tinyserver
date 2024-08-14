@@ -283,7 +283,48 @@ static int mytcp__ws_disconnect(mytcp_t* tcp) {
   }
   return 0;
 }
+static int mytcp__ws_write(mytcp_t* tcp, const char* data, int len) {
+  char maskingKey[4] = { 0xa5, 0x23, 0xcf, 0x0c }; // randomly choose
+  char* buf = (char*) malloc(len + 16);
+  int offset = 0;
 
+  buf[0] = 0x82; // Fin, Binary
+  buf[1] = 0x80; // Mask
+
+  if (len <= 125) {
+    buf[1] |= len;
+    offset = 2;
+  } else if (len <= 0xFFFF) {
+    buf[1] |= 126;
+    buf[2] = (char)((len & 0xFF00) >> 8);
+    buf[3] = (char)(len & 0x00FF);
+    offset = 4;
+  } else {
+    buf[1] |= 127;
+    buf[2] = 0x00;
+    buf[3] = 0x00;
+    buf[4] = 0x00;
+    buf[5] = 0x00;
+    buf[6] = (char)((len & 0xFF000000) >> 24);
+    buf[7] = (char)((len & 0x00FF0000) >> 16);
+    buf[8] = (char)((len & 0x0000FF00) >>  8);
+    buf[9] = (char)((len & 0x000000FF)      );
+    offset = 10;
+  }
+
+  memcpy(buf + offset, maskingKey, 4);
+  offset += 4;
+
+  memcpy(buf + offset, data, len);
+  for (int i = 0; i < len; i++) {
+    buf[offset + i] ^= maskingKey[i%4];
+  }
+  offset += len;
+
+  int err = mytcp__write_tcp_ssl(tcp, buf, offset);
+  free(buf);
+  return err;
+}
 
 int mytcp__init(mytcp_t* tcp) {
   tcp->use_ssl = 0;
@@ -317,7 +358,11 @@ int mytcp__disconnect(mytcp_t* tcp) {
   return mytcp__disconnect_tcp_ssl(tcp);
 }
 int mytcp__write(mytcp_t* tcp, const char* data, int len) {
-  return mytcp__write_tcp_ssl(tcp, data, len);
+  if (tcp->use_ws) {
+    return mytcp__ws_write(tcp, data, len);
+  } else {
+    return mytcp__write_tcp_ssl(tcp, data, len);
+  }
 }
 int mytcp__read(mytcp_t* tcp, char* data, int len) {
   return mytcp__read_tcp_ssl(tcp, data, len);
