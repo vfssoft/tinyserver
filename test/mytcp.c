@@ -323,15 +323,125 @@ static int mytcp__ws_write(mytcp_t* tcp, const char* data, int len) {
 
   int err = mytcp__write_tcp_ssl(tcp, buf, offset);
   free(buf);
-  return err;
+  return len;
+}
+static int mytcp__ws_read_from_buf(mytcp_t* tcp, char* data, int len) {
+  int len_read = len;
+  ts_buf__read(tcp->ws_ws_buf, data, &len_read);
+  return len_read;
+}
+static int mytcp__ws_decode_frame(mytcp_t* tcp, BOOL* ok) {
+  int err = 0;
+  ts_buf_t* buf = tcp->ws_raw_buf;
+  ts_buf_t* ws_buf = tcp->ws_ws_buf;
+  int offset = 0; // next byte to read
+  *ok = FALSE;
+
+  if (buf->len < 2) return 0;
+
+  unsigned long long payload_len = buf->buf[1] & 0x7F;
+  if (payload_len <= 125) {
+    // payload_len is current value
+    offset = 2;
+  } else if (payload_len == 126) {
+    if (buf->len < 4) {
+      return 0;
+    }
+    payload_len =
+        (buf->buf[2] << 8) |
+        buf->buf[3];
+    offset = 4;
+  } else if (payload_len == 127) {
+    if (buf->len < 10) {
+      return 0;
+    }
+    payload_len =
+        ((unsigned long long)buf->buf[2] << 56) |
+        ((unsigned long long)buf->buf[3] << 48) |
+        ((unsigned long long)buf->buf[4] << 40) |
+        ((unsigned long long)buf->buf[5] << 32) |
+        ((unsigned long long)buf->buf[6] << 24) |
+        ((unsigned long long)buf->buf[7] << 16) |
+        ((unsigned long long)buf->buf[8] <<  8) |
+        buf->buf[9];
+
+    offset = 10;
+  }
+
+  if (offset + payload_len > buf->len) return 0;
+
+  ts_buf__write(ws_buf, buf->buf + offset, payload_len);
+  offset += payload_len;
+  ts_buf__read(buf, NULL, &offset);
+
+  *ok = TRUE;
+  return 0;
+}
+static int mytcp__ws_read_from_socket(mytcp_t* tcp, char* data, int len) {
+  int err = 0;
+  int offset = 0;
+  char* recv_buf = malloc(1024 * 1024);
+  ts_buf_t* raw_buf = tcp->ws_raw_buf;
+  BOOL decoded = FALSE;
+
+  while (offset < len) {
+    err = mytcp__read_tcp_ssl(tcp, recv_buf, 1024 * 1024);
+    if (err <= 0) return err;
+    ts_buf__write(raw_buf, recv_buf, err);
+
+    err = mytcp__ws_decode_frame(tcp, &decoded);
+    if (err) return err;
+
+    if (decoded) {
+      err = mytcp__ws_read_from_buf(tcp, data + offset, len - offset);
+      if (err) return err;
+      offset += err;
+    }
+  }
+
+done:
+  free(recv_buf);
+
+  return offset;
+}
+static int mytcp__ws_read(mytcp_t* tcp, char* data, int len) {
+  int err = 0;
+  int offset = 0;
+  int retry_count = 0;
+
+  err = mytcp__ws_read_from_buf(tcp, data, len);
+  if (err < 0) return err;
+  offset += err;
+
+  while (offset < len) {
+    err = mytcp__ws_read_from_socket(tcp, data+offset, len-offset);
+    if (err < 0) return err;
+    offset += err;
+
+    if (err == 0) {
+      if (retry_count == 10) break;
+      Sleep(100);
+      retry_count++;
+    }
+  }
+
+  return offset;
 }
 
 int mytcp__init(mytcp_t* tcp) {
   tcp->use_ssl = 0;
   tcp->use_ws = 0;
+  tcp->ws_ws_buf = ts_buf__create(0);
+  tcp->ws_raw_buf = ts_buf__create(0);
   return 0;
 }
 int mytcp__destroy(mytcp_t* tcp) {
+  if (tcp->ws_ws_buf) {
+    ts_buf__destroy(tcp->ws_ws_buf);
+  }
+  if (tcp->ws_raw_buf) {
+    ts_buf__destroy(tcp->ws_raw_buf);
+  }
   return 0;
 }
 
@@ -365,5 +475,9 @@ int mytcp__write(mytcp_t* tcp, const char* data, int len) {
   }
 }
 int mytcp__read(mytcp_t* tcp, char* data, int len) {
-  return mytcp__read_tcp_ssl(tcp, data, len);
+  if (tcp->use_ws) {
+    return mytcp__ws_read(tcp, data, len);
+  } else {
+    return mytcp__read_tcp_ssl(tcp, data, len);
+  }
 }

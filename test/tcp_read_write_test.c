@@ -93,19 +93,37 @@ TEST_IMPL(tcp_echo) {
   const char* data = "hello world";
   return server_echo_impl(TS_PROTO_TCP, data, strlen(data));
 }
+TEST_IMPL(tls_echo) {
+  const char* data = "hello world";
+  return server_echo_impl(TS_PROTO_TLS, data, strlen(data));
+}
+TEST_IMPL(ws_echo) {
+  const char* data = "hello world";
+  return server_echo_impl(TS_PROTO_WS, data, strlen(data));
+}
+TEST_IMPL(wss_echo) {
+  const char* data = "hello world";
+  return server_echo_impl(TS_PROTO_WSS, data, strlen(data));
+}
 TEST_IMPL(tcp_echo_1k) {
   char* data = (char*) malloc(1024);
   memset(data, 'x', 1024);
   return server_echo_impl(TS_PROTO_TCP, data, 1024);
 }
-TEST_IMPL(tls_echo) {
-  const char* data = "hello world";
-  return server_echo_impl(TS_PROTO_TLS, data, strlen(data));
-}
 TEST_IMPL(tls_echo_1k) {
   char* data = (char*) malloc(1024);
   memset(data, 'x', 1024);
   return server_echo_impl(TS_PROTO_TLS, data, 1024);
+}
+TEST_IMPL(ws_echo_1k) {
+  char* data = (char*) malloc(1024);
+  memset(data, 'x', 1024);
+  return server_echo_impl(TS_PROTO_WS, data, 1024);
+}
+TEST_IMPL(wss_echo_1k) {
+  char* data = (char*) malloc(1024);
+  memset(data, 'x', 1024);
+  return server_echo_impl(TS_PROTO_WSS, data, 1024);
 }
 
 static void client_cb2(void *arg) {
