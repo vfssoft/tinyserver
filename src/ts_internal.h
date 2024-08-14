@@ -47,15 +47,4 @@ void ts_error__set_msg(ts_error_t* errt, int err, const char* msg);
 void ts_error__set_msgf(ts_error_t* errt, int err, const char* format, ...);
 void ts_error__copy(ts_error_t* dst, ts_error_t* src);
 
-ts_buf_t* ts_buf__create(int cap);
-void ts_buf__destroy(ts_buf_t* buf);
-int ts_buf__set_length(ts_buf_t* buf, int len);
-int ts_buf__get_length(ts_buf_t* buf);
-int ts_buf__write(ts_buf_t* buf, const char* data, int len);
-int ts_buf__read(ts_buf_t* buf, char* data, int* len);
-int ts_buf__set(ts_buf_t* buf, const char* data, int len);
-int ts_buf__set_str(ts_buf_t* buf, const char* str, int len);
-int ts_buf__write_str(ts_buf_t* buf, const char* str, int len);
-int ts_buf__set_const(ts_buf_t* buf, const char* data, int len);
-
 #endif //TINYSERVER_TS_INTERNAL_H

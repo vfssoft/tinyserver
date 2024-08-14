@@ -8,6 +8,8 @@
 #include <openssl/conf.h>
 #include <openssl/engine.h>
 
+#include "ts_data_buf.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -23,8 +25,6 @@ extern "C" {
 
 
 typedef struct ts_error_s ts_error_t;
-typedef struct ts_buf_s ts_buf_t;
-typedef struct ts_ro_buf_s ts_ro_buf_t;
 typedef struct ts_server_listener_s ts_server_listener_t;
 typedef struct ts_server_s ts_server_t;
 typedef struct ts_conn_write_req_s ts_conn_write_req_t;
@@ -68,19 +68,6 @@ TS_EXTERN  int ts_server_log_set_log_cb(ts_server_t* server, void* ctx, ts_log_c
 struct ts_error_s {
     int err;
     char* msg;
-};
-
-struct ts_buf_s {
-    char* buf;
-    int   len;
-    int   cap;
-    int   const_ref; // whether the buf is a const ref to another memory
-};
-
-// readonly buf
-struct ts_ro_buf_s {
-    const char* buf;
-    int len;
 };
 
 #define TS_LOG_DEST_FILE   1
