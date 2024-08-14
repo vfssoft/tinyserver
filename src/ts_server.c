@@ -196,7 +196,7 @@ done:
 int ts_server__write(ts_server_t* server, ts_conn_t* conn, const char* data, int len) {
   int err;
   ts_buf_t* buf = ts_buf__create(0);
-  ts_buf__set_const(buf, data,len);
+  ts_buf__set(buf, data, len);
 
   err = ts_conn__send_data(conn, buf);
 
