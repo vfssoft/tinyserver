@@ -17,6 +17,8 @@
 #include <openssl/err.h>
 #include <uv.h>
 
+#include <ts_data_buf.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -30,6 +32,9 @@ struct mytcp_s {
 
   SSL_CTX* sslctx;
   SSL*     ssl;
+
+  ts_buf_t* ws_raw_buf;
+  ts_buf_t* ws_ws_buf;
 };
 
 int mytcp__init_mutex();

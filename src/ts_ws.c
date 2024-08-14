@@ -482,7 +482,7 @@ int ts_ws__wrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
 int ts_ws__disconnect(ts_ws_t* ws, ts_buf_t* output) {
   int err = 0;
 
-  err = ts_ws__encode_frame(ws, TS_WS_OPCODE_PONG, NULL, 0, output);
+  err = ts_ws__encode_frame(ws, TS_WS_OPCODE_CONNECTION_CLOSE, NULL, 0, output);
   if (err) {
     goto done;
   }
