@@ -294,7 +294,7 @@ int ts_tls__decrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
   int ssl_err;
   char ssl_buf[16 * 1024];
   
-  while (input->len > 0) {
+  do {
     LOG_DEBUG_EX("[%s][TLS] TLS decrypt cipher data: %d", conn->remote_addr, input->len);
     
     ts_tls__write_data_to_ssl(tls, input);
@@ -326,7 +326,7 @@ int ts_tls__decrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
         }
       }
     }
-  }
+  } while (input->len > 0);
   
   return 0;
 }

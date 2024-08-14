@@ -235,7 +235,9 @@ static int ts_conn__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* input,
         goto done;
       }
 
-    } else {
+    }
+
+    if (ts_tls__state(tls) != TS_STATE_HANDSHAKING) {
       err = ts_tls__decrypt(tls, input, conn->tls_buf);
       if (err) {
         goto done;
