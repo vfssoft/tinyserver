@@ -89,4 +89,49 @@ int b64_decode(const char* str, int str_len, char* decoded) {
   return EVP_DecodeBlock((unsigned char*)decoded, (unsigned char*)str, str_len);
 }
 
+unsigned long long bytes2uint64_be(const char* bytes) {
+  unsigned long long val = 0;
+  val |= ((unsigned long long)(bytes[0] & 0xFF)) << 56;
+  val |= ((unsigned long long)(bytes[1] & 0xFF)) << 48;
+  val |= ((unsigned long long)(bytes[2] & 0xFF)) << 40;
+  val |= ((unsigned long long)(bytes[3] & 0xFF)) << 32;
+  val |= ((unsigned long long)(bytes[4] & 0xFF)) << 24;
+  val |= ((unsigned long long)(bytes[5] & 0xFF)) << 16;
+  val |= ((unsigned long long)(bytes[6] & 0xFF)) <<  8;
+  val |= (unsigned long long)(bytes[7] & 0xFF);
+  return (unsigned long long)val;
+}
+unsigned int bytes2uint32_be(const char* bytes) {
+  return (unsigned int) (
+      (unsigned int)(bytes[0] & 0xFF) << 24 |
+      (unsigned int)(bytes[1] & 0xFF) << 16 |
+      (unsigned int)(bytes[2] & 0xFF) << 8 |
+      (unsigned int)(bytes[3] & 0xFF)
+  );
+}
+unsigned short bytes2uint16_be(const char* bytes) {
+  return (unsigned short) (
+      ((unsigned short)(bytes[0] & 0xFF)) << 8 | ((unsigned short)(bytes[1] & 0xFF))
+  );
+}
+void uint642bytes_be(unsigned long long val, char* bytes) {
+  bytes[0] = (char)((val & 0xFF00000000000000) >> 56);
+  bytes[1] = (char)((val & 0x00FF000000000000) >> 48);
+  bytes[2] = (char)((val & 0x0000FF0000000000) >> 40);
+  bytes[3] = (char)((val & 0x000000FF00000000) >> 32);
+  bytes[4] = (char)((val & 0x00000000FF000000) >> 24);
+  bytes[5] = (char)((val & 0x0000000000FF0000) >> 16);
+  bytes[6] = (char)((val & 0x000000000000FF00) >> 8);
+  bytes[7] = (char)((val & 0x00000000000000FF));
+}
+void uint322bytes_be(unsigned int val, char* bytes) {
+  bytes[0] = (char)((val & 0xFF000000) >> 24);
+  bytes[1] = (char)((val & 0x00FF0000) >> 16);
+  bytes[2] = (char)((val & 0x0000FF00) >> 8);
+  bytes[3] = (char)((val & 0x000000FF));
+}
+void uint162bytes_be(unsigned short val, char* bytes) {
+  bytes[0] = (char)((val & 0xFF00) >> 8);
+  bytes[1] = (char)((val & 0x00FF));
+}
 

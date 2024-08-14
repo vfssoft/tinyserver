@@ -197,6 +197,14 @@ TEST_IMPL(tls_echo2) {
   const char* data = "hello world!!!";
   return server_echo2_impl(TS_PROTO_TLS, data, strlen(data));
 }
+TEST_IMPL(ws_echo2) {
+  const char* data = "hello world!!!";
+  return server_echo2_impl(TS_PROTO_WS, data, strlen(data));
+}
+TEST_IMPL(wss_echo2) {
+  const char* data = "hello world!!!";
+  return server_echo2_impl(TS_PROTO_WSS, data, strlen(data));
+}
 
 typedef struct test_echo_data_s {
     int proto;
@@ -277,12 +285,24 @@ static int tcp_server__echo_large_data_impl(int proto, int data_size) {
 TEST_IMPL(tcp_echo_1k_data) {
   return tcp_server__echo_large_data_impl(TS_PROTO_TCP, 1024);
 }
-TEST_IMPL(tcp_echo_10m_data) {
-  return tcp_server__echo_large_data_impl(TS_PROTO_TCP, 10 * 1024 * 1024);
-}
 TEST_IMPL(tls_echo_1k_data) {
   return tcp_server__echo_large_data_impl(TS_PROTO_TLS, 1024);
 }
+TEST_IMPL(ws_echo_1k_data) {
+  return tcp_server__echo_large_data_impl(TS_PROTO_WS, 1024);
+}
+TEST_IMPL(wss_echo_1k_data) {
+  return tcp_server__echo_large_data_impl(TS_PROTO_WSS, 1024);
+}
+TEST_IMPL(tcp_echo_10m_data) {
+  return tcp_server__echo_large_data_impl(TS_PROTO_TCP, 10 * 1024 * 1024);
+}
 TEST_IMPL(tls_echo_10m_data) {
   return tcp_server__echo_large_data_impl(TS_PROTO_TLS, 10 * 1024 * 1024);
+}
+TEST_IMPL(ws_echo_10m_data) {
+  return tcp_server__echo_large_data_impl(TS_PROTO_WS, 10 * 1024 * 1024);
+}
+TEST_IMPL(wss_echo_10m_data) {
+  return tcp_server__echo_large_data_impl(TS_PROTO_WSS, 10 * 1024 * 1024);
 }

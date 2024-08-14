@@ -296,19 +296,11 @@ static int mytcp__ws_write(mytcp_t* tcp, const char* data, int len) {
     offset = 2;
   } else if (len <= 0xFFFF) {
     buf[1] |= 126;
-    buf[2] = (char)((len & 0xFF00) >> 8);
-    buf[3] = (char)(len & 0x00FF);
+    uint162bytes_be(len, buf + 2);
     offset = 4;
   } else {
     buf[1] |= 127;
-    buf[2] = 0x00;
-    buf[3] = 0x00;
-    buf[4] = 0x00;
-    buf[5] = 0x00;
-    buf[6] = (char)((len & 0xFF000000) >> 24);
-    buf[7] = (char)((len & 0x00FF0000) >> 16);
-    buf[8] = (char)((len & 0x0000FF00) >>  8);
-    buf[9] = (char)((len & 0x000000FF)      );
+    uint642bytes_be(len, buf + 2);
     offset = 10;
   }
 
@@ -347,24 +339,13 @@ static int mytcp__ws_decode_frame(mytcp_t* tcp, BOOL* ok) {
     if (buf->len < 4) {
       return 0;
     }
-    payload_len =
-        (buf->buf[2] << 8) |
-        buf->buf[3];
+    payload_len = bytes2uint16_be(buf->buf + 2);
     offset = 4;
   } else if (payload_len == 127) {
     if (buf->len < 10) {
       return 0;
     }
-    payload_len =
-        ((unsigned long long)buf->buf[2] << 56) |
-        ((unsigned long long)buf->buf[3] << 48) |
-        ((unsigned long long)buf->buf[4] << 40) |
-        ((unsigned long long)buf->buf[5] << 32) |
-        ((unsigned long long)buf->buf[6] << 24) |
-        ((unsigned long long)buf->buf[7] << 16) |
-        ((unsigned long long)buf->buf[8] <<  8) |
-        buf->buf[9];
-
+    payload_len = bytes2uint64_be(buf->buf + 2);
     offset = 10;
   }
 

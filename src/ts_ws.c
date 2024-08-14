@@ -121,24 +121,13 @@ static int ts_ws__decode_frame(ts_ws_t* ws, ts_ws_frame_t* frame, BOOL* ok) {
     if (buf->len < 4) {
       return 0;
     }
-    payload_len =
-        (buf->buf[2] << 8) |
-        buf->buf[3];
+    payload_len = bytes2uint16_be(buf->buf + 2);
     offset = 4;
   } else if (payload_len == 127) {
     if (buf->len < 10) {
       return 0;
     }
-    payload_len =
-        ((unsigned long long)buf->buf[2] << 56) |
-        ((unsigned long long)buf->buf[3] << 48) |
-        ((unsigned long long)buf->buf[4] << 40) |
-        ((unsigned long long)buf->buf[5] << 32) |
-        ((unsigned long long)buf->buf[6] << 24) |
-        ((unsigned long long)buf->buf[7] << 16) |
-        ((unsigned long long)buf->buf[8] <<  8) |
-        buf->buf[9];
-  
+    payload_len = bytes2uint64_be(buf->buf + 2);
     offset = 10;
   }
   
@@ -181,20 +170,12 @@ static int ts_ws__encode_frame(ts_ws_t* ws, int opcode, const char* payload, int
     ws_header_len = 2;
   } else if (payload_len <= 0xFFFF) {
     ws_header_buf[1]= 126;
-    ws_header_buf[2] = (char)((payload_len & 0xFF00) >> 8);
-    ws_header_buf[3] = (char)((payload_len & 0x00FF));
+    uint162bytes_be(payload_len, ws_header_buf + 2);
     ws_header_len = 4;
   } else {
     // we're the writer, we will never send data more than max int 32
     ws_header_buf[1]= 127;
-    ws_header_buf[2] = 0;
-    ws_header_buf[3] = 0;
-    ws_header_buf[4] = 0;
-    ws_header_buf[5] = 0;
-    ws_header_buf[6] = (char)((payload_len & 0xFF000000) >> 24);
-    ws_header_buf[7] = (char)((payload_len & 0x00FF0000) >> 16);
-    ws_header_buf[8] = (char)((payload_len & 0x0000FF00) >> 8);
-    ws_header_buf[9] = (char)((payload_len & 0x000000FF));
+    uint642bytes_be(payload_len, ws_header_buf + 2);
     ws_header_len = 10;
   }
   
