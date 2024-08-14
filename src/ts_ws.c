@@ -171,40 +171,34 @@ done:
 static int ts_ws__encode_frame(ts_ws_t* ws, int opcode, const char* payload, int payload_len, ts_buf_t* output) {
   // for simply, encode all payload into a single frame
   int err;
-  char one_byte[1] = { 0x80 }; // FIN
-  one_byte[0] |= (char)opcode;
-  
-  char payload_len_bytes[9];
-  int payload_len_bytes_cnt = 1;
-  
-  err = ts_buf__write(output, one_byte, 1);
-  if (err) {
-    goto done;
-  }
+  char ws_header_buf[10];
+  int ws_header_len = 0;
+
+  ws_header_buf[0] = 0x80 | (char)opcode; // Fin, opcode(Binary, Text).
 
   if (payload_len <= 125) {
-    payload_len_bytes[0]= (char)(payload_len & 0x7F);
-    payload_len_bytes_cnt = 1;
+    ws_header_buf[1]= (char)(payload_len & 0x7F);
+    ws_header_len = 2;
   } else if (payload_len <= 0xFFFF) {
-    payload_len_bytes[0]= 126;
-    payload_len_bytes[1] = (char)((payload_len & 0xFF00) >> 8);
-    payload_len_bytes[1] = (char)((payload_len & 0x00FF));
-    payload_len_bytes_cnt = 3;
+    ws_header_buf[1]= 126;
+    ws_header_buf[2] = (char)((payload_len & 0xFF00) >> 8);
+    ws_header_buf[3] = (char)((payload_len & 0x00FF));
+    ws_header_len = 4;
   } else {
     // we're the writer, we will never send data more than max int 32
-    payload_len_bytes[0]= 127;
-    payload_len_bytes[1] = 0;
-    payload_len_bytes[2] = 0;
-    payload_len_bytes[3] = 0;
-    payload_len_bytes[4] = 0;
-    payload_len_bytes[5] = (char)((payload_len & 0xFF000000) >> 24);
-    payload_len_bytes[6] = (char)((payload_len & 0x00FF0000) >> 16);
-    payload_len_bytes[7] = (char)((payload_len & 0x0000FF00) >> 8);
-    payload_len_bytes[8] = (char)((payload_len & 0x000000FF));
-    payload_len_bytes_cnt = 9;
+    ws_header_buf[1]= 127;
+    ws_header_buf[2] = 0;
+    ws_header_buf[3] = 0;
+    ws_header_buf[4] = 0;
+    ws_header_buf[5] = 0;
+    ws_header_buf[6] = (char)((payload_len & 0xFF000000) >> 24);
+    ws_header_buf[7] = (char)((payload_len & 0x00FF0000) >> 16);
+    ws_header_buf[8] = (char)((payload_len & 0x0000FF00) >> 8);
+    ws_header_buf[9] = (char)((payload_len & 0x000000FF));
+    ws_header_len = 10;
   }
   
-  err = ts_buf__write(output, payload_len_bytes, payload_len_bytes_cnt);
+  err = ts_buf__write(output, ws_header_buf, ws_header_len);
   if (err) {
     goto done;
   }
