@@ -168,11 +168,13 @@
 #define ASSERT_PTR_LT(a, b) \
   ASSERT_BASE(a, <, b, void*, "p")
 
-typedef struct {
+typedef struct test_entry_s test_entry_t;
+
+struct test_entry_s {
     char* name;
     char* categories;
     int (*entry)(void);
-} test_entry_t;
+};
 
 
 #define TEST_LIST_START        \

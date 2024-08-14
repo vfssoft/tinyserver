@@ -84,15 +84,19 @@ static void run_test(test_entry_t* t) {
 int run_tests() {
   win_enable_virtual_terminal_processing();
   
+  long long start_time = get_current_time_millis();
+  int total_tests_count = sizeof(TESTS) / sizeof(TESTS[0]);
   int index = 1;
   test_entry_t* test;
 
   for (test = TESTS; test->entry; test++) {
-    STDOUT("\x1b[34m##### [%d][%s]\x1b[m\n", index, test->name);
+    STDOUT("\x1b[34m##### [%d/%d][%s]\x1b[m\n", index, total_tests_count, test->name);
     
     run_test(test);
     index++;
   }
 
+  long long time_used = get_current_time_millis() - start_time;
+  STDOUT("\x1b[34m##### Total Time Used: %lld ms\x1b[m\n", time_used);
 }
 
