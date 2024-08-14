@@ -29,9 +29,13 @@ TEST_DECLARE(ws_connect_disconnect_1s)
 TEST_DECLARE(wss_connect_disconnect_1s)
 
 TEST_DECLARE(tcp_10clients_connect)
-TEST_DECLARE(tcp_100clients_connect)
 TEST_DECLARE(tls_10clients_connect)
+TEST_DECLARE(ws_10clients_connect)
+TEST_DECLARE(wss_10clients_connect)
+TEST_DECLARE(tcp_100clients_connect)
 TEST_DECLARE(tls_100clients_connect)
+TEST_DECLARE(ws_100clients_connect)
+TEST_DECLARE(wss_100clients_connect)
 
 TEST_DECLARE(tcp_echo)
 TEST_DECLARE(tls_echo)
@@ -78,9 +82,14 @@ TEST_LIST_START
         TEST_ENTRY(wss_connect_disconnect_1s, "Websocket,TLS")
         
         TEST_ENTRY(tcp_10clients_connect, "TCP")
-        TEST_ENTRY(tcp_100clients_connect, "TCP")
         TEST_ENTRY(tls_10clients_connect, "TLS")
+        TEST_ENTRY(ws_10clients_connect, "Websocket")
+        TEST_ENTRY(wss_10clients_connect, "TLS,Websocket")
+        TEST_ENTRY(tcp_100clients_connect, "TCP")
         TEST_ENTRY(tls_100clients_connect, "TLS")
+        TEST_ENTRY(ws_100clients_connect, "Websocket")
+        TEST_ENTRY(wss_100clients_connect, "TLS,Websocket")
+        
 
         TEST_ENTRY(tcp_echo, "TCP")
         TEST_ENTRY(tls_echo, "TLS")

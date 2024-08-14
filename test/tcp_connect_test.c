@@ -288,13 +288,24 @@ static int tcp_server_clients_impl(int proto, int client_cnt) {
 TEST_IMPL(tcp_10clients_connect) {
   return tcp_server_clients_impl(TS_PROTO_TCP, 10);
 }
-TEST_IMPL(tcp_100clients_connect) {
-  return tcp_server_clients_impl(TS_PROTO_TCP, 100);
-}
 TEST_IMPL(tls_10clients_connect) {
   return tcp_server_clients_impl(TS_PROTO_TLS, 10);
+}
+TEST_IMPL(ws_10clients_connect) {
+  return tcp_server_clients_impl(TS_PROTO_WS, 10);
+}
+TEST_IMPL(wss_10clients_connect) {
+  return tcp_server_clients_impl(TS_PROTO_WSS, 10);
+}
+TEST_IMPL(tcp_100clients_connect) {
+  return tcp_server_clients_impl(TS_PROTO_TCP, 100);
 }
 TEST_IMPL(tls_100clients_connect) {
   return tcp_server_clients_impl(TS_PROTO_TLS, 100);
 }
-
+TEST_IMPL(ws_100clients_connect) {
+  return tcp_server_clients_impl(TS_PROTO_WS, 100);
+}
+TEST_IMPL(wss_100clients_connect) {
+  return tcp_server_clients_impl(TS_PROTO_WSS, 100);
+}
