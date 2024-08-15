@@ -3,7 +3,7 @@
 
 
 static void uv_on_tcp_conn_close(uv_handle_t* handle) {
-  ts_conn_t* conn = (ts_conn_t*)handle;
+  ts_tcp_conn_t* conn = (ts_tcp_conn_t*)handle;
   ts_server_listener_t* listener = conn->listener;
   ts_server_t* server = listener->server;
  
@@ -37,14 +37,14 @@ static void uv_on_new_tcp_connection(uv_stream_t *stream, int status) {
   int err;
   ts_server_listener_t* listener = CONTAINER_OF(stream, ts_server_listener_t, uvtcp);
   ts_server_t* server = listener->server;
-  ts_conn_t* conn;
+  ts_tcp_conn_t* conn;
   
   if (status < 0) {
     LOG_ERROR("New connection error: %d %s", status, uv_strerror(status));
     return;
   }
   
-  conn = (ts_conn_t*) ts__malloc(sizeof(ts_conn_t));
+  conn = (ts_conn_t*) ts__malloc(sizeof(ts_tcp_conn_t));
   if (conn == NULL) {
     LOG_ERROR("New connection error: Out of memory");
     return;
@@ -86,7 +86,8 @@ static int ts_server__default_idle_cb(void* ctx, ts_server_t* server) {
 }
 
 
-int ts_server__init(ts_server_t* server) {
+ts_t* ts_server__create() {
+  ts_server_t* server = (ts_server_t*) ts__malloc(sizeof(ts_server_t));
   memset(server, 0, sizeof(ts_server_t));
   server->listeners = NULL;
   server->listener_count = 0;
@@ -107,15 +108,17 @@ int ts_server__init(ts_server_t* server) {
 
   ts_server_idle__init(server);
   
-  return 0;
+  return server;
 }
-int ts_server__destroy(ts_server_t server) {
-  ts_log__destroy(&server.log);
+int ts_server__destroy(ts_t* s) {
+  ts_server_t* server = (ts_server_t*) s;
+  ts_log__destroy(&server->log);
   return 0; // TODO
 }
 
-int ts_server__start(ts_server_t* server) {
+int ts_server__start(ts_t* s) {
   int err;
+  ts_server_t* server = (ts_server_t*) s;
   ts_server_listener_t* listener;
   
   LOG_INFO("Start server");
@@ -143,18 +146,20 @@ done:
   
   return err;
 }
-int ts_server__run(ts_server_t* server) {
+int ts_server__run(ts_t* s) {
+  ts_server_t* server = (ts_server_t*) s;
   return uv_run(server->uvloop, UV_RUN_NOWAIT);
 }
-int ts_server__stop(ts_server_t* server) {
+int ts_server__stop(ts_t* s) {
   int err = 0;
+  ts_server_t* server = (ts_server_t*) s;
   
   LOG_INFO("Stop server");
   ts_server_idle__stop(server);
   
   // TODO: add a stop flag to stop accepting new connections
   int conn_count = 0;
-  ts_conn_t* cur_conn = NULL;
+  ts_tcp_conn_t* cur_conn = NULL;
   DL_COUNT(server->conns, cur_conn, conn_count);
   LOG_DEBUG("Close all connections: %d", conn_count);
 
@@ -193,8 +198,9 @@ done:
 
   return err;
 }
-int ts_server__write(ts_server_t* server, ts_conn_t* conn, const char* data, int len) {
+int ts_server__write(ts_t* s, ts_conn_t* conn, const char* data, int len) {
   int err;
+  ts_server_t* server = (ts_server_t*) s;
   ts_buf_t* buf = ts_buf__create(0);
   ts_buf__set(buf, data, len);
 
@@ -203,11 +209,21 @@ int ts_server__write(ts_server_t* server, ts_conn_t* conn, const char* data, int
   ts_buf__destroy(buf);
   return err;
 }
-int ts_server__disconnect(ts_server_t* server, ts_conn_t* conn) {
+int ts_server__disconnect(ts_t* s, ts_conn_t* c) {
   int err;
+  ts_server_t* server = (ts_server_t*) s;
+  ts_tcp_conn_t* conn = (ts_tcp_conn_t*) c;
   LOG_VERB("[%s] Disconnect from the peer(user initiated)", conn->remote_addr);
   err = ts_conn__close(conn, uv_on_tcp_conn_close);
   return err;
+}
+int ts_server__get_error(ts_t* s) {
+  ts_server_t* server = (ts_server_t*) s;
+  return server->err.err;
+}
+const char* ts_server__get_error_msg(ts_t* s) {
+  ts_server_t* server = (ts_server_t*) s;
+  return server->err.msg;
 }
 
 

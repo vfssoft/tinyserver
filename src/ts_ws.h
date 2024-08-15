@@ -13,7 +13,7 @@ struct ts_ws_frame_s {
   // no extension is supported for now
 };
 
-int ts_ws__init(ts_ws_t* ws, ts_conn_t* conn);
+int ts_ws__init(ts_ws_t* ws, ts_tcp_conn_t* conn);
 int ts_ws__destroy(ts_ws_t* ws);
 int ts_ws__state(ts_ws_t* ws);
 int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output);

@@ -47,33 +47,32 @@ static int server_connect_impl(int proto) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
 
-  ts_server_t server;
-  start_server(&server, proto);
-  ts_server__set_cb_ctx(&server, &conn_info);
-  ts_server__set_connected_cb(&server, connected_cb);
-  ts_server__set_disconnected_cb(&server, disconnected_cb);
+  ts_t* server = start_server(proto);
+  ts_server__set_cb_ctx(server, &conn_info);
+  ts_server__set_connected_cb(server, connected_cb);
+  ts_server__set_disconnected_cb(server, disconnected_cb);
 
   uv_thread_t client_thread;
   uv_thread_create(&client_thread, client_connect_cb, (void*)&proto);
 
-  int r = ts_server__start(&server);
+  int r = ts_server__start(server);
   ASSERT_EQ(r, 0);
   while (conn_info.connected_fired == 0) {
-    ts_server__run(&server);
+    ts_server__run(server);
   }
   ASSERT_EQ(conn_info.connected_fired, 1);
-  ASSERT_EQ(conn_info.server, &server);
+  ASSERT_EQ(conn_info.server, server);
   ASSERT_PTR_NE(conn_info.conn, NULL);
 
   while (conn_info.disconnected_fired == 0) {
-    ts_server__run(&server);
+    ts_server__run(server);
   }
 
   ASSERT_EQ(conn_info.disconnected_fired, 1);
-  ASSERT_PTR_EQ(conn_info.server, &server);
+  ASSERT_PTR_EQ(conn_info.server, server);
   ASSERT_PTR_NE(conn_info.conn, NULL);
 
-  ts_server__stop(&server);
+  ts_server__stop(server);
   uv_thread_join(&client_thread);
   
   return 0;
@@ -119,29 +118,28 @@ static int server_disconnect_impl(int proto) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
 
-  ts_server_t server;
-  start_server(&server, proto);
-  ts_server__set_cb_ctx(&server, &conn_info);
-  ts_server__set_connected_cb(&server, connected_reject_cb);
-  ts_server__set_disconnected_cb(&server, disconnected_cb);
+  ts_t* server = start_server(proto);
+  ts_server__set_cb_ctx(server, &conn_info);
+  ts_server__set_connected_cb(server, connected_reject_cb);
+  ts_server__set_disconnected_cb(server, disconnected_cb);
 
   uv_thread_t client_thread;
   uv_thread_create(&client_thread, client_connect_wait_disconnect_cb, &proto);
 
-  int r = ts_server__start(&server);
+  int r = ts_server__start(server);
   ASSERT_EQ(r, 0);
   while (conn_info.connected_fired == 0) {
-    ts_server__run(&server);
+    ts_server__run(server);
   }
   ASSERT_EQ(conn_info.connected_fired, 1);
 
   while (conn_info.disconnected_fired == 0) {
-    ts_server__run(&server);
+    ts_server__run(server);
   }
 
   ASSERT_EQ(conn_info.disconnected_fired, 1);
 
-  ts_server__stop(&server);
+  ts_server__stop(server);
   uv_thread_join(&client_thread);
   return 0;
 }
@@ -189,11 +187,10 @@ static int tcp_server__connect_disconnect_impl(int proto, int afterSec) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
 
-  ts_server_t server;
-  start_server(&server, proto);
-  ts_server__set_cb_ctx(&server, &conn_info);
-  ts_server__set_connected_cb(&server, connected_cb);
-  ts_server__set_disconnected_cb(&server, disconnected_cb);
+  ts_t* server = start_server(proto);
+  ts_server__set_cb_ctx(server, &conn_info);
+  ts_server__set_connected_cb(server, connected_cb);
+  ts_server__set_disconnected_cb(server, disconnected_cb);
 
   test_proto_aftersec_t client_args;
   client_args.proto = proto;
@@ -202,24 +199,24 @@ static int tcp_server__connect_disconnect_impl(int proto, int afterSec) {
   uv_thread_t client_thread;
   uv_thread_create(&client_thread, client_connect_disconnect_quick_cb, &client_args);
 
-  int r = ts_server__start(&server);
+  int r = ts_server__start(server);
   ASSERT_EQ(r, 0);
   while (conn_info.connected_fired == 0) {
-    ts_server__run(&server);
+    ts_server__run(server);
   }
   ASSERT_EQ(conn_info.connected_fired, 1);
-  ASSERT_EQ(conn_info.server, &server);
+  ASSERT_EQ(conn_info.server, server);
   ASSERT_PTR_NE(conn_info.conn, NULL);
 
   while (conn_info.disconnected_fired == 0) {
-    ts_server__run(&server);
+    ts_server__run(server);
   }
 
   ASSERT_EQ(conn_info.disconnected_fired, 1);
-  ASSERT_PTR_EQ(conn_info.server, &server);
+  ASSERT_PTR_EQ(conn_info.server, server);
   ASSERT_PTR_NE(conn_info.conn, NULL);
 
-  ts_server__stop(&server);
+  ts_server__stop(server);
   uv_thread_join(&client_thread);
   return 0;
 }
@@ -253,11 +250,10 @@ static int tcp_server_clients_impl(int proto, int client_cnt) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
 
-  ts_server_t server;
-  start_server(&server, proto);
-  ts_server__set_cb_ctx(&server, &conn_info);
-  ts_server__set_connected_cb(&server, connected_cb);
-  ts_server__set_disconnected_cb(&server, disconnected_cb);
+  ts_t* server = start_server(proto);
+  ts_server__set_cb_ctx(server, &conn_info);
+  ts_server__set_connected_cb(server, connected_cb);
+  ts_server__set_disconnected_cb(server, disconnected_cb);
 
 
   uv_thread_t* client_threads = (uv_thread_t*) malloc(sizeof(uv_thread_t) * client_cnt);
@@ -265,20 +261,20 @@ static int tcp_server_clients_impl(int proto, int client_cnt) {
     uv_thread_create(&client_threads[i], client_connect_cb, &proto);
   }
 
-  int r = ts_server__start(&server);
+  int r = ts_server__start(server);
   ASSERT_EQ(r, 0);
   while (conn_info.connected_fired < client_cnt) {
-    ts_server__run(&server);
+    ts_server__run(server);
   }
   ASSERT_EQ(conn_info.connected_fired, client_cnt);
 
   while (conn_info.disconnected_fired < client_cnt) {
-    ts_server__run(&server);
+    ts_server__run(server);
   }
 
   ASSERT_EQ(conn_info.disconnected_fired, client_cnt);
 
-  ts_server__stop(&server);
+  ts_server__stop(server);
   for (int i = 0; i < client_cnt; i++) {
     uv_thread_join(&client_threads[i]);
   }

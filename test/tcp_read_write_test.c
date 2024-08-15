@@ -58,11 +58,10 @@ static int server_echo_impl(int proto, const char* data, int data_len) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
 
-  ts_server_t server;
-  start_server(&server, proto);
-  ts_server__set_cb_ctx(&server, &conn_info);
-  ts_server__set_read_cb(&server, read_cb);
-  ts_server__set_write_cb(&server, write_cb);
+  ts_t* server = start_server(proto);
+  ts_server__set_cb_ctx(server, &conn_info);
+  ts_server__set_read_cb(server, read_cb);
+  ts_server__set_write_cb(server, write_cb);
 
   test_echo_client_arg_t client_args;
   client_args.proto = proto;
@@ -72,18 +71,18 @@ static int server_echo_impl(int proto, const char* data, int data_len) {
   uv_thread_t client_thread;
   uv_thread_create(&client_thread, client_cb, &client_args);
 
-  int r = ts_server__start(&server);
+  int r = ts_server__start(server);
   ASSERT_EQ(r, 0);
   while (conn_info.read_fired == 0) {
-    ts_server__run(&server);
+    ts_server__run(server);
   }
   ASSERT_EQ(conn_info.read_fired, 1);
 
   while (conn_info.write_fired == 0) {
-    ts_server__run(&server);
+    ts_server__run(server);
   }
 
-  ts_server__stop(&server);
+  ts_server__stop(server);
   uv_thread_join(&client_thread);
   
   return 0;
@@ -157,12 +156,11 @@ static void client_cb2(void *arg) {
 static int server_echo2_impl(int proto, const char* data, int data_len) {
   test_conn_info_t conn_info;
   memset(&conn_info, 0, sizeof(conn_info));
-
-  ts_server_t server;
-  start_server(&server, proto);
-  ts_server__set_cb_ctx(&server, &conn_info);
-  ts_server__set_read_cb(&server, read_cb);
-  ts_server__set_write_cb(&server, write_cb);
+  
+  ts_t* server = start_server(proto);
+  ts_server__set_cb_ctx(server, &conn_info);
+  ts_server__set_read_cb(server, read_cb);
+  ts_server__set_write_cb(server, write_cb);
 
   test_echo_client_arg_t client_args;
   client_args.proto = proto;
@@ -172,18 +170,18 @@ static int server_echo2_impl(int proto, const char* data, int data_len) {
   uv_thread_t client_thread;
   uv_thread_create(&client_thread, client_cb2, &client_args);
 
-  int r = ts_server__start(&server);
+  int r = ts_server__start(server);
   ASSERT_EQ(r, 0);
   while (conn_info.read_fired < 3) {
-    ts_server__run(&server);
+    ts_server__run(server);
   }
   ASSERT_EQ(conn_info.read_fired, 3);
 
   while (conn_info.write_fired < 3) {
-    ts_server__run(&server);
+    ts_server__run(server);
   }
 
-  ts_server__stop(&server);
+  ts_server__stop(server);
   uv_thread_join(&client_thread);
   
   return 0;
@@ -262,23 +260,22 @@ static int tcp_server__echo_large_data_impl(int proto, int data_size) {
   info.to_recv = data_size;
   info.recv_buf = (char*) malloc(data_size);
   memset(info.recv_buf, 'x', data_size);
-
-  ts_server_t server;
-  start_server(&server, proto);
-  ts_server__set_cb_ctx(&server, &info);
-  ts_server__set_read_cb(&server, echo_read_cb);
+  
+  ts_t* server = start_server(proto);
+  ts_server__set_cb_ctx(server, &info);
+  ts_server__set_read_cb(server, echo_read_cb);
 
   uv_thread_t client_thread;
   uv_thread_create(&client_thread, client_large_data_cb, &info);
 
-  int r = ts_server__start(&server);
+  int r = ts_server__start(server);
   ASSERT_EQ(r, 0);
 
   while (info.client_done == 0) {
-    ts_server__run(&server);
+    ts_server__run(server);
   }
 
-  ts_server__stop(&server);
+  ts_server__stop(server);
   return 0;
 }
 

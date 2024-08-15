@@ -6,7 +6,7 @@
 
 const char* cur_dir();
 
-void start_server(ts_server_t* server, int proto);
+ts_t* start_server(int proto);
 
 void assert_bytes_equals(const char* d1, int d1len, const char* d2, int d2len);
 

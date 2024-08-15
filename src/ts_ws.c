@@ -207,7 +207,7 @@ static void ts_ws__decode_close_error(ts_ws_t* ws, ts_ws_frame_t* frame) {
   }
 }
 
-int ts_ws__init(ts_ws_t* ws, ts_conn_t* conn) {
+int ts_ws__init(ts_ws_t* ws, ts_tcp_conn_t* conn) {
   ts_server_listener_t* listener = conn->listener;
   ts_server_t* server = listener->server;
   
@@ -253,7 +253,7 @@ int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
   BOOL has_connection_hdr = FALSE;
   BOOL has_version_hdr = FALSE;
 
-  ts_conn_t* conn = ws->conn;
+  ts_tcp_conn_t* conn = ws->conn;
   ts_server_t* server = conn->listener->server;
   
   LOG_VERB("[%s][WS] Websocket handshaking", conn->remote_addr);

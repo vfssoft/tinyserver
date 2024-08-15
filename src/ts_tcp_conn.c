@@ -1,7 +1,7 @@
 
 #include "ts_internal.h"
 
-int ts_conn__init(ts_server_listener_t* listener, ts_conn_t* conn) {
+int ts_conn__init(ts_server_listener_t* listener, ts_tcp_conn_t* conn) {
   int err = 0;
   ts_server_t* server = listener->server;
   BOOL use_ssl = ts_use_ssl(listener->protocol);
@@ -71,7 +71,7 @@ done:
   return err;
 }
 
-int ts_conn__destroy(ts_server_listener_t* listener, ts_conn_t* conn) {
+int ts_conn__destroy(ts_server_listener_t* listener, ts_tcp_conn_t* conn) {
   if (conn->tls) {
     ts_tls__destroy(conn->tls);
     ts__free(conn->tls);
@@ -94,7 +94,7 @@ int ts_conn__destroy(ts_server_listener_t* listener, ts_conn_t* conn) {
   return 0;
 }
 
-static int ts_conn__init_write_req(ts_conn_write_req_t* req, ts_conn_t* conn, char* data, int len) {
+static int ts_conn__init_write_req(ts_conn_write_req_t* req, ts_tcp_conn_t* conn, char* data, int len) {
   req->ptr = (char*) ts__malloc(len);
   if (req->ptr == NULL) {
     return TS_ERR_OUT_OF_MEMORY;
@@ -107,7 +107,7 @@ static int ts_conn__init_write_req(ts_conn_write_req_t* req, ts_conn_t* conn, ch
   
   return 0;
 }
-static void ts_conn__destroy_write_req(ts_conn_t* conn, ts_conn_write_req_t* req) {
+static void ts_conn__destroy_write_req(ts_tcp_conn_t* conn, ts_conn_write_req_t* req) {
   DL_DELETE(conn->write_reqs, req);
   
   ts__free(req->buf.base);
@@ -116,7 +116,7 @@ static void ts_conn__destroy_write_req(ts_conn_t* conn, ts_conn_write_req_t* req
 
 static void uv_on_write(uv_write_t *req, int status) {
   ts_conn_write_req_t* wr = (ts_conn_write_req_t*) req;
-  ts_conn_t* conn = wr->conn;
+  ts_tcp_conn_t* conn = wr->conn;
   ts_server_t* server = conn->listener->server;
   ts_conn__destroy_write_req(conn, wr);
   
@@ -135,7 +135,7 @@ static void uv_on_free_buffer(const uv_buf_t* buf) {
   ts__free(buf->base);
 }
 
-static int ts_conn__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
+static int ts_conn__send_tcp_data(ts_tcp_conn_t* conn, ts_buf_t* output) {
   int err = 0;
   ts_server_t* server = conn->listener->server;
 
@@ -169,7 +169,7 @@ static int ts_conn__send_tcp_data(ts_conn_t* conn, ts_buf_t* output) {
 
   return err;
 }
-static int ts_conn__send_tls_data(ts_conn_t* conn, ts_buf_t* plain) {
+static int ts_conn__send_tls_data(ts_tcp_conn_t* conn, ts_buf_t* plain) {
   int err;
   ts_ro_buf_t roinput = {
       .buf = plain->buf,
@@ -188,7 +188,7 @@ done:
   ts_buf__set_length(plain, 0);
   return err;
 }
-static int ts_conn__send_websocket_data(ts_conn_t* conn, ts_buf_t* plain) {
+static int ts_conn__send_websocket_data(ts_tcp_conn_t* conn, ts_buf_t* plain) {
   int err;
   ts_ro_buf_t roinput = {
       .buf = plain->buf,
@@ -209,7 +209,7 @@ static int ts_conn__send_websocket_data(ts_conn_t* conn, ts_buf_t* plain) {
   }
 }
 
-static int ts_conn__process_ssl_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, ts_ro_buf_t* output) {
+static int ts_conn__process_ssl_socket_data(ts_tcp_conn_t* conn, ts_ro_buf_t* input, ts_ro_buf_t* output) {
   int err = 0;
   int old_state;
   ts_server_listener_t* listener = conn->listener;
@@ -276,7 +276,7 @@ done:
   return err;
 }
 
-static int ts_conn__process_ws_socket_data(ts_conn_t* conn, ts_ro_buf_t* input, ts_ro_buf_t* output) {
+static int ts_conn__process_ws_socket_data(ts_tcp_conn_t* conn, ts_ro_buf_t* input, ts_ro_buf_t* output) {
   int err = 0;
   int old_state;
   ts_server_t* server = conn->listener->server;
@@ -359,7 +359,7 @@ done:
 
 static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
   int err = 0;
-  ts_conn_t* conn = (ts_conn_t*) stream;
+  ts_tcp_conn_t* conn = (ts_tcp_conn_t*) stream;
   ts_server_listener_t* listener = conn->listener;
   ts_server_t* server = listener->server;
   ts_buf_t* ws_unwrapped = NULL;
@@ -410,7 +410,7 @@ done:
   return;
 }
 
-static int ts_conn__populate_addrs(ts_conn_t* conn) {
+static int ts_conn__populate_addrs(ts_tcp_conn_t* conn) {
   int err;
   struct sockaddr_storage local_addr_storage;
   struct sockaddr_storage remote_addr_storage;
@@ -434,7 +434,7 @@ static int ts_conn__populate_addrs(ts_conn_t* conn) {
   return 0;
 }
 
-static int ts_conn__read_tcp_data(ts_conn_t* conn, uv_read_cb cb) {
+static int ts_conn__read_tcp_data(ts_tcp_conn_t* conn, uv_read_cb cb) {
   int err;
   err = uv_read_start((uv_stream_t*) &conn->uvtcp, uv_on_alloc_buffer, cb);
   if (err) {
@@ -442,7 +442,7 @@ static int ts_conn__read_tcp_data(ts_conn_t* conn, uv_read_cb cb) {
   }
   return err;
 }
-int ts_conn__tcp_connected(ts_conn_t* conn) {
+int ts_conn__tcp_connected(ts_tcp_conn_t* conn) {
   int err;
   ts_server_listener_t* listener = conn->listener;
   ts_server_t* server = listener->server;
@@ -468,7 +468,7 @@ int ts_conn__tcp_connected(ts_conn_t* conn) {
   
   return 0;
 }
-int ts_conn__send_data(ts_conn_t* conn, ts_buf_t* input) {
+int ts_conn__send_data(ts_tcp_conn_t* conn, ts_buf_t* input) {
   int err;
   ts_server_listener_t* listener = conn->listener;
   ts_server_t* server = listener->server;
@@ -488,7 +488,7 @@ done:
   
   return err;
 }
-int ts_conn__close(ts_conn_t* conn, uv_close_cb cb) {
+int ts_conn__close(ts_tcp_conn_t* conn, uv_close_cb cb) {
   int err;
   ts_server_listener_t* listener = conn->listener;
   ts_server_t* server = listener->server;

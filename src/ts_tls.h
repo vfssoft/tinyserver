@@ -19,7 +19,7 @@ void ts_tls__ctx_init(
 );
 void ts_tls__ctx_destroy(SSL_CTX* ctx);
 
-int ts_tls__init(ts_tls_t* tls, ts_conn_t* conn);
+int ts_tls__init(ts_tls_t* tls, ts_tcp_conn_t* conn);
 int ts_tls__destroy(ts_tls_t* tls);
 int ts_tls__state(ts_tls_t* tls);
 int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output);

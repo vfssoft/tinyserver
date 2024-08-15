@@ -12,8 +12,8 @@ const char* cur_dir() {
 }
 
 
-void start_server(ts_server_t* server, int proto) {
-  ts_server__init(server);
+ts_t* start_server(int proto) {
+  ts_t* server = ts_server__create();
   ts_server__set_listener_count(server, 1);
   ts_server__set_listener_host_port(server, 0, "127.0.0.1", 12345);
   ts_server__set_listener_protocol(server, 0, proto);
@@ -29,6 +29,7 @@ void start_server(ts_server_t* server, int proto) {
     ts_server__set_listener_certs(server, 0, crtpath, keypath);
   }
 
+  return server;
 }
 
 
