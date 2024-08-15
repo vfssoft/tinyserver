@@ -1,7 +1,7 @@
 #ifndef TINYSERVER_TESTUTIL_H
 #define TINYSERVER_TESTUTIL_H
 
-#include <ts_tcp.h>
+#include <ts_server.h>
 #include <ts_internal.h>
 
 const char* cur_dir();

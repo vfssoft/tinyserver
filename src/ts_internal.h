@@ -2,7 +2,7 @@
 #ifndef TINYSERVER_TS_INTERNAL_H
 #define TINYSERVER_TS_INTERNAL_H
 
-#include "ts_tcp.h"
+#include "ts_server.h"
 #include "ts_tcp_conn.h"
 #include "ts_tls.h"
 #include "ts_ws.h"

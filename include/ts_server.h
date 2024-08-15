@@ -23,7 +23,6 @@ extern "C" {
 #define TS_ERR_INVALID_WS_FRAME 0x80000003
 #define TS_ERR_WS_CLOSED 0x80000004
 
-
 typedef struct ts_error_s ts_error_t;
 typedef struct ts_server_listener_s ts_server_listener_t;
 typedef struct ts_server_s ts_server_t;
