@@ -5,6 +5,7 @@
 
 #include "ts_data_buf.h"
 #include "ts_log.h"
+#include "ts_error.h"
 
 typedef struct ts_server_s ts_server_t;
 typedef struct ts_server_listener_s ts_server_listener_t;
@@ -12,12 +13,8 @@ typedef struct ts_conn_write_req_s ts_conn_write_req_t;
 typedef struct ts_tcp_conn_s ts_tcp_conn_t;
 typedef struct ts_tls_s ts_tls_t;
 typedef struct ts_ws_s ts_ws_t;
-typedef struct ts_error_s ts_error_t;
 
-struct ts_error_s {
-    int err;
-    char* msg;
-};
+
 
 struct ts_server_listener_s {
     uv_tcp_t uvtcp;
@@ -56,5 +53,12 @@ struct ts_server_s {
     ts_error_t err;
 };
 
+int ts_server_listener__init_default(ts_server_listener_t* listener);
+int ts_server_listener__start(ts_server_listener_t* listener, ts_server_t* server, uv_connection_cb cb);
+int ts_server_listener__stop(ts_server_listener_t* listener, uv_close_cb cb);
+
+int ts_server_idle__init(ts_server_t* server);
+int ts_server_idle__start(ts_server_t* server);
+int ts_server_idle__stop(ts_server_t* server);
 
 #endif //TINYSERVER_TS_SERVER_H
