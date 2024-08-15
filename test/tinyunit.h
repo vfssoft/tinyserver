@@ -3,6 +3,7 @@
 #define TINYSERVER_TINYUNIT_H
 
 #include <inttypes.h>
+#include <stdio.h>
 
 #define FATAL(msg)                                        \
   do {                                                    \

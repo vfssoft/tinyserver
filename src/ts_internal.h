@@ -2,6 +2,15 @@
 #ifndef TINYSERVER_TS_INTERNAL_H
 #define TINYSERVER_TS_INTERNAL_H
 
+#include <uv.h>
+
+#include <openssl/err.h>
+#include <openssl/ssl.h>
+#include <openssl/conf.h>
+#include <openssl/engine.h>
+
+#include <stdio.h>
+
 #include "ts.h"
 #include "ts_server.h"
 #include "ts_tcp_conn.h"

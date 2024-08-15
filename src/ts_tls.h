@@ -5,10 +5,15 @@
 
 #include "ts_internal.h"
 
-#include <openssl/err.h>
-#include <openssl/ssl.h>
-#include <openssl/conf.h>
-#include <openssl/engine.h>
+struct ts_tls_s {
+    BIO*     appbio; // Application BIO, all IO should be done by this
+    BIO*     sslbio; // SSL BIO, only used by OpenSSL
+    SSL*     ssl;
+    SSL_CTX* ctx;
+    int      state;
+    ts_tcp_conn_t* conn;
+    ts_error_t err;
+};
 
 void ts_tls__ctx_init(
     SSL_CTX** ssl_ctx,

@@ -5,6 +5,14 @@
 
 typedef struct ts_ws_frame_s ts_ws_frame_t;
 
+struct ts_ws_s {
+    ts_tcp_conn_t* conn;
+    int state;
+    
+    ts_error_t err;
+    ts_buf_t* in_buf;
+};
+
 // TODO: may not need this struct
 struct ts_ws_frame_s {
   BOOL fin;

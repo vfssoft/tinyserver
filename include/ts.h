@@ -1,15 +1,6 @@
 #ifndef TINYSERVER_TS_TCP_H
 #define TINYSERVER_TS_TCP_H
 
-#include <uv.h>
-
-#include <openssl/err.h>
-#include <openssl/ssl.h>
-#include <openssl/conf.h>
-#include <openssl/engine.h>
-
-#include "ts_data_buf.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -26,8 +17,6 @@ extern "C" {
 typedef void ts_t;
 typedef void ts_conn_t;
 
-typedef struct ts_error_s ts_error_t;
-typedef struct ts_log_s ts_log_t;
 
 typedef int (*ts_server_connected_cb)(void* ctx, ts_t* server, ts_conn_t* conn, int status);
 typedef int (*ts_server_disconnected_cb)(void* ctx, ts_t* server, ts_conn_t* conn, int status);
@@ -64,11 +53,6 @@ TS_EXTERN  int ts_server_log_set_log_dest(ts_t* server, int dest);
 TS_EXTERN  int ts_server_log_set_log_dir(ts_t* server, const char* dir);
 TS_EXTERN  int ts_server_log_set_log_cb(ts_t* server, void* ctx, ts_log_cb cb);
 
-struct ts_error_s {
-    int err;
-    char* msg;
-};
-
 #define TS_LOG_DEST_FILE   1
 #define TS_LOG_DEST_EVENT  2
 
@@ -79,34 +63,15 @@ struct ts_error_s {
 #define TS_LOG_LEVEL_DEBUG   4
 #define TS_LOG_LEVEL_DEBUGEX 5
 
-struct ts_log_s {
-    int log_level;
-    int log_dest;
-    char* log_dir;
-    void* log_ctx;
-    ts_log_cb log_cb;
-
-    int log_timestamp;
-    char* log_timestamp_format;
-
-    // internal states
-    FILE* cur_log_file;
-
-    uv_mutex_t mutex;
-};
-
 #define TS_PROTO_TCP   1
 #define TS_PROTO_TLS   2
 #define TS_PROTO_WS    3
 #define TS_PROTO_WSS   4
 
-
 #define TS_STATE_HANDSHAKING   0
 #define TS_STATE_CONNECTED     1
 #define TS_STATE_DISCONNECTING 2
 #define TS_STATE_DISCONNECTED  3
-
-
 
 #ifdef __cplusplus
 }
