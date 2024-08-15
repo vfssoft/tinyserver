@@ -1,4 +1,4 @@
-#include <ts_server.h>
+#include <ts.h>
 #include "tinyunit.h"
 
 TEST_IMPL(invalid_local_host) {

@@ -1,5 +1,5 @@
 
-#include <ts_server.h>
+#include <ts.h>
 #include "mytcp.h"
 #include "testutil.h"
 #include "tinyunit.h"
