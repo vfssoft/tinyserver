@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ts_mem.h"
+#include "internal/ts_mem.h"
 
 #ifdef WITH_MEMORY_TRACKING
 #  if defined(__APPLE__)

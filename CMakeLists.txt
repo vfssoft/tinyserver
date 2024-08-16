@@ -3,5 +3,6 @@ project(tinyserver)
 
 add_subdirectory(libuv)
 add_subdirectory(src)
+add_subdirectory(mqtt)
 
 add_subdirectory(test)

@@ -20,7 +20,7 @@
 #include "ts_miscellany.h"
 #include "ts_crypto.h"
 #include "ts_error.h"
-#include "ts_mem.h"
+#include "internal/ts_mem.h"
 #include "utlist.h"
 
 #include <time.h>
