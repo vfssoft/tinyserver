@@ -19,7 +19,7 @@
 #include "ts_log.h"
 #include "ts_miscellany.h"
 #include "ts_crypto.h"
-#include "ts_error.h"
+#include "internal/ts_error.h"
 #include "internal/ts_mem.h"
 #include "utlist.h"
 

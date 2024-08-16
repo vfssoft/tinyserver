@@ -1,5 +1,5 @@
-#ifndef TINYSERVER_TS_MQTT_H
-#define TINYSERVER_TS_MQTT_H
+#ifndef TINYSERVER_TM_H
+#define TINYSERVER_TM_H
 
 #define TS_EXTERN /* nothing */
 
@@ -28,6 +28,9 @@ TS_EXTERN int tm__set_log_dir(tm_t* mq, const char* dir);
 
 TS_EXTERN int tm__set_callbacks(tm_t* mq, tm_callbacks_t* cbs);
 
+TS_EXTERN int tm__get_error(tm_t* mq);
+TS_EXTERN const char* tm__get_error_msg(tm_t* mq);
+
 TS_EXTERN int tm__start(tm_t* mq);
 TS_EXTERN int tm__run(tm_t* mq);
 TS_EXTERN int tm__stop(tm_t* mq);
@@ -37,4 +40,4 @@ TS_EXTERN int tm__stop(tm_t* mq);
 #endif
 
 
-#endif //TINYSERVER_TS_MQTT_H
+#endif //TINYSERVER_TM_H
