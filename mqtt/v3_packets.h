@@ -1,0 +1,22 @@
+
+#ifndef TINYSERVER_V3_PACKETS_H
+#define TINYSERVER_V3_PACKETS_H
+
+#define PKT_TYPE_CONNECT     1
+#define PKT_TYPE_CONNACK     2
+#define PKT_TYPE_PUBLISH     3
+#define PKT_TYPE_PUBACK      4
+#define PKT_TYPE_PUBREC      5
+#define PKT_TYPE_PUBREL      6
+#define PKT_TYPE_PUBCOMP     7
+#define PKT_TYPE_SUBSCRIBE   8
+#define PKT_TYPE_SUBACK      9
+#define PKT_TYPE_UNSUBSCRIBE 10
+#define PKT_TYPE_UNSUBACK    11
+#define PKT_TYPE_PINGREQ     12
+#define PKT_TYPE_PINGRESP    13
+#define PKT_TYPE_DISCONNECT  14
+
+
+
+#endif //TINYSERVER_V3_PACKETS_H
