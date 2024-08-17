@@ -21,7 +21,7 @@
 #include "ts_crypto.h"
 #include "internal/ts_error.h"
 #include "internal/ts_mem.h"
-#include "utlist.h"
+#include "internal/utlist.h"
 
 #include <time.h>
 #include <inttypes.h>
