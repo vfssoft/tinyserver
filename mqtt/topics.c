@@ -306,3 +306,65 @@ int tm_topics__subscribers(tm_topics_t* t, const char* topic, char qos, tm_subsc
   return err;
 }
 
+
+
+static int tm_topics__valid_common(const char* topic, ts_error_t* err) {
+  if (topic == NULL) {
+    ts_error__set_msg(err, TS_ERR_INVALID_TOPIC, "Topic MUST be at least one character long");
+    return err->err;
+  }
+  
+  if (strlen(topic) > 65535) {
+    ts_error__set_msg(err, TS_ERR_INVALID_TOPIC, "Topic MUST NOT encode to more than 65535 bytes");
+    return err->err;
+  }
+  
+  return 0;
+}
+int tm_topics__valid_topic_filter(const char* topic, ts_error_t* err) {
+  tm_topics__valid_common(topic, err);
+  if (err->err) {
+    return err->err;
+  }
+  
+  int tp_len = strlen(topic);
+  
+  for (int i = 0; i < tp_len; i++) {
+    char c = topic[i];
+    
+    if (c == TP_MULTI_LEVEL_WILDCARD) {
+      if (i + 1 != tp_len) {
+        ts_error__set_msg(err, TS_ERR_INVALID_TOPIC, "Multi-level wildcard MUST be the last character in the topic");
+        return TS_ERR_INVALID_TOPIC;
+      }
+      
+      if (i > 0 && topic[i-1] != TP_LEVEL_SEPARATOR) {
+        ts_error__set_msg(err, TS_ERR_INVALID_TOPIC, "Multi-level wildcard can only follow a topic level separator");
+        return TS_ERR_INVALID_TOPIC;
+      }
+    } else if (c == TP_SINGLE_LEVEL_WILDCARD) {
+      if ((i > 0 && topic[i-1] != TP_LEVEL_SEPARATOR) || (i + 1 < tp_len && topic[i+1] != TP_LEVEL_SEPARATOR)) {
+        ts_error__set_msg(err, TS_ERR_INVALID_TOPIC, "Single-level wildcard MUST occupy an entire level of the topic filter");
+        return TS_ERR_INVALID_TOPIC;
+      }
+    }
+  }
+  
+  return 0;
+}
+int tm_topics__valid_topic_name(const char* topic, ts_error_t* err) {
+  tm_topics__valid_common(topic, err);
+  if (err->err) {
+    return err->err;
+  }
+  
+  for (int i = 0; i < strlen(topic); i++) {
+    char c = topic[i];
+    if (c == TP_MULTI_LEVEL_WILDCARD || c == TP_SINGLE_LEVEL_WILDCARD) {
+      ts_error__set_msgf(err, TS_ERR_INVALID_TOPIC, "Invalid characters in the topic(%d)", c);
+      return err->err;
+    }
+  }
+  
+  return 0;
+}

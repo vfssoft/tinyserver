@@ -48,6 +48,9 @@ int tm_topics__subscribe(tm_topics_t* t, const char* topic, char qos, void* subs
 int tm_topics__unsubscribe(tm_topics_t* t, const char* topic, void* subscriber);
 int tm_topics__subscribers(tm_topics_t* t, const char* topic, char qos, tm_subscribers_t** subscribers);
 
+int tm_topics__valid_topic_filter(const char* topic, ts_error_t* err);
+int tm_topics__valid_topic_name(const char* topic, ts_error_t* err);
+
 //TODO: Retain messages
 
 #endif //TINYSERVER_TOPICS_H
