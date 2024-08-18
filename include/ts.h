@@ -9,11 +9,6 @@ extern "C" {
 
 #define TS_DEFAULT_BACKLOG 128
 
-#define TS_ERR_OUT_OF_MEMORY 0x80000001
-#define TS_ERR_INVALID_WS_HEADERS 0x80000002
-#define TS_ERR_INVALID_WS_FRAME 0x80000003
-#define TS_ERR_WS_CLOSED 0x80000004
-
 typedef void ts_t;
 typedef void ts_conn_t;
 
