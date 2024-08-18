@@ -5,6 +5,7 @@
 #define TS_ERR_INVALID_WS_HEADERS 0x80000002
 #define TS_ERR_INVALID_WS_FRAME 0x80000003
 #define TS_ERR_WS_CLOSED 0x80000004
+#define TS_ERR_NOT_FOUND 0x80000005
 
 typedef struct ts_error_s ts_error_t;
 
