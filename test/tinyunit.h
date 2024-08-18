@@ -199,5 +199,6 @@ struct test_entry_s {
 extern test_entry_t TESTS[];
 
 int run_tests();
+int set_tests_categories(const char* categories);
 
 #endif //TINYSERVER_TINYUNIT_H
