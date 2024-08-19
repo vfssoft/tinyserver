@@ -72,19 +72,11 @@ done:
   }
 }
 
-static int ts_server__default_connected_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status) {
-  return 0;
-}
-static int ts_server__default_disconnected_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status) {
-  return 0;
-}
-static int ts_server__default_write_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status, int write_more) {
-  return 0;
-}
-static int ts_server__default_idle_cb(void* ctx, ts_server_t* server) {
-  return 0;
-}
-
+static void ts_server__default_connected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status) {}
+static void ts_server__default_disconnected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status) {}
+static void ts_server__default_write_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status, int write_more) {}
+static void ts_server__default_idle_cb(void* ctx, ts_t* server) {}
+static void ts_server__default_read_cb(void* ctx, ts_t* server, ts_conn_t* conn, const char* data, int len) {}
 
 ts_t* ts_server__create() {
   ts_server_t* server = (ts_server_t*) ts__malloc(sizeof(ts_server_t));
@@ -94,7 +86,7 @@ ts_t* ts_server__create() {
   
   server->connected_cb = ts_server__default_connected_cb;
   server->disconnected_cb = ts_server__default_disconnected_cb;
-  server->read_cb = NULL;
+  server->read_cb = ts_server__default_read_cb;
   server->write_cb = ts_server__default_write_cb;
   server->idle_cb = ts_server__default_idle_cb;
   server->cb_ctx = NULL;

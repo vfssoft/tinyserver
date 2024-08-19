@@ -13,13 +13,13 @@ typedef void ts_t;
 typedef void ts_conn_t;
 
 
-typedef int (*ts_server_connected_cb)(void* ctx, ts_t* server, ts_conn_t* conn, int status);
-typedef int (*ts_server_disconnected_cb)(void* ctx, ts_t* server, ts_conn_t* conn, int status);
-typedef int (*ts_server_read_cb)(void* ctx, ts_t* server, ts_conn_t* conn, const char* data, int len);
-typedef int (*ts_server_write_cb)(void* ctx, ts_t* server, ts_conn_t* conn, int status, int can_write_more);
-typedef int (*ts_server_idle_cb)(void* ctx, ts_t* server);
+typedef void (*ts_server_connected_cb)(void* ctx, ts_t* server, ts_conn_t* conn, int status);
+typedef void (*ts_server_disconnected_cb)(void* ctx, ts_t* server, ts_conn_t* conn, int status);
+typedef void (*ts_server_read_cb)(void* ctx, ts_t* server, ts_conn_t* conn, const char* data, int len);
+typedef void (*ts_server_write_cb)(void* ctx, ts_t* server, ts_conn_t* conn, int status, int can_write_more);
+typedef void (*ts_server_idle_cb)(void* ctx, ts_t* server);
 
-typedef int (*ts_log_cb)(void* ctx, int level, const char* msg);
+typedef void (*ts_log_cb)(void* ctx, int level, const char* msg);
 
 TS_EXTERN ts_t* ts_server__create();
 TS_EXTERN int ts_server__destroy(ts_t* server);

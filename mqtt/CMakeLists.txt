@@ -6,6 +6,6 @@ file(GLOB_RECURSE SRC_FILES ${SRC_DIR}/*.c ${SRC_DIR}/*.h)
 
 add_library(tm_lib STATIC ${SRC_FILES})
 
-include_directories(../include ../include/internal  ../tinyserver/include)
+include_directories(../include ../libuv/include ../include/internal  ../tinyserver/include)
 
 target_link_libraries(tm_lib PRIVATE)

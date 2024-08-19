@@ -462,10 +462,7 @@ int ts_conn__tcp_connected(ts_tcp_conn_t* conn) {
   }
   
   if (listener->protocol == TS_PROTO_TCP) {
-    err = server->connected_cb(server->cb_ctx, server, conn, 0);
-    if (err) {
-      return err;
-    }
+    server->connected_cb(server->cb_ctx, server, conn, 0);
   }
   
   return 0;
