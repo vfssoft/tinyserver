@@ -17,7 +17,7 @@
 #include <openssl/err.h>
 #include <uv.h>
 
-#include <ts_data_buf.h>
+#include "internal/ts_data_buf.h"
 #include <ts_miscellany.h>
 
 #ifdef __cplusplus

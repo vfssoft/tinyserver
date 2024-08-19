@@ -3,7 +3,7 @@
 #define TINYSERVER_TS_SERVER_H
 
 
-#include "ts_data_buf.h"
+#include "internal/ts_data_buf.h"
 #include "internal/ts_log.h"
 #include "internal/ts_error.h"
 
