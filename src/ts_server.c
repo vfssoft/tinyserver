@@ -228,4 +228,8 @@ const char* ts_server__get_error_msg(ts_t* s) {
   return server->err.msg;
 }
 
+ts_log_t* ts_server__get_log(ts_t* s) {
+  ts_server_t* server = (ts_server_t*) s;
+  return &(server->log);
+}
 
