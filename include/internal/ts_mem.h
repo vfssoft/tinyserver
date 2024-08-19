@@ -3,6 +3,7 @@
 #define TINYSERVER_TS_MEM_H
 
 #include <stdio.h>
+#include <string.h>
 #include <sys/types.h>
 
 void *ts__calloc(size_t nmemb, size_t size);
