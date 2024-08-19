@@ -2,6 +2,8 @@
 #ifndef TINYSERVER_MQTT_PACKETS_H
 #define TINYSERVER_MQTT_PACKETS_H
 
+#include "mqtt_conn.h"
+
 #define PKT_TYPE_CONNECT     1
 #define PKT_TYPE_CONNACK     2
 #define PKT_TYPE_PUBLISH     3
@@ -17,6 +19,14 @@
 #define PKT_TYPE_PINGRESP    13
 #define PKT_TYPE_DISCONNECT  14
 
+BOOL tm__parse_packet(
+    tm_mqtt_conn_t* conn,
+    const char* data,
+    int data_len,
+    int* pkt_bytes_cnt,
+    unsigned int* remaining_length,
+    ts_error_t* err
+);
 
 
 #endif //TINYSERVER_MQTT_PACKETS_H

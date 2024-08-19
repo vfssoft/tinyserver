@@ -9,6 +9,22 @@ extern "C" {
 
 #define TS_DEFAULT_BACKLOG 128
 
+// help macros
+#define CONTAINER_OF(ptr, type, member) \
+    ((type *)((char *)(ptr) - offsetof(type, member)))
+
+#ifndef BOOL
+#define BOOL int
+#endif
+
+#ifndef FALSE
+#define FALSE 0
+#endif
+
+#ifndef TRUE
+#define TRUE 1
+#endif
+
 typedef void ts_t;
 typedef void ts_conn_t;
 

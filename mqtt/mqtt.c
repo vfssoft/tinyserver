@@ -22,7 +22,7 @@ static void tm__conn_connected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int 
   
   ts_error__init(&err);
   
-  mqtt_conn = tm_mqtt_conn__create();
+  mqtt_conn = tm_mqtt_conn__create(s);
   if (mqtt_conn == NULL) {
     ts_error__set(&err, TS_ERR_OUT_OF_MEMORY);
     goto done;

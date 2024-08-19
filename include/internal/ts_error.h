@@ -8,6 +8,7 @@
 #define TS_ERR_NOT_FOUND 0x80000005
 #define TS_ERR_INVALID_ARGUMENT 0x80000006
 #define TS_ERR_INVALID_TOPIC 0x80000007
+#define TS_ERR_MALFORMED_MQTT_PACKET 0x80000008
 
 typedef struct ts_error_s ts_error_t;
 
