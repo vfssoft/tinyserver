@@ -11,6 +11,31 @@ static void tm__copy_server_err(tm_server_t* tm, ts_t* ts) {
   );
 }
 
+static int tm__conn_connected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status) {
+  tm_server_t* s = (tm_server_t*) ctx;
+  return 0;
+}
+static int tm__conn_read_cb(void* ctx, ts_t* server, ts_conn_t* conn, const char* data, int len) {
+  tm_server_t* s = (tm_server_t*) ctx;
+
+  return 0;
+}
+static int tm__conn_write_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status, int can_write_more) {
+  tm_server_t* s = (tm_server_t*) ctx;
+
+  return 0;
+}
+static int tm__conn_disconnected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status) {
+  tm_server_t* s = (tm_server_t*) ctx;
+
+  return 0;
+}
+static int tm__idle_cb(void* ctx, ts_t* server) {
+  tm_server_t* s = (tm_server_t*) ctx;
+
+  return 0;
+}
+
 tm_t* tm__create() {
   tm_server_t* s = (tm_server_t*) ts__malloc(sizeof(tm_server_t));
   memset(s, 0, sizeof(tm_server_t));
@@ -21,7 +46,14 @@ tm_t* tm__create() {
   }
   
   ts_error__reset(&(s->err));
-  
+
+  ts_server__set_cb_ctx(s->server, s);
+  ts_server__set_connected_cb(s->server, tm__conn_connected_cb);
+  ts_server__set_read_cb(s->server, tm__conn_read_cb);
+  ts_server__set_write_cb(s->server, tm__conn_write_cb);
+  ts_server__set_disconnected_cb(s->server, tm__conn_disconnected_cb);
+  ts_server__set_idle_cb(s->server, tm__idle_cb);
+
   return s;
 }
 int tm_destroy(tm_t* mq) {
