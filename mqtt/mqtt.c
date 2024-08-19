@@ -1,5 +1,5 @@
 
-#include "ts_mqtt.h"
+#include "mqtt.h"
 
 #include <internal/ts_mem.h>
 

@@ -1,4 +1,4 @@
-#include "topics.h"
+#include "mqtt_topics.h"
 
 #include <internal/ts_mem.h>
 #include <internal/utlist.h>

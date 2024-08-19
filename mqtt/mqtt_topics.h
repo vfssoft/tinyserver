@@ -1,5 +1,5 @@
-#ifndef TINYSERVER_TOPICS_H
-#define TINYSERVER_TOPICS_H
+#ifndef TINYSERVER_MQTT_TOPICS_H
+#define TINYSERVER_MQTT_TOPICS_H
 
 #include <internal/ts_mutex.h>
 #include <internal/ts_error.h>
@@ -53,4 +53,4 @@ int tm_topics__valid_topic_name(const char* topic, ts_error_t* err);
 
 //TODO: Retain messages
 
-#endif //TINYSERVER_TOPICS_H
+#endif //TINYSERVER_MQTT_TOPICS_H

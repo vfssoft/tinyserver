@@ -1,6 +1,6 @@
 
-#ifndef TINYSERVER_TS_MQTT_H
-#define TINYSERVER_TS_MQTT_H
+#ifndef TINYSERVER_MQTT_H
+#define TINYSERVER_MQTT_H
 
 #include <ts.h>
 #include <internal/ts_error.h>
@@ -16,4 +16,4 @@ struct tm_server_s {
     ts_error_t err;
 };
 
-#endif //TINYSERVER_TS_MQTT_H
+#endif //TINYSERVER_MQTT_H
