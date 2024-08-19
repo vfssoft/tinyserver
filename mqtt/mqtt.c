@@ -1,7 +1,10 @@
 
 #include "mqtt.h"
+#include "mqtt_conn.h"
 
+#include <assert.h>
 #include <internal/ts_mem.h>
+#include <internal/ts_log.h>
 
 static void tm__copy_server_err(tm_server_t* tm, ts_t* ts) {
   ts_error__set_msg(
@@ -11,29 +14,51 @@ static void tm__copy_server_err(tm_server_t* tm, ts_t* ts) {
   );
 }
 
-static int tm__conn_connected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status) {
+static void tm__conn_connected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status) {
   tm_server_t* s = (tm_server_t*) ctx;
-  return 0;
+  tm_mqtt_conn_t* mqtt_conn = NULL;
+  ts_error_t err;
+  assert(status == 0);
+  
+  ts_error__init(&err);
+  
+  mqtt_conn = tm_mqtt_conn__create();
+  if (mqtt_conn == NULL) {
+    ts_error__set(&err, TS_ERR_OUT_OF_MEMORY);
+    goto done;
+  }
+  
+  ts_server__set_conn_user_data(server, conn, mqtt_conn);
+  
+done:
+  if (err.err) {
+    LOG_ERROR(
+        "[%s] Failed to create MQTT connection: %d %s, drop the connection",
+        ts_server__get_conn_remote_host(server, conn),
+        err.err, err.msg
+    );
+    ts_server__disconnect(server, conn);
+  }
 }
-static int tm__conn_read_cb(void* ctx, ts_t* server, ts_conn_t* conn, const char* data, int len) {
+static void tm__conn_disconnected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status) {
+  //tm_server_t* s = (tm_server_t*) ctx;
+  tm_mqtt_conn_t* mqtt_conn;
+  
+  mqtt_conn = (tm_mqtt_conn_t* )ts_server__get_conn_user_data(server, conn);
+  if (mqtt_conn) {
+    tm_mqtt_conn__destroy(mqtt_conn);
+  }
+}
+static void tm__conn_read_cb(void* ctx, ts_t* server, ts_conn_t* conn, const char* data, int len) {
   tm_server_t* s = (tm_server_t*) ctx;
 
-  return 0;
 }
-static int tm__conn_write_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status, int can_write_more) {
+static void tm__conn_write_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status, int can_write_more) {
   tm_server_t* s = (tm_server_t*) ctx;
 
-  return 0;
 }
-static int tm__conn_disconnected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status) {
+static void tm__idle_cb(void* ctx, ts_t* server) {
   tm_server_t* s = (tm_server_t*) ctx;
-
-  return 0;
-}
-static int tm__idle_cb(void* ctx, ts_t* server) {
-  tm_server_t* s = (tm_server_t*) ctx;
-
-  return 0;
 }
 
 tm_t* tm__create() {

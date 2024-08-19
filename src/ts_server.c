@@ -219,6 +219,11 @@ void ts_server__set_conn_user_data(ts_t* s, ts_conn_t* c, void* user_data) {
   ts_tcp_conn_t* conn = (ts_tcp_conn_t*) c;
   conn->user_data = user_data;
 }
+const char* ts_server__get_conn_remote_host(ts_t* s, ts_conn_t* c) {
+  //ts_server_t* server = (ts_server_t*) s;
+  ts_tcp_conn_t* conn = (ts_tcp_conn_t*) c;
+  return conn->remote_addr;
+}
 int ts_server__get_error(ts_t* s) {
   ts_server_t* server = (ts_server_t*) s;
   return server->err.err;
