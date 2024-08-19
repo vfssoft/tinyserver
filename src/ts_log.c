@@ -11,9 +11,8 @@ static const char* log_level_strs[] = {
 };
 
 
-static int ts_log__default_log_cb(void* ctx, int level, const char* msg) {
+static void ts_log__default_log_cb(void* ctx, int level, const char* msg) {
   printf("%s\n", msg);
-  return 0;
 }
 
 
@@ -31,13 +30,13 @@ int ts_log__init(ts_log_t* log) {
 
   log->log_timestamp = 1;
   log->log_timestamp_format = NULL;
-  
-  uv_mutex_init_recursive(&log->mutex);
+
+  ts_mutex__init(&(log->mutex));
   return 0;
 }
 
 int ts_log__destroy(ts_log_t* log) {
-  uv_mutex_destroy(&log->mutex);
+  ts_mutex__destroy(&(log->mutex));
   
   if (log->log_dir) {
     ts__free(log->log_dir);
@@ -73,14 +72,14 @@ static int ts_log__vprintf(ts_log_t* log, int level, const char* func, int linen
   vsnprintf(&line[len], sizeof(line) - len, fmt, va);
   line[sizeof(line)-1] = 0; // ensure string is null terminated.
 
-  uv_mutex_lock(&log->mutex);
+  ts_mutex__lock(&(log->mutex));
   if (log->log_dest & TS_LOG_DEST_EVENT) {
     log->log_cb(log->log_ctx, level, line);
   }
   if (log->log_dest & TS_LOG_DEST_FILE) {
     // TODO:
   }
-  uv_mutex_unlock(&log->mutex);
+  ts_mutex__unlock(&(log->mutex));
 
   return 0;
 }

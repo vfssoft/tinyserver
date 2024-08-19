@@ -4,7 +4,7 @@
 
 
 #include "ts_data_buf.h"
-#include "ts_log.h"
+#include "internal/ts_log.h"
 #include "internal/ts_error.h"
 
 typedef struct ts_server_s ts_server_t;

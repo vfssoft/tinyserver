@@ -2,7 +2,7 @@
 #ifndef TINYSERVER_TS_LOG_H
 #define TINYSERVER_TS_LOG_H
 
-#include "ts_internal.h"
+#include "ts_mutex.h"
 
 typedef struct ts_log_s ts_log_t;
 
@@ -19,7 +19,7 @@ struct ts_log_s {
     // internal states
     FILE* cur_log_file;
     
-    uv_mutex_t mutex;
+    ts_mutex_t mutex;
 };
 
 #define LOG(level, fmt, ...)   ts_log__log(&(server->log), level,                __FUNCTION__, __LINE__, fmt, __VA_ARGS__)

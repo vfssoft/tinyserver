@@ -16,7 +16,7 @@
 #include "ts_tcp_conn.h"
 #include "ts_tls.h"
 #include "ts_ws.h"
-#include "ts_log.h"
+#include "internal/ts_log.h"
 #include "ts_miscellany.h"
 #include "ts_crypto.h"
 #include "internal/ts_error.h"
