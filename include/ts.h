@@ -40,6 +40,9 @@ TS_EXTERN int ts_server__stop(ts_t* server);
 TS_EXTERN int ts_server__write(ts_t* server, ts_conn_t* conn, const char* data, int len);
 TS_EXTERN int ts_server__disconnect(ts_t* server, ts_conn_t* conn);
 
+TS_EXTERN void* ts_server__get_conn_user_data(ts_t* server, ts_conn_t* conn);
+TS_EXTERN void ts_server__set_conn_user_data(ts_t* server, ts_conn_t* conn, void* user_data);
+
 TS_EXTERN int ts_server__get_error(ts_t* server);
 TS_EXTERN const char* ts_server__get_error_msg(ts_t* server);
 

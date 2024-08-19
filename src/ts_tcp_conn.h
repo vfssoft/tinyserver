@@ -29,6 +29,8 @@ struct ts_tcp_conn_s {
     
     char local_addr[64]; // Maybe a little small, but let's see
     char remote_addr[64];
+
+    void* user_data;
     
     ts_tcp_conn_t* prev;
     ts_tcp_conn_t* next;

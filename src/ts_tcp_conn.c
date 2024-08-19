@@ -18,7 +18,9 @@ int ts_conn__init(ts_server_listener_t* listener, ts_tcp_conn_t* conn) {
 
   memset(conn->local_addr, 0, sizeof(conn->local_addr));
   memset(conn->remote_addr, 0, sizeof(conn->remote_addr));
-  
+
+  conn->user_data = NULL;
+
   if (use_ssl) {
     conn->tls_buf = ts_buf__create(0);
     if (conn->tls_buf == NULL) {
