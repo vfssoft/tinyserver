@@ -17,7 +17,7 @@
 #include "ts_tls.h"
 #include "ts_ws.h"
 #include "internal/ts_log.h"
-#include "ts_miscellany.h"
+#include "internal/ts_miscellany.h"
 #include "ts_crypto.h"
 #include "internal/ts_error.h"
 #include "internal/ts_mem.h"

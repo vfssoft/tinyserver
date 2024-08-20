@@ -18,7 +18,7 @@
 #include <uv.h>
 
 #include "internal/ts_data_buf.h"
-#include <ts_miscellany.h>
+#include "internal/ts_miscellany.h"
 
 #ifdef __cplusplus
 extern "C" {
