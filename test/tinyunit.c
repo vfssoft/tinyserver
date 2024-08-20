@@ -77,7 +77,7 @@ long get_current_process_memory_usage() {
 
 static int is_category_selected(const char* category) {
   for (int i = 0; i < 16; i++) {
-    if (stricmp(category, selected_categories[i]) == 0) {
+    if (stricmp(category, (char*)selected_categories[i]) == 0) {
       return 1;
     }
   }
@@ -128,6 +128,8 @@ int run_tests() {
 
   long long time_used = get_current_time_millis() - start_time;
   STDOUT("\x1b[34m##### Total Time Used: %lld ms\x1b[m\n", time_used);
+
+  return 0;
 }
 
 int set_tests_categories(const char* categories) {
@@ -138,7 +140,7 @@ int set_tests_categories(const char* categories) {
   
   token = strtok(categories, ",");
   while (token != NULL) {
-    strcpy(selected_categories[cnt], token);
+    strcpy((char*)selected_categories[cnt], token);
     cnt++;
     token = strtok(NULL, ",");
   }
