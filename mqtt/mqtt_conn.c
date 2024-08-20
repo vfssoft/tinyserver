@@ -51,6 +51,13 @@ int tm_mqtt_conn__destroy(tm_mqtt_conn_t* conn) {
   return 0;
 }
 
+static void tm_mqtt_conn__send_connack_abort(ts_t* server, ts_conn_t* c, int return_code, const char* desc) {
+
+}
+static void tm_mqtt_conn__abort(ts_t* server, ts_conn_t* c) {
+  ts_server__disconnect(server, c);
+}
+
 static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
   int err;
   tm_mqtt_conn_t* conn;
@@ -66,6 +73,7 @@ static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char*
   BOOL session_present = FALSE;
   BOOL clean_session;
   tm_packet_decoder_t* decoder = &conn->decoder;
+  const char* remote_host = ts_server__get_conn_remote_host(server, c);
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
@@ -74,39 +82,47 @@ static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char*
 
   err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
   if (err || tmp_len != 4 || strcmp(tmp_ptr, "MQTT") != 0) {
-    ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Failed to read protocol name");
+    LOG_ERROR("[%s] Invalid protocol name");
+    tm_mqtt_conn__abort(server, c);
     goto done;
   }
 
   err = tm_packet_decoder__read_byte(decoder, &tmp_val);
   if (err || tmp_val != 4) {
-    ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Protocol Level");
+    LOG_ERROR("[%s] Invalid protocol level");
+    // TODO: send CONNACK 0x01 (unacceptable protocol level)
+    tm_mqtt_conn__abort(server, c);
     goto done;
   }
 
   err = tm_packet_decoder__read_byte(decoder, &connect_flags);
   if (err || (connect_flags & 0x01) != 0) {
-    ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Connect Flags");
+    LOG_ERROR("[%s] Invalid Connect Flags");
+    tm_mqtt_conn__abort(server, c);
     goto done;
   }
   clean_session = (connect_flags & 0x02) == 0x02;
 
   err = tm_packet_decoder__read_int16(decoder, &(conn->keep_alive));
   if (err) {
-    ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Keep Alive");
+    LOG_ERROR("[%s] Invalid Keep Alive");
+    tm_mqtt_conn__abort(server, c);
     goto done;
   }
 
   err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
   if (err || tmp_len >= MAX_CLIENT_ID_LEN) {
-    ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Client Id");
+    LOG_ERROR("[%s] Invalid Client Id");
+    tm_mqtt_conn__abort(server, c);
     goto done;
   }
   memcpy(client_id, tmp_ptr, tmp_len);
   if (tmp_len == 0) {
     // empty client id
     if (!clean_session) {
-      ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Zero client id but want to persist session state");
+      LOG_ERROR("[%s] Zero client id but want to persist session state");
+      // TODO: send CONNACK 0x02 (Identifier rejected)
+      tm_mqtt_conn__abort(server, c);
       goto done;
     }
     tm_mqtt_conn__generate_client_id(server, c, client_id);
@@ -136,14 +152,16 @@ static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char*
     // TODO: will topic
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
-      ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Will Topic");
+      LOG_ERROR("[%s] Invalid Will Topic");
+      tm_mqtt_conn__abort(server, c);
       goto done;
     }
 
     // TODO: Will Message
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
-      ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Will Message");
+      LOG_ERROR("[%s] Invalid Will Message");
+      tm_mqtt_conn__abort(server, c);
       goto done;
     }
   } else {
@@ -153,7 +171,8 @@ static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char*
   if ((connect_flags & 0x40) == 0x40) {
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
-      ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Will Message");
+      LOG_ERROR("[%s] Invalid Username");
+      tm_mqtt_conn__abort(server, c);
       goto done;
     }
     
@@ -167,7 +186,8 @@ static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char*
   if ((connect_flags & 0x80) == 0x80) {
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
-      ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Will Message");
+      LOG_ERROR("[%s] Invalid Password");
+      tm_mqtt_conn__abort(server, c);
       goto done;
     }
   
@@ -305,7 +325,7 @@ int tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len)
     }
 
     // parse successfully
-    err = tm_mqtt_conn__process_in_pkt(conn, buf, pkt_bytes_cnt, pkt_bytes_cnt - remaining_length);
+    err = tm_mqtt_conn__process_in_pkt(server, c, buf, pkt_bytes_cnt, pkt_bytes_cnt - remaining_length);
     if (err) {
       goto done;
     }
