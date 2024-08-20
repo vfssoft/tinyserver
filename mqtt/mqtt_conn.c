@@ -23,8 +23,8 @@ tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s) {
 
 int tm_mqtt_conn__destroy(tm_mqtt_conn_t* conn) {
   if (conn) {
-    if (conn->client_id) {
-      ts__free(conn->client_id);
+    if (conn->session) {
+      // TODO:
     }
     
     if (conn->in_buf) {
@@ -39,10 +39,14 @@ int tm_mqtt_conn__destroy(tm_mqtt_conn_t* conn) {
 
 static int tm_mqtt_conn__process_connect(tm_mqtt_conn_t* conn, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
   int err;
+  tm_server_t* s = conn->server;
   int tmp_len;
   const char* tmp_ptr = "";
   int tmp_val;
   int connect_flags = 0;
+  char* username = NULL;
+  char* password = NULL;
+  BOOL auth_ok = FALSE;
   tm_packet_decoder_t* decoder = &conn->decoder;
 
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
@@ -64,7 +68,7 @@ static int tm_mqtt_conn__process_connect(tm_mqtt_conn_t* conn, const char* pkt_b
     ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Connect Flags");
     goto done;
   }
-  conn->clean_session = (connect_flags & 0x02) == 0x02;
+  //conn->clean_session = (connect_flags & 0x02) == 0x02;
 
   err = tm_packet_decoder__read_int16(decoder, &(conn->keep_alive));
   if (err) {
@@ -105,30 +109,54 @@ static int tm_mqtt_conn__process_connect(tm_mqtt_conn_t* conn, const char* pkt_b
   }
 
   if ((connect_flags & 0x40) == 0x40) {
-    // TODO: Username
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
       ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Will Message");
       goto done;
     }
+    
+    username = (char*) ts__malloc(tmp_len);
+    if (username) {
+      ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
+      goto done;
+    }
+    memcpy(username, tmp_ptr, tmp_len);
   }
   if ((connect_flags & 0x80) == 0x80) {
-    // TODO: Password
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
       ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Will Message");
       goto done;
     }
+  
+    password = (char*) ts__malloc(tmp_len);
+    if (password) {
+      ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
+      goto done;
+    }
+    memcpy(password, tmp_ptr, tmp_len);
   }
-
+  
+  // auth user
+  s->callbacks.auth_cb(s->callbacks.cb_ctx, s, username, password, &auth_ok);
+  
+  
 done:
+  
+  if (username) {
+    ts__free(username);
+  }
+  if (password) {
+    ts__free(password);
+  }
+  
   return conn->err.err;
 }
 
 static int tm_mqtt_conn__process_in_pkt(tm_mqtt_conn_t* conn, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
   int pkt_type = (pkt_bytes[0] & 0xF0) >> 4;
 
-  if (!conn->connected && pkt_type != PKT_TYPE_CONNECT) {
+  if (conn->session == NULL && pkt_type != PKT_TYPE_CONNECT) {
     ts_error__set_msg(&(conn->err), TS_ERR_PROTOCOL_ERROR, "First packet should be CONNECT");
     return TS_ERR_PROTOCOL_ERROR;
   }
@@ -136,7 +164,7 @@ static int tm_mqtt_conn__process_in_pkt(tm_mqtt_conn_t* conn, const char* pkt_by
   switch (pkt_type) {
 
     case PKT_TYPE_CONNECT:
-      if (conn->connected) {
+      if (conn->session->connected) {
         ts_error__set_msg(&(conn->err), TS_ERR_PROTOCOL_ERROR, "Already connected but receive another CONNECT");
         return TS_ERR_PROTOCOL_ERROR;
       }

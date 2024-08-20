@@ -12,9 +12,6 @@
 typedef struct tm_mqtt_conn_s tm_mqtt_conn_t;
 
 struct tm_mqtt_conn_s {
-  BOOL connected;
-  char* client_id;
-  int clean_session;
   int keep_alive;
   
   tm_mqtt_msg_t* will;
