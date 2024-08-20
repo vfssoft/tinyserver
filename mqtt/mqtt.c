@@ -78,7 +78,8 @@ tm_t* tm__create() {
   ts_server__set_write_cb(s->server, tm__conn_write_cb);
   ts_server__set_disconnected_cb(s->server, tm__conn_disconnected_cb);
   ts_server__set_idle_cb(s->server, tm__idle_cb);
-
+  
+  ts_mutex__init(&(s->sessions_mu));
   return s;
 }
 int tm_destroy(tm_t* mq) {
@@ -88,6 +89,8 @@ int tm_destroy(tm_t* mq) {
     ts_server__destroy(s->server);
   }
   s->server = NULL;
+  
+  ts_mutex__destroy(&(s->sessions_mu));
 
   ts__free(s);
   return 0;
@@ -225,6 +228,37 @@ int tm__get_error(tm_t* mq) {
 const char* tm__get_error_msg(tm_t* mq) {
   tm_server_t* s = (tm_server_t*) mq;
   return s->err.msg;
+}
+
+
+tm_mqtt_session_t* tm__find_session(tm_server_t* s, const char* client_id) {
+  tm_mqtt_session_t* sess;
+  
+  ts_mutex__lock(&(s->sessions_mu));
+  HASH_FIND_STR(s->sessions, client_id, sess);
+  ts_mutex__unlock(&(s->sessions_mu));
+  
+  return sess;
+}
+tm_mqtt_session_t* tm__create_session(tm_server_t* s, const char* client_id) {
+  tm_mqtt_session_t* sess;
+  
+  sess = tm_mqtt_session__create(client_id);
+  if (sess == NULL) {
+    return NULL;
+  }
+  
+  ts_mutex__lock(&(s->sessions_mu));
+  HASH_ADD_STR(s->sessions, client_id, sess);
+  ts_mutex__unlock(&(s->sessions_mu));
+}
+int tm__remove_session(tm_server_t* s, tm_mqtt_session_t* sess) {
+  ts_mutex__lock(&(s->sessions_mu));
+  HASH_DEL(s->sessions, sess);
+  ts_mutex__unlock(&(s->sessions_mu));
+  
+  tm_mqtt_session__destroy(sess);
+  return 0;
 }
 
 

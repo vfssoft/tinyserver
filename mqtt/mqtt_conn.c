@@ -3,6 +3,9 @@
 #include "mqtt_packets.h"
 
 #include <internal/ts_mem.h>
+#include <internal/ts_log.h>
+
+#define MAX_CLIENT_ID_LEN 512
 
 tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s) {
   tm_mqtt_conn_t* conn;
@@ -40,6 +43,7 @@ int tm_mqtt_conn__destroy(tm_mqtt_conn_t* conn) {
 static int tm_mqtt_conn__process_connect(tm_mqtt_conn_t* conn, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
   int err;
   tm_server_t* s = conn->server;
+  ts_t* server = s->server;
   int tmp_len;
   const char* tmp_ptr = "";
   int tmp_val;
@@ -47,6 +51,9 @@ static int tm_mqtt_conn__process_connect(tm_mqtt_conn_t* conn, const char* pkt_b
   char* username = NULL;
   char* password = NULL;
   BOOL auth_ok = FALSE;
+  char client_id[MAX_CLIENT_ID_LEN];
+  BOOL session_present = FALSE;
+  BOOL clean_session;
   tm_packet_decoder_t* decoder = &conn->decoder;
 
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
@@ -68,7 +75,7 @@ static int tm_mqtt_conn__process_connect(tm_mqtt_conn_t* conn, const char* pkt_b
     ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Connect Flags");
     goto done;
   }
-  //conn->clean_session = (connect_flags & 0x02) == 0x02;
+  clean_session = (connect_flags & 0x02) == 0x02;
 
   err = tm_packet_decoder__read_int16(decoder, &(conn->keep_alive));
   if (err) {
@@ -77,18 +84,39 @@ static int tm_mqtt_conn__process_connect(tm_mqtt_conn_t* conn, const char* pkt_b
   }
 
   err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
-  if (err) {
+  if (err || tmp_len >= MAX_CLIENT_ID_LEN) {
     ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Client Id");
     goto done;
   }
-
-  conn->client_id = ts__malloc(sizeof(tmp_len));
-  if (conn->client_id) {
-    ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
-    goto done;
+  memcpy(client_id, tmp_ptr, tmp_len);
+  if (tmp_len == 0) {
+    // empty client id
+    if (!clean_session) {
+      ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Zero client id but want to persist session state");
+      goto done;
+    }
+    //TODO: generate a client id
+  } else {
+    // TODO: validate the client id
   }
-  memcpy(conn->client_id, tmp_ptr, tmp_len);
-  // TODO: validate the client id
+  
+  conn->session = tm__find_session(s, client_id);
+  session_present = !clean_session && conn->session != NULL;
+  
+  if (clean_session && conn->session) {
+    LOG_DEBUG("[%s] Clear the previous session state", ts_server__get_conn_remote_host(server, conn));
+    tm__remove_session(s, conn->session);
+    conn->session = NULL;
+  }
+  if (conn->session == NULL) {
+    LOG_DEBUG("[%s] Create new session for the current client", ts_server__get_conn_remote_host(server, conn));
+    conn->session = tm__create_session(s, client_id);
+    if (conn->session == NULL) {
+      ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
+      goto done;
+    }
+  }
+  conn->session->clean_session = clean_session;
 
   if ((connect_flags & 0x04) == 0x04) { // will flag
     // TODO: will topic

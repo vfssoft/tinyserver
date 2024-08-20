@@ -3,7 +3,7 @@
 #include <ts.h>
 #include <internal/ts_mem.h>
 
-tm_mqtt_session_t* tm_mqtt_session__create() {
+tm_mqtt_session_t* tm_mqtt_session__create(const char* client_id) {
   tm_mqtt_session_t* sess;
   
   sess = (tm_mqtt_session_t*) ts__malloc(sizeof(tm_mqtt_session_t));
@@ -16,6 +16,12 @@ tm_mqtt_session_t* tm_mqtt_session__create() {
   sess->clean_session = TRUE;
   
   ts_error__init(&(sess->err));
+  
+  sess->client_id = (char*) ts__malloc(strlen(client_id));
+  if (sess->client_id == NULL) {
+    return NULL;
+  }
+  strcpy(sess->client_id, client_id);
   
   return sess;
 }
