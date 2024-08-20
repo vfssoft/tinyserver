@@ -20,7 +20,6 @@
 #define PKT_TYPE_DISCONNECT  14
 
 BOOL tm__parse_packet(
-    tm_mqtt_conn_t* conn,
     const char* data,
     int data_len,
     int* pkt_bytes_cnt,
