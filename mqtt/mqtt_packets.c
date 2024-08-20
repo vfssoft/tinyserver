@@ -113,3 +113,60 @@ BOOL tm__parse_packet(
   
   return *pkt_bytes_cnt <= data_len;
 }
+
+
+int tm_packet_decoder__set(tm_packet_decoder_t* decoder, const char* buf, int len) {
+  decoder->buf = buf;
+  decoder->len = len;
+  decoder->offset = 0;
+  return 0;
+}
+int tm_packet_decoder__available(tm_packet_decoder_t* decoder){
+  return decoder->len - decoder->offset;
+}
+const char* tm_packet_decoder__ptr(tm_packet_decoder_t* decoder) {
+  return decoder->buf + decoder->offset;
+}
+static int tm_packet_decoder__check_available(tm_packet_decoder_t* decoder, int len) {
+  int avail = tm_packet_decoder__available(decoder);
+  if (avail < len) {
+    return TS_ERR_INVALID_OPERATION;
+  }
+  return 0;
+}
+int tm_packet_decoder__read_byte(tm_packet_decoder_t* decoder, int* ret) {
+  int err;
+
+  err = tm_packet_decoder__check_available(decoder, 1);
+  if (err) return err;
+
+  *ret = tm_packet_decoder__ptr(decoder)[0] & 0xFF;
+  decoder->offset += 1;
+  return 0;
+}
+int tm_packet_decoder__read_int16(tm_packet_decoder_t* decoder, int* ret) {
+  int err;
+
+  err = tm_packet_decoder__check_available(decoder, 2);
+  if (err) return err;
+
+  *ret = bytes2uint16_be(tm_packet_decoder__ptr(decoder));
+  decoder->offset += 2;
+  return 0;
+}
+int tm_packet_decoder__read_int16_string(tm_packet_decoder_t* decoder, int* retlen, const char** retstr) {
+  int err;
+
+  err = tm_packet_decoder__read_int16(decoder, retlen);
+  if (err) return err;
+
+  err = tm_packet_decoder__check_available(decoder, *retlen);
+  if (err) return err;
+
+  *retstr = tm_packet_decoder__ptr(decoder);
+  return 0;
+}
+
+
+
+

@@ -4,6 +4,8 @@
 
 #include "mqtt_conn.h"
 
+#include <internal/ts_miscellany.h>
+
 #define PKT_TYPE_CONNECT     1
 #define PKT_TYPE_CONNACK     2
 #define PKT_TYPE_PUBLISH     3
@@ -26,6 +28,27 @@ BOOL tm__parse_packet(
     unsigned int* remaining_length,
     ts_error_t* err
 );
+
+typedef struct tm_packet_decoder_s tm_packet_decoder_t;
+
+struct tm_packet_decoder_s {
+    const char* buf;
+    int len;
+
+    int offset;
+};
+
+int tm_packet_decoder__set(tm_packet_decoder_t* decoder, const char* buf, int len);
+int tm_packet_decoder__available(tm_packet_decoder_t* decoder);
+const char* tm_packet_decoder__ptr(tm_packet_decoder_t* decoder);
+int tm_packet_decoder__read_byte(tm_packet_decoder_t* decoder, int* ret);
+int tm_packet_decoder__read_int16(tm_packet_decoder_t* decoder, int* ret);
+int tm_packet_decoder__read_int16_string(tm_packet_decoder_t* decoder, int* retlen, const char** retstr);
+
+
+
+
+
 
 
 #endif //TINYSERVER_MQTT_PACKETS_H

@@ -13,6 +13,7 @@ tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s) {
   }
   memset(conn, 0, sizeof(tm_mqtt_conn_t));
 
+  tm_packet_decoder__set(&(conn->decoder), NULL, 0);
   ts_error__init(&(s->err));
 
   conn->server = s;
@@ -38,9 +39,90 @@ int tm_mqtt_conn__destroy(tm_mqtt_conn_t* conn) {
 
 static int tm_mqtt_conn__process_connect(tm_mqtt_conn_t* conn, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
   int err;
+  int tmp_len;
+  const char* tmp_ptr = "";
+  int tmp_val;
+  int connect_flags = 0;
+  tm_packet_decoder_t* decoder = &conn->decoder;
 
+  tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
 
+  err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
+  if (err || tmp_len != 4 || strcmp(tmp_ptr, "MQTT") != 0) {
+    ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Failed to read protocol name");
+    goto done;
+  }
 
+  err = tm_packet_decoder__read_byte(decoder, &tmp_val);
+  if (err || tmp_val != 4) {
+    ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Protocol Level");
+    goto done;
+  }
+
+  err = tm_packet_decoder__read_byte(decoder, &connect_flags);
+  if (err || (connect_flags & 0x01) != 0) {
+    ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Connect Flags");
+    goto done;
+  }
+  conn->clean_session = (connect_flags & 0x02) == 0x02;
+
+  err = tm_packet_decoder__read_int16(decoder, &(conn->keep_alive));
+  if (err) {
+    ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Keep Alive");
+    goto done;
+  }
+
+  err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
+  if (err) {
+    ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Client Id");
+    goto done;
+  }
+
+  conn->client_id = ts__malloc(sizeof(tmp_len));
+  if (conn->client_id) {
+    ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
+    goto done;
+  }
+  memcpy(conn->client_id, tmp_ptr, tmp_len);
+  // TODO: validate the client id
+
+  if ((connect_flags & 0x04) == 0x04) { // will flag
+    // TODO: will topic
+    err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
+    if (err) {
+      ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Will Topic");
+      goto done;
+    }
+
+    // TODO: Will Message
+    err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
+    if (err) {
+      ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Will Message");
+      goto done;
+    }
+  } else {
+    // TODO: validate the Will QoS, Will Retain flags
+  }
+
+  if ((connect_flags & 0x40) == 0x40) {
+    // TODO: Username
+    err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
+    if (err) {
+      ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Will Message");
+      goto done;
+    }
+  }
+  if ((connect_flags & 0x80) == 0x80) {
+    // TODO: Password
+    err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
+    if (err) {
+      ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Will Message");
+      goto done;
+    }
+  }
+
+done:
+  return conn->err.err;
 }
 
 static int tm_mqtt_conn__process_in_pkt(tm_mqtt_conn_t* conn, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {

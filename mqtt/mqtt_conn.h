@@ -3,6 +3,7 @@
 #define TINYSERVER_MQTT_CONN_H
 
 #include "mqtt.h"
+#include "mqtt_packets.h"
 #include "mqtt_message.h"
 #include "mqtt_session.h"
 
@@ -22,6 +23,7 @@ struct tm_mqtt_conn_s {
   tm_server_t* server;
   
   ts_buf_t* in_buf;
+  tm_packet_decoder_t decoder;
   ts_error_t err;
 };
 
