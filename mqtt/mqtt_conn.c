@@ -4,8 +4,19 @@
 
 #include <internal/ts_mem.h>
 #include <internal/ts_log.h>
+#include <internal/ts_crypto.h>
+
+#include <inttypes.h>
 
 #define MAX_CLIENT_ID_LEN 512
+
+static void tm_mqtt_conn__generate_client_id(ts_t* server, ts_conn_t* c, char* client_id) {
+  // Parts: "tmp_client_id", remote host, address of conn, random
+  const char *remote_host = ts_server__get_conn_remote_host(server, c);
+  unsigned long long random_val = crypto__random_int64();
+  
+  sprintf(client_id, "tmp_client_id_%s_%" PRIu64 "%" PRIu64, remote_host, (uint64_t)c, (uint64_t) random_val);
+}
 
 tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s) {
   tm_mqtt_conn_t* conn;
@@ -40,10 +51,10 @@ int tm_mqtt_conn__destroy(tm_mqtt_conn_t* conn) {
   return 0;
 }
 
-static int tm_mqtt_conn__process_connect(tm_mqtt_conn_t* conn, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
+static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
   int err;
-  tm_server_t* s = conn->server;
-  ts_t* server = s->server;
+  tm_mqtt_conn_t* conn;
+  tm_server_t* s;
   int tmp_len;
   const char* tmp_ptr = "";
   int tmp_val;
@@ -55,7 +66,10 @@ static int tm_mqtt_conn__process_connect(tm_mqtt_conn_t* conn, const char* pkt_b
   BOOL session_present = FALSE;
   BOOL clean_session;
   tm_packet_decoder_t* decoder = &conn->decoder;
-
+  
+  conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
+  s = conn->server;
+  
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
 
   err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
@@ -95,7 +109,7 @@ static int tm_mqtt_conn__process_connect(tm_mqtt_conn_t* conn, const char* pkt_b
       ts_error__set_msg(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Zero client id but want to persist session state");
       goto done;
     }
-    //TODO: generate a client id
+    tm_mqtt_conn__generate_client_id(server, c, client_id);
   } else {
     // TODO: validate the client id
   }
@@ -104,12 +118,12 @@ static int tm_mqtt_conn__process_connect(tm_mqtt_conn_t* conn, const char* pkt_b
   session_present = !clean_session && conn->session != NULL;
   
   if (clean_session && conn->session) {
-    LOG_DEBUG("[%s] Clear the previous session state", ts_server__get_conn_remote_host(server, conn));
+    LOG_DEBUG("[%s] Clear the previous session state", ts_server__get_conn_remote_host(server, c));
     tm__remove_session(s, conn->session);
     conn->session = NULL;
   }
   if (conn->session == NULL) {
-    LOG_DEBUG("[%s] Create new session for the current client", ts_server__get_conn_remote_host(server, conn));
+    LOG_DEBUG("[%s] Create new session for the current client", ts_server__get_conn_remote_host(server, c));
     conn->session = tm__create_session(s, client_id);
     if (conn->session == NULL) {
       ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
@@ -181,7 +195,10 @@ done:
   return conn->err.err;
 }
 
-static int tm_mqtt_conn__process_in_pkt(tm_mqtt_conn_t* conn, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
+static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
+  tm_mqtt_conn_t* conn;
+  
+  conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   int pkt_type = (pkt_bytes[0] & 0xF0) >> 4;
 
   if (conn->session == NULL && pkt_type != PKT_TYPE_CONNECT) {
@@ -197,7 +214,7 @@ static int tm_mqtt_conn__process_in_pkt(tm_mqtt_conn_t* conn, const char* pkt_by
         return TS_ERR_PROTOCOL_ERROR;
       }
 
-      return tm_mqtt_conn__process_connect(conn, pkt_bytes, pkt_bytes_len, variable_header_off);
+      return tm_mqtt_conn__process_connect(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_CONNACK:
       break;
@@ -244,8 +261,9 @@ static int tm_mqtt_conn__process_in_pkt(tm_mqtt_conn_t* conn, const char* pkt_by
   }
   return 0;
 }
-int tm_mqtt_conn__data_in(tm_mqtt_conn_t* conn, const char* data, int len) {
+int tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len) {
   int err;
+  tm_mqtt_conn_t* conn;
   int total_bytes_consumed = 0;
   BOOL parsed = FALSE;
   int pkt_bytes_cnt = 0;
@@ -253,6 +271,8 @@ int tm_mqtt_conn__data_in(tm_mqtt_conn_t* conn, const char* data, int len) {
   BOOL use_in_buf = FALSE;
   const char* buf;
   int buf_len;
+  
+  conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
 
   if (ts_buf__get_length(conn->in_buf) == 0) {
     buf = data;
