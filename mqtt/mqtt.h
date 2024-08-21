@@ -29,4 +29,8 @@ tm_mqtt_session_t* tm__find_session(tm_server_t* s, const char* client_id);
 tm_mqtt_session_t* tm__create_session(tm_server_t* s, const char* client_id);
 int tm__remove_session(tm_server_t* s, tm_mqtt_session_t* sess);
 
+// messages
+tm_mqtt_msg_t* tm__create_message(tm_server_t* s, const char* topic, const char* payload, int payload_len, int dup, int qos, int retain);
+void tm__remove_message(tm_server_t* s, tm_mqtt_msg_t* msg);
+
 #endif //TINYSERVER_MQTT_H

@@ -26,4 +26,10 @@ struct tm_mqtt_msg_s {
   tm_mqtt_msg_t* next;
 };
 
+tm_mqtt_msg_core_t* tm_mqtt_msg_core__create(const char* topic, const char* payload, int payload_len);
+int tm_mqtt_msg_core__destroy(tm_mqtt_msg_core_t* msg_core);
+
+int tm_mqtt_msg_core__add_ref(tm_mqtt_msg_core_t* msg_core);
+int tm_mqtt_msg_core__dec_ref(tm_mqtt_msg_core_t* msg_core);
+
 #endif //TINYSERVER_MQTT_MESSAGE_H

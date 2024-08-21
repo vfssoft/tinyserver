@@ -266,3 +266,63 @@ int tm__remove_session(tm_server_t* s, tm_mqtt_session_t* sess) {
 }
 
 
+static tm_mqtt_msg_core_t* tm__create_message_core(tm_server_t* s, const char* topic, const char* payload, int payload_len) {
+  tm_mqtt_msg_core_t* msg_core;
+
+  msg_core = tm_mqtt_msg_core__create(topic, payload, payload_len);
+  if (msg_core == NULL) {
+    return NULL;
+  }
+
+  ts_mutex__lock(&(s->messages_mu));
+  DL_APPEND(s->message_cores, msg_core);
+  ts_mutex__unlock(&(s->messages_mu));
+
+  return msg_core;
+}
+static int tm__ref_message_core(tm_server_t* s, tm_mqtt_msg_core_t* msg_core) {
+  tm_mqtt_msg_core__add_ref(msg_core); // add ref
+  return 0;
+}
+static int tm__unref_message_core(tm_server_t* s, tm_mqtt_msg_core_t* msg_core) {
+  int msg_core_ref_cnt;
+
+  msg_core_ref_cnt = tm_mqtt_msg_core__dec_ref(msg_core);
+
+  if (msg_core_ref_cnt == 0) {
+    ts_mutex__lock(&(s->messages_mu));
+    DL_DELETE(s->message_cores, msg_core);
+    ts_mutex__unlock(&(s->messages_mu));
+
+    tm_mqtt_msg_core__destroy(msg_core);
+  }
+
+  return 0;
+}
+tm_mqtt_msg_t* tm__create_message(tm_server_t* s, const char* topic, const char* payload, int payload_len, int dup, int qos, int retain) {
+  tm_mqtt_msg_t* msg;
+  tm_mqtt_msg_core_t* msg_core;
+
+  msg = (tm_mqtt_msg_t*) ts__malloc(sizeof(tm_mqtt_msg_t));
+  if (msg == NULL) {
+    return NULL;
+  }
+  msg_core = tm__create_message_core(s, topic, payload, payload_len);
+  if (msg_core == NULL) {
+    return NULL;
+  }
+
+  tm__ref_message_core(s, msg_core);
+
+  msg->msg_core = msg_core;
+  msg->flags = (dup ? 4 : 0) | (qos << 1) | retain;
+
+  return msg;
+}
+
+void tm__remove_message(tm_server_t* s, tm_mqtt_msg_t* msg) {
+  tm__unref_message_core(s, msg->msg_core);
+  ts__free(msg);
+}
+
+
