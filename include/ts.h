@@ -52,6 +52,9 @@ TS_EXTERN  int ts_server_log_set_log_dest(ts_t* server, int dest);
 TS_EXTERN  int ts_server_log_set_log_dir(ts_t* server, const char* dir);
 TS_EXTERN  int ts_server_log_set_log_cb(ts_t* server, void* ctx, ts_log_cb cb);
 
+// internal utils
+TS_EXTERN unsigned long long ts_server__now(ts_t* server);
+
 #define TS_LOG_DEST_FILE   1
 #define TS_LOG_DEST_EVENT  2
 

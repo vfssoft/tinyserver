@@ -12,7 +12,7 @@ int tm_mqtt_conn__process_disconnect(ts_t* server, ts_conn_t* c) {
   s = conn->server;
   
   if (conn->will) {
-    LOG_VERB("[%s] Client is disconnected gracefully, discard the Will message silently");
+    LOG_VERB("[%s] Client is disconnected gracefully, discard the Will message silently", conn_id);
     tm__remove_message(s, conn->will);
     conn->will = NULL;
   }
@@ -37,13 +37,18 @@ int tm_mqtt_conn__process_tcp_disconnect(ts_t* server, ts_conn_t* c) {
   conn->session->connected = 0;
   
   if (conn->will) {
-    LOG_VERB("[%s] Client is disconnected abnormally, publish the Will message silently");
+    LOG_VERB("[%s] Client is disconnected abnormally, publish the Will message silently", conn_id);
     // TODO: publish Will message
     tm__remove_message(s, conn->will);
     conn->will = NULL;
   }
   
   // conn->session = NULL;
+  if (conn->session->clean_session) {
+    LOG_VERB("[%s] Clean session is set, discard the session state", conn_id);
+    tm__remove_session(s, conn->session);
+  }
+  
   s->callbacks.disconnected_cb(s->callbacks.cb_ctx, server, c);
   return 0;
 }

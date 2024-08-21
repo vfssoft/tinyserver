@@ -14,6 +14,7 @@ typedef struct tm_mqtt_conn_s tm_mqtt_conn_t;
 struct tm_mqtt_conn_s {
   int keep_alive;
   
+  unsigned long long last_active_time;
   tm_mqtt_msg_t* will;
   tm_mqtt_session_t* session;
     
@@ -31,6 +32,7 @@ void tm_mqtt_conn__abort(ts_t* server, ts_conn_t* c);
 int tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len);
 
 int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off);
+int tm_mqtt_conn__process_pingreq(ts_t* server, ts_conn_t* c);
 int tm_mqtt_conn__process_disconnect(ts_t* server, ts_conn_t* c);
 int tm_mqtt_conn__process_tcp_disconnect(ts_t* server, ts_conn_t* c);
 

@@ -98,10 +98,7 @@ static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* 
       break;
 
     case PKT_TYPE_PINGREQ:
-      break;
-
-    case PKT_TYPE_PINGRESP:
-      break;
+      return tm_mqtt_conn__process_pingreq(server, c);
 
     case PKT_TYPE_DISCONNECT:
       return tm_mqtt_conn__process_disconnect(server, c);
@@ -172,5 +169,7 @@ int tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len)
   }
 
 done:
+  conn->last_active_time = ts_server__now(server);
+  
   return 0;
 }

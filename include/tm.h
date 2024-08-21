@@ -8,11 +8,15 @@ typedef struct tm_callbacks_s tm_callbacks_t;
 
 typedef int (*tm_log_cb)(void* ctx, const char* msg);
 typedef int (*tm_auth_user_cb)(void* ctx, tm_t* mq, const char* username, const char* password, int* ret_auth_ok);
+typedef int (*tm_connected)(void* ctx, tm_t* mq, ts_conn_t* conn);
+typedef int (*tm_disconnected)(void* ctx, tm_t* mq, ts_conn_t* conn);
 
 struct tm_callbacks_s {
     void* cb_ctx;
     tm_log_cb log_cb;
     tm_auth_user_cb auth_cb;
+    tm_connected connected_cb;
+    tm_disconnected disconnected_cb;
 };
 
 TS_EXTERN tm_t* tm__create();
