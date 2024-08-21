@@ -2,8 +2,6 @@
 #ifndef TINYSERVER_MQTT_PACKETS_H
 #define TINYSERVER_MQTT_PACKETS_H
 
-#include "mqtt_conn.h"
-
 #include <internal/ts_miscellany.h>
 #include <internal/ts_error.h>
 

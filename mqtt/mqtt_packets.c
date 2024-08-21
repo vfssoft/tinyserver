@@ -34,7 +34,7 @@ int tm__parse_packet(
   unsigned long long multiplier = 1;
 
   if (data_len < 2) {
-    return FALSE;
+    return 0;
   }
   
   pkt_type = (data[0] & 0xF0) >> 4;
@@ -59,7 +59,7 @@ int tm__parse_packet(
             "Invalid Reserved flags in the incoming %s packet",
             tm__pkt_name(pkt_type)
         );
-        return FALSE;
+        return 0;
       }
       break;
       
@@ -76,25 +76,25 @@ int tm__parse_packet(
             "Invalid Reserved flags in the incoming %s packet",
             tm__pkt_name(pkt_type)
         );
-        return FALSE;
+        return 0;
       }
       break;
       
     default:
       ts_error__set_msgf(error, TS_ERR_MALFORMED_MQTT_PACKET, "Invalid Control Packet Type(%d)", pkt_type);
-      return FALSE;
+      return 0;
   }
   
   *remaining_length = 0;
   offset = 1;
-  while (TRUE) {
+  while (1) {
     *remaining_length += ((data[offset] & 0x7F) * multiplier);
     multiplier *= 128;
   
     if (multiplier > 128*128*128) {
       // The incoming packet encodes the variable length in more than 4 bytes
       ts_error__set_msg(error, TS_ERR_MALFORMED_MQTT_PACKET, "Variable length is too large(0xFFFFFF7F)");
-      return FALSE;
+      return 0;
     }
     
     if ((data[offset] & 0x80) != 0x80) {
@@ -104,7 +104,7 @@ int tm__parse_packet(
     offset++;
     
     if (offset >= data_len) {
-      return FALSE; // we want more data, but no
+      return 0; // we want more data, but no
     }
     
   }

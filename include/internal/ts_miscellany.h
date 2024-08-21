@@ -4,8 +4,8 @@
 
 const char* ts_proto__str(int proto);
 
-BOOL ts_use_ssl(int proto);
-BOOL ts_use_websocket(int proto);
+int ts_use_ssl(int proto);
+int ts_use_websocket(int proto);
 
 const char* ts_ipv6__str(int use_ipv6);
 
