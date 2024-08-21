@@ -104,7 +104,7 @@ static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* 
       break;
 
     case PKT_TYPE_DISCONNECT:
-      break;
+      return tm_mqtt_conn__process_disconnect(server, c);
 
     default:
       LOG_ERROR("[%s] Unkonwn Control Packet Type(%d)", ts_server__get_conn_remote_host(server, c), pkt_type);

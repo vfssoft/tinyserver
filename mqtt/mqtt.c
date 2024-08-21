@@ -44,6 +44,8 @@ static void tm__conn_disconnected_cb(void* ctx, ts_t* server, ts_conn_t* conn, i
   //tm_server_t* s = (tm_server_t*) ctx;
   tm_mqtt_conn_t* mqtt_conn;
   
+  tm_mqtt_conn__process_tcp_disconnect(server, conn);
+  
   mqtt_conn = (tm_mqtt_conn_t* )ts_server__get_conn_user_data(server, conn);
   if (mqtt_conn) {
     tm_mqtt_conn__destroy(mqtt_conn);
