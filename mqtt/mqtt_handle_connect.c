@@ -1,4 +1,5 @@
 #include "mqtt_conn.h"
+#include "mqtt_utils.h"
 
 #include <internal/ts_mem.h>
 #include <internal/ts_log.h>
@@ -41,8 +42,11 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   const char* tmp_ptr = "";
   int tmp_val;
   int connect_flags = 0;
-  char* username = NULL;
-  char* password = NULL;
+  int will_qos;
+  int will_retain;
+  ts_buf_t* will_topic = NULL;
+  ts_buf_t* username = NULL;
+  ts_buf_t* password = NULL;
   BOOL auth_ok = FALSE;
   char client_id[MAX_CLIENT_ID_LEN];
   BOOL session_present = FALSE;
@@ -128,27 +132,66 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   }
   conn->session->clean_session = clean_session;
   
+  will_qos = (connect_flags & 0x18) >> 3;
+  will_retain = (connect_flags & 0x20) == 0x20;
   if ((connect_flags & 0x04) == 0x04) { // will flag
-    // TODO: will topic
+    if (!tm__is_valid_qos(will_qos)) {
+      LOG_ERROR("[%s] Invalid Will QoS", conn_id);
+      tm_mqtt_conn__abort(server, c);
+      goto done;
+    }
+    
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
       LOG_ERROR("[%s] Invalid Will Topic", conn_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
+    will_topic = tm__string(tmp_ptr, tmp_len);
+    if (will_topic == NULL) {
+      LOG_ERROR("[%s] Out of memory", conn_id);
+      tm_mqtt_conn__abort(server, c);
+      goto done;
+    }
     
-    // TODO: Will Message
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
       LOG_ERROR("[%s] Invalid Will Message", conn_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
+    
+    conn->will = tm__create_message(
+        s,
+        will_topic->buf,
+        tmp_ptr, tmp_len, // payload
+        0,
+        will_qos,
+        will_retain
+    );
+    if (conn->will == NULL) {
+      LOG_ERROR("[%s] Invalid Will Message", conn_id);
+      tm_mqtt_conn__abort(server, c);
+      goto done;
+    }
+    
+    // TODO: if is retain, add it to retain topic
+    
   } else {
-    // TODO: validate the Will QoS, Will Retain flags
+    if (will_qos != 0 || will_retain == 1) {
+      LOG_ERROR("[%s] Invalid Reserved flags", conn_id);
+      tm_mqtt_conn__abort(server, c);
+      goto done;
+    }
   }
   
   if ((connect_flags & 0x40) == 0x40) {
+    if ((connect_flags & 0x80) == 0) {
+      LOG_ERROR("[%s] Username flags is on, but Password flag is off", conn_id);
+      tm_mqtt_conn__abort(server, c);
+      goto done;
+    }
+    
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
       LOG_ERROR("[%s] Invalid Username", conn_id);
@@ -156,33 +199,43 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
       goto done;
     }
     
-    username = (char*) ts__malloc(tmp_len);
-    if (username) {
+    username = tm__string(tmp_ptr, tmp_len);
+    if (username == NULL) {
       LOG_ERROR("[%s] Out of memory", conn_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
-    memcpy(username, tmp_ptr, tmp_len);
-  }
-  if ((connect_flags & 0x80) == 0x80) {
+  
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
       LOG_ERROR("[%s] Invalid Password", conn_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
-    
-    password = (char*) ts__malloc(tmp_len);
+  
+    password = tm__string(tmp_ptr, tmp_len);
     if (password) {
       LOG_ERROR("[%s] Out of memory", conn_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
-    memcpy(password, tmp_ptr, tmp_len);
+    
+  } else {
+    if ((connect_flags & 0x80) == 0x80) {
+      LOG_ERROR("[%s] Username flags is off, but Password flag is on", conn_id);
+      tm_mqtt_conn__abort(server, c);
+      goto done;
+    }
   }
   
   // auth user
-  s->callbacks.auth_cb(s->callbacks.cb_ctx, s, username, password, &auth_ok);
+  s->callbacks.auth_cb(
+      s->callbacks.cb_ctx,
+      s,
+      username == NULL ? NULL : username->buf,
+      password == NULL ? NULL : password->buf,
+      &auth_ok
+  );
   if (!auth_ok) {
     LOG_ERROR("[%s] Authorized failed", conn_id);
     tm_mqtt_conn__send_connack_abort(server, c, RETURN_CODE_BAD_USER_OR_PASSWORD);
@@ -197,13 +250,16 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   
   conn->session->connected = TRUE;
   
-  done:
+done:
   
   if (username) {
-    ts__free(username);
+    ts_buf__destroy(username);
   }
   if (password) {
-    ts__free(password);
+    ts_buf__destroy(password);
+  }
+  if (will_topic) {
+    ts_buf__destroy(will_topic);
   }
   
   return err;

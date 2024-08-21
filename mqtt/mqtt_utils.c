@@ -1,6 +1,8 @@
 
 #include "mqtt_utils.h"
 
+#include <internal/ts_mem.h>
+
 int tm__encode_variable_length(unsigned long long val, char* bytes, int* used_len) {
   char b = 0;
   int offset = 0;
@@ -23,3 +25,22 @@ int tm__encode_variable_length(unsigned long long val, char* bytes, int* used_le
 }
 
 
+ts_buf_t* tm__string(const char* ptr, int len) {
+  ts_buf_t* str;
+  
+  str = ts_buf__create(0);
+  if (str == NULL) {
+    return NULL;
+  }
+  
+  if (ts_buf__set_str(str, ptr, len)) {
+    ts_buf__destroy(str);
+    return NULL;
+  }
+  
+  return str;
+}
+
+int tm__is_valid_qos(int qos) {
+  return qos == 0 || qos == 1 || qos == 2;
+}
