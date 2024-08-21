@@ -26,6 +26,8 @@ struct tm_mqtt_conn_s {
 tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s);
 int tm_mqtt_conn__destroy(tm_mqtt_conn_t* conn);
 
+void tm_mqtt_conn__abort(ts_t* server, ts_conn_t* c);
+
 int tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len);
 
 #endif //TINYSERVER_MQTT_CONN_H
