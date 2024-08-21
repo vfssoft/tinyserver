@@ -10,6 +10,14 @@
 
 #define MAX_CLIENT_ID_LEN 512
 
+// Connection Return Code
+#define RETURN_CODE_ACCEPTED                       0x00
+#define RETURN_CODE_UNACCEPTABLE_PROTOCOL_VERSION  0x01
+#define RETURN_CODE_IDENTIFIER_REJECTED            0x02
+#define RETURN_CODE_SERVER_UNAVAILABLE             0x03
+#define RETURN_CODE_BAD_USER_OR_PASSWORD           0x04
+#define RETURN_CODE_NOT_AUTHORIZED                 0x05
+
 static void tm_mqtt_conn__generate_client_id(ts_t* server, ts_conn_t* c, char* client_id) {
   // Parts: "tmp_client_id", remote host, address of conn, random
   const char *remote_host = ts_server__get_conn_remote_host(server, c);
@@ -50,12 +58,16 @@ int tm_mqtt_conn__destroy(tm_mqtt_conn_t* conn) {
   
   return 0;
 }
-
-static void tm_mqtt_conn__send_connack_abort(ts_t* server, ts_conn_t* c, int return_code, const char* desc) {
-
+static int tm_mqtt_conn__send_connack(ts_t* server, ts_conn_t* c, BOOL sp, int return_code) {
+  char connack[4] = { 0x20, 0x01, (char)(sp & 0xFF), (char)(return_code & 0xFF) };
+  return ts_server__write(server, c, connack, 4);
 }
 static void tm_mqtt_conn__abort(ts_t* server, ts_conn_t* c) {
   ts_server__disconnect(server, c);
+}
+static void tm_mqtt_conn__send_connack_abort(ts_t* server, ts_conn_t* c, int return_code) {
+  tm_mqtt_conn__send_connack(server, c, FALSE, return_code); // ignore error
+  tm_mqtt_conn__abort(server, c);
 }
 
 static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
@@ -73,7 +85,7 @@ static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char*
   BOOL session_present = FALSE;
   BOOL clean_session;
   tm_packet_decoder_t* decoder = &conn->decoder;
-  const char* remote_host = ts_server__get_conn_remote_host(server, c);
+  const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
@@ -82,22 +94,21 @@ static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char*
 
   err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
   if (err || tmp_len != 4 || strcmp(tmp_ptr, "MQTT") != 0) {
-    LOG_ERROR("[%s] Invalid protocol name");
+    LOG_ERROR("[%s] Invalid protocol name", conn_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
 
   err = tm_packet_decoder__read_byte(decoder, &tmp_val);
   if (err || tmp_val != 4) {
-    LOG_ERROR("[%s] Invalid protocol level");
-    // TODO: send CONNACK 0x01 (unacceptable protocol level)
-    tm_mqtt_conn__abort(server, c);
+    LOG_ERROR("[%s] Invalid protocol level", conn_id);
+    tm_mqtt_conn__send_connack_abort(server, c, RETURN_CODE_UNACCEPTABLE_PROTOCOL_VERSION);
     goto done;
   }
 
   err = tm_packet_decoder__read_byte(decoder, &connect_flags);
   if (err || (connect_flags & 0x01) != 0) {
-    LOG_ERROR("[%s] Invalid Connect Flags");
+    LOG_ERROR("[%s] Invalid Connect Flags", conn_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
@@ -105,24 +116,28 @@ static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char*
 
   err = tm_packet_decoder__read_int16(decoder, &(conn->keep_alive));
   if (err) {
-    LOG_ERROR("[%s] Invalid Keep Alive");
+    LOG_ERROR("[%s] Invalid Keep Alive", conn_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
 
   err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
-  if (err || tmp_len >= MAX_CLIENT_ID_LEN) {
-    LOG_ERROR("[%s] Invalid Client Id");
+  if (err) {
+    LOG_ERROR("[%s] Invalid Client Id", conn_id);
     tm_mqtt_conn__abort(server, c);
+    goto done;
+  }
+  if (tmp_len >= MAX_CLIENT_ID_LEN) {
+    LOG_ERROR("[%s] Client Id is too long", conn_id);
+    tm_mqtt_conn__send_connack_abort(server, c, RETURN_CODE_IDENTIFIER_REJECTED);
     goto done;
   }
   memcpy(client_id, tmp_ptr, tmp_len);
   if (tmp_len == 0) {
     // empty client id
     if (!clean_session) {
-      LOG_ERROR("[%s] Zero client id but want to persist session state");
-      // TODO: send CONNACK 0x02 (Identifier rejected)
-      tm_mqtt_conn__abort(server, c);
+      LOG_ERROR("[%s] Zero client id but want to persist session state", conn_id);
+      tm_mqtt_conn__send_connack_abort(server, c, RETURN_CODE_IDENTIFIER_REJECTED);
       goto done;
     }
     tm_mqtt_conn__generate_client_id(server, c, client_id);
@@ -134,15 +149,16 @@ static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char*
   session_present = !clean_session && conn->session != NULL;
   
   if (clean_session && conn->session) {
-    LOG_DEBUG("[%s] Clear the previous session state", ts_server__get_conn_remote_host(server, c));
+    LOG_DEBUG("[%s] Clear the previous session state", conn_id);
     tm__remove_session(s, conn->session);
     conn->session = NULL;
   }
   if (conn->session == NULL) {
-    LOG_DEBUG("[%s] Create new session for the current client", ts_server__get_conn_remote_host(server, c));
+    LOG_DEBUG("[%s] Create new session for the current client", conn_id);
     conn->session = tm__create_session(s, client_id);
     if (conn->session == NULL) {
-      ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
+      LOG_ERROR("[%s] Out of memory", conn_id);
+      tm_mqtt_conn__abort(server, c);
       goto done;
     }
   }
@@ -152,7 +168,7 @@ static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char*
     // TODO: will topic
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
-      LOG_ERROR("[%s] Invalid Will Topic");
+      LOG_ERROR("[%s] Invalid Will Topic", conn_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
@@ -160,7 +176,7 @@ static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char*
     // TODO: Will Message
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
-      LOG_ERROR("[%s] Invalid Will Message");
+      LOG_ERROR("[%s] Invalid Will Message", conn_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
@@ -171,14 +187,15 @@ static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char*
   if ((connect_flags & 0x40) == 0x40) {
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
-      LOG_ERROR("[%s] Invalid Username");
+      LOG_ERROR("[%s] Invalid Username", conn_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
     
     username = (char*) ts__malloc(tmp_len);
     if (username) {
-      ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
+      LOG_ERROR("[%s] Out of memory", conn_id);
+      tm_mqtt_conn__abort(server, c);
       goto done;
     }
     memcpy(username, tmp_ptr, tmp_len);
@@ -186,14 +203,15 @@ static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char*
   if ((connect_flags & 0x80) == 0x80) {
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
-      LOG_ERROR("[%s] Invalid Password");
+      LOG_ERROR("[%s] Invalid Password", conn_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
   
     password = (char*) ts__malloc(tmp_len);
     if (password) {
-      ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
+      LOG_ERROR("[%s] Out of memory", conn_id);
+      tm_mqtt_conn__abort(server, c);
       goto done;
     }
     memcpy(password, tmp_ptr, tmp_len);
@@ -201,8 +219,20 @@ static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char*
   
   // auth user
   s->callbacks.auth_cb(s->callbacks.cb_ctx, s, username, password, &auth_ok);
-  
-  
+  if (!auth_ok) {
+    LOG_ERROR("[%s] Authorized failed", conn_id);
+    tm_mqtt_conn__send_connack_abort(server, c, RETURN_CODE_BAD_USER_OR_PASSWORD);
+    goto done;
+  }
+
+  err = tm_mqtt_conn__send_connack(server, c, session_present, RETURN_CODE_ACCEPTED);
+  if (err) {
+    tm_mqtt_conn__abort(server, c);
+    goto done;
+  }
+
+  conn->session->connected = TRUE;
+
 done:
   
   if (username) {
@@ -212,7 +242,7 @@ done:
     ts__free(password);
   }
   
-  return conn->err.err;
+  return err;
 }
 
 static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
@@ -222,16 +252,18 @@ static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* 
   int pkt_type = (pkt_bytes[0] & 0xF0) >> 4;
 
   if (conn->session == NULL && pkt_type != PKT_TYPE_CONNECT) {
-    ts_error__set_msg(&(conn->err), TS_ERR_PROTOCOL_ERROR, "First packet should be CONNECT");
-    return TS_ERR_PROTOCOL_ERROR;
+    LOG_ERROR("[%s] First packet should be CONNECT", ts_server__get_conn_remote_host(server, c));
+    tm_mqtt_conn__abort(server, c);
+    return TS_ERR_MALFORMED_MQTT_PACKET;
   }
 
   switch (pkt_type) {
 
     case PKT_TYPE_CONNECT:
       if (conn->session->connected) {
-        ts_error__set_msg(&(conn->err), TS_ERR_PROTOCOL_ERROR, "Already connected but receive another CONNECT");
-        return TS_ERR_PROTOCOL_ERROR;
+        LOG_ERROR("[%s] Already connected but receive another CONNECT", ts_server__get_conn_remote_host(server, c));
+        tm_mqtt_conn__abort(server, c);
+        return 0;
       }
 
       return tm_mqtt_conn__process_connect(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
@@ -276,8 +308,9 @@ static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* 
       break;
 
     default:
-      ts_error__set_msgf(&(conn->err), TS_ERR_MALFORMED_MQTT_PACKET, "Unkonwn Control Packet Type(%d)", pkt_type);
-      return TS_ERR_MALFORMED_MQTT_PACKET;
+      LOG_ERROR("[%s] Unkonwn Control Packet Type(%d)", ts_server__get_conn_remote_host(server, c), pkt_type);
+      tm_mqtt_conn__abort(server, c);
+      break;
   }
   return 0;
 }
@@ -291,8 +324,10 @@ int tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len)
   BOOL use_in_buf = FALSE;
   const char* buf;
   int buf_len;
+  ts_error_t errt;
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
+  ts_error__init(&errt);
 
   if (ts_buf__get_length(conn->in_buf) == 0) {
     buf = data;
@@ -306,10 +341,12 @@ int tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len)
   }
 
   while (1) {
-    ts_error__reset(&(conn->err));
-    parsed = tm__parse_packet(buf, buf_len, &pkt_bytes_cnt, &remaining_length, &conn->err);
+    ts_error__reset(&errt);
+    parsed = tm__parse_packet(buf, buf_len, &pkt_bytes_cnt, &remaining_length, &errt);
 
-    if (conn->err.err) { // check the parse error first
+    if (errt.err) { // check the parse error first
+      LOG_ERROR("[%s] Failed to read MQTT control packet", ts_server__get_conn_remote_host(server, c));
+      tm_mqtt_conn__abort(server, c);
       goto done;
     }
 
@@ -336,7 +373,5 @@ int tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len)
   }
 
 done:
-  if (conn->err.err) {
-    // TODO: disconnect from the client
-  }
+  return 0;
 }

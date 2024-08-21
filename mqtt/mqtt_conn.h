@@ -21,7 +21,6 @@ struct tm_mqtt_conn_s {
   
   ts_buf_t* in_buf;
   tm_packet_decoder_t decoder;
-  ts_error_t err;
 };
 
 tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s);
