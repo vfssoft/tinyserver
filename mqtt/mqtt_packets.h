@@ -5,6 +5,7 @@
 #include "mqtt_conn.h"
 
 #include <internal/ts_miscellany.h>
+#include <internal/ts_error.h>
 
 #define PKT_TYPE_CONNECT     1
 #define PKT_TYPE_CONNACK     2
@@ -21,7 +22,7 @@
 #define PKT_TYPE_PINGRESP    13
 #define PKT_TYPE_DISCONNECT  14
 
-BOOL tm__parse_packet(
+int tm__parse_packet(
     const char* data,
     int data_len,
     int* pkt_bytes_cnt,

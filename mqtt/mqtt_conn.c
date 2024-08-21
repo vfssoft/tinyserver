@@ -84,11 +84,12 @@ static int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char*
   char client_id[MAX_CLIENT_ID_LEN];
   BOOL session_present = FALSE;
   BOOL clean_session;
-  tm_packet_decoder_t* decoder = &conn->decoder;
+  tm_packet_decoder_t* decoder;
   const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
+  decoder = &conn->decoder;
   
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
 

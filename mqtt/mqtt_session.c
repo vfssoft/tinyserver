@@ -11,9 +11,9 @@ tm_mqtt_session_t* tm_mqtt_session__create(const char* client_id) {
     return NULL;
   }
   
-  sess->connected = FALSE;
+  sess->connected = 0;
   sess->client_id = NULL;
-  sess->clean_session = TRUE;
+  sess->clean_session = 1;
   
   ts_error__init(&(sess->err));
   
@@ -31,5 +31,6 @@ int tm_mqtt_session__destroy(tm_mqtt_session_t* sess) {
   }
   
   ts__free(sess);
+  return 0;
 }
 

@@ -20,7 +20,7 @@ static const char* tm__pkt_name(int pkt_type) {
   }
 }
 
-BOOL tm__parse_packet(
+int tm__parse_packet(
     const char* data,
     int data_len,
     int* pkt_bytes_cnt,

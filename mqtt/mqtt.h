@@ -7,9 +7,8 @@
 #include <internal/ts_error.h>
 #include <internal/ts_mutex.h>
 
-#include <string.h>
-
 #include "mqtt_session.h"
+#include "mqtt_message.h"
 
 typedef struct tm_server_s tm_server_t;
 
@@ -20,6 +19,9 @@ struct tm_server_s {
 
     ts_mutex_t sessions_mu;
     tm_mqtt_session_t* sessions;
+
+    ts_mutex_t messages_mu;
+    tm_mqtt_msg_core_t* message_cores;
 };
 
 // session methods

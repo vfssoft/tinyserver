@@ -26,4 +26,20 @@
 #include <time.h>
 #include <inttypes.h>
 
+// help macros
+#define CONTAINER_OF(ptr, type, member) \
+    ((type *)((char *)(ptr) - offsetof(type, member)))
+
+#ifndef BOOL
+#define BOOL int
+#endif
+
+#ifndef FALSE
+#define FALSE 0
+#endif
+
+#ifndef TRUE
+#define TRUE 1
+#endif
+
 #endif //TINYSERVER_TS_INTERNAL_H
