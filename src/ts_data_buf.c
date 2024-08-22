@@ -86,6 +86,12 @@ int ts_buf__set_length(ts_buf_t* buf, int len) {
 int ts_buf__get_length(ts_buf_t* buf) {
   return buf->len;
 }
+int ts_buf__get_cap(ts_buf_t* buf) {
+  return buf->cap;
+}
+int ts_buf__set_cap(ts_buf_t* buf, int cap) {
+  return ts_buf__ensure_cap(buf, cap);
+}
 
 int ts_buf__write(ts_buf_t* buf, const char* data, int len) {
   int err;

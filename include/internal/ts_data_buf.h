@@ -22,6 +22,8 @@ ts_buf_t* ts_buf__create(int cap);
 void ts_buf__destroy(ts_buf_t* buf);
 int ts_buf__set_length(ts_buf_t* buf, int len);
 int ts_buf__get_length(ts_buf_t* buf);
+int ts_buf__get_cap(ts_buf_t* buf);
+int ts_buf__set_cap(ts_buf_t* buf, int cap);
 int ts_buf__write(ts_buf_t* buf, const char* data, int len);
 int ts_buf__read(ts_buf_t* buf, char* data, int* len);
 int ts_buf__set(ts_buf_t* buf, const char* data, int len);
