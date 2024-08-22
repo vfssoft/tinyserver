@@ -68,7 +68,12 @@ tm_t* tm__create() {
   memset(s, 0, sizeof(tm_server_t));
   
   s->server = ts_server__create();
-  if (s->server) {
+  if (s->server == NULL) {
+    return NULL;
+  }
+  
+  s->topics = tm_topics__create();
+  if (s->topics == NULL) {
     return NULL;
   }
   
@@ -92,6 +97,11 @@ int tm_destroy(tm_t* mq) {
     ts_server__destroy(s->server);
   }
   s->server = NULL;
+
+  if (s->topics) {
+    tm_topics__destroy(s->topics);
+  }
+  s->topics = NULL;
   
   ts_mutex__destroy(&(s->sessions_mu));
   ts_mutex__destroy(&(s->messages_mu));

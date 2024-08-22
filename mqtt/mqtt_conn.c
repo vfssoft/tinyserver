@@ -67,9 +67,6 @@ static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* 
 
       return tm_mqtt_conn__process_connect(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
-    case PKT_TYPE_CONNACK:
-      break;
-
     case PKT_TYPE_PUBLISH:
       break;
 
@@ -86,15 +83,9 @@ static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* 
       break;
 
     case PKT_TYPE_SUBSCRIBE:
-      break;
-
-    case PKT_TYPE_SUBACK:
-      break;
+      return tm_mqtt_conn__process_subscribe(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_UNSUBSCRIBE:
-      break;
-
-    case PKT_TYPE_UNSUBACK:
       break;
 
     case PKT_TYPE_PINGREQ:

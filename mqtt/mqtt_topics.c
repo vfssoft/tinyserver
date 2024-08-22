@@ -381,7 +381,7 @@ static int tm_topic_node__match_retain_msgs(tm_topic_node_t* n, const char* topi
   return 0;
 }
 
-tm_topics_t* topics__create() {
+tm_topics_t* tm_topics__create() {
   tm_topics_t* t = (tm_topics_t*) ts__malloc(sizeof(tm_topics_t));
   if (t == NULL) {
     return NULL;
@@ -394,7 +394,7 @@ tm_topics_t* topics__create() {
   
   return t;
 }
-int topics__destroy(tm_topics_t* t) {
+int tm_topics__destroy(tm_topics_t* t) {
   ts_mutex__destroy(&(t->mu));
   
   // TODO: free sub_root

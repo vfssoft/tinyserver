@@ -46,8 +46,8 @@ struct tm_topics_s {
 };
 
 
-tm_topics_t* topics__create();
-int topics__destroy(tm_topics_t* t);
+tm_topics_t* tm_topics__create();
+int tm_topics__destroy(tm_topics_t* t);
 
 int tm_topics__subscribe(tm_topics_t* t, const char* topic, char qos, void* subscriber);
 int tm_topics__unsubscribe(tm_topics_t* t, const char* topic, void* subscriber);
