@@ -11,6 +11,7 @@ typedef int (*tm_auth_user_cb)(void* ctx, tm_t* mq, const char* username, const 
 typedef int (*tm_connected)(void* ctx, tm_t* mq, ts_conn_t* conn);
 typedef int (*tm_disconnected)(void* ctx, tm_t* mq, ts_conn_t* conn);
 typedef int (*tm_subscribe_cb)(void* ctx, tm_t* mqt, ts_conn_t* conn, const char* topic, int requested_qos, int* granted_qos);
+typedef int (*tm_unsubscribe_cb)(void* ctx, tm_t* mqt, ts_conn_t* conn, const char* topic);
 
 struct tm_callbacks_s {
     void* cb_ctx;
@@ -19,6 +20,7 @@ struct tm_callbacks_s {
     tm_connected connected_cb;
     tm_disconnected disconnected_cb;
     tm_subscribe_cb subscriber_cb;
+    tm_unsubscribe_cb unsubscribe_cb;
 };
 
 TS_EXTERN tm_t* tm__create();

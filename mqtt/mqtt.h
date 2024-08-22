@@ -38,5 +38,6 @@ void tm__remove_message(tm_server_t* s, tm_mqtt_msg_t* msg);
 
 // subscription
 int tm__on_subscription(ts_t* server, ts_conn_t* c, const char* topic, int granted_qos);
+int tm__on_unsubscription(ts_t* server, ts_conn_t* c, const char* topic);
 
 #endif //TINYSERVER_MQTT_H
