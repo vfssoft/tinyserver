@@ -106,6 +106,12 @@ static int tm_topic_node__get_subscribers(tm_topic_node_t* n, BOOL include_child
   
   return 0;
 }
+static int tm_topic_node__empty(tm_topic_node_t* n) {
+  return
+      tm_topic_node__subscribers_count(n) == 0 &&
+      tm_topic_node__child_count(n) &&
+      n->retained_msg == NULL;
+}
 
 static int tm_topic_node__insert(tm_topic_node_t* n, const char* topic, char qos, void* subscriber) {
   const char* level = topic;
@@ -187,7 +193,7 @@ static int tm_topic_node__remove(tm_topic_node_t* n, const char* topic, void* su
     return err;
   }
   
-  if (tm_topic_node__subscribers_count(child) == 0 && tm_topic_node__child_count(child)) {
+  if (tm_topic_node__empty(child)) {
     tm_topic_node__remove_child(n, child);
   }
   
@@ -242,6 +248,139 @@ static int tm_topic_node__match(tm_topic_node_t* n, const char* topic, tm_subscr
   return 0;
 }
 
+
+static int tm_topic_node__get_retained_msgs(tm_topic_node_t* n, BOOL include_children, ts_ptr_arr_t* retained_msgs) {
+  int err = 0;
+  tm_topic_node_t* child_node;
+  
+  if (n->retained_msg) {
+    err = ts_ptr_arr__append(retained_msgs, n->retained_msg);
+    if (err) {
+      return err;
+    }
+  }
+  
+  if (include_children) {
+    DL_FOREACH(n->children, child_node) {
+      err = tm_topic_node__get_retained_msgs(child_node, TRUE, retained_msgs);
+      if (err) {
+        return err;
+      }
+    }
+  }
+  
+  return 0;
+}
+static int tm_topic_node__insert_retain_msg(tm_topic_node_t* n, const char* topic, tm_mqtt_msg_t* msg) {
+  const char* level = topic;
+  int level_len = 0;
+  tm_topic_node_t* child = NULL;
+  
+  if (level == NULL || level[0] == 0) {
+    n->retained_msg = msg;
+    return 0;
+  }
+  
+  // find next topic level
+  while (level[level_len] != TP_LEVEL_SEPARATOR && level[level_len] != '\0') {
+    level_len++;
+  }
+  
+  child = tm_topic_node__find_child_by_name(n, level, level_len);
+  
+  if (child == NULL) {
+    child = tm_topic_node__add_child(n, level, level_len);
+    if (child == NULL) {
+      return TS_ERR_OUT_OF_MEMORY;
+    }
+  }
+  
+  return tm_topic_node__insert_retain_msg(child, topic + level_len, msg);
+}
+static int tm_topic_node__remove_retain_msg(tm_topic_node_t* n, const char* topic) {
+  int err;
+  const char* level = topic;
+  int level_len = 0;
+  tm_topic_node_t* child = NULL;
+  
+  if (level == NULL || level[0] == 0) {
+    if (n->retained_msg) {
+      // TODO: free the message if no reference to it
+      n->retained_msg = NULL;
+    }
+  
+    return TS_ERR_NOT_FOUND; // no topic found
+  }
+  
+  // find next topic level
+  while (level[level_len] != TP_LEVEL_SEPARATOR && level[level_len] != '\0') {
+    level_len++;
+  }
+  
+  child = tm_topic_node__find_child_by_name(n, level, level_len);
+  if (child == NULL) {
+    return TS_ERR_NOT_FOUND; // no topic found
+  }
+  
+  err = tm_topic_node__remove_retain_msg(child, topic + level_len);
+  if (err) {
+    return err;
+  }
+  
+  if (tm_topic_node__empty(child)) {
+    tm_topic_node__remove_child(n, child);
+  }
+  
+  return 0;
+}
+static int tm_topic_node__match_retain_msgs(tm_topic_node_t* n, const char* topic, ts_ptr_arr_t* retained_msgs) {
+  int err = 0;
+  const char* level = topic;
+  int level_len = 0;
+  tm_topic_node_t* child = NULL;
+  
+  if (level == NULL || level[0] == 0) {
+    err = tm_topic_node__get_retained_msgs(n, FALSE, retained_msgs);
+    if (err) {
+      return err;
+    }
+    
+    // Check # children
+    // For example: "sport/tennis/player1/#" matches "sport/tennis/player1"
+    DL_FOREACH(n->children, child) {
+      if (strlen(child->name) == 1 && child->name[0] == TP_MULTI_LEVEL_WILDCARD) {
+        err = tm_topic_node__get_retained_msgs(child, TRUE, retained_msgs);
+        if (err) {
+          return err;
+        }
+        break;
+      }
+    }
+    return 0;
+  }
+  
+  // find next topic level
+  while (level[level_len] != TP_LEVEL_SEPARATOR && level[level_len] != '\0') {
+    level_len++;
+  }
+  
+  DL_FOREACH(n->children, child) {
+    if (level_len == 1 && level[0] == TP_MULTI_LEVEL_WILDCARD) {
+      err = tm_topic_node__get_retained_msgs(child, TRUE, retained_msgs);
+      if (err) {
+        return err;
+      }
+    } else if ((level_len == 1 && level[0] == TP_SINGLE_LEVEL_WILDCARD) || strncmp(level, child->name, level_len) == 0) {
+      err = tm_topic_node__match_retain_msgs(child, topic + level_len, retained_msgs);
+      if (err) {
+        return err;
+      }
+    }
+  }
+  
+  return 0;
+}
+
 tm_topics_t* topics__create() {
   tm_topics_t* t = (tm_topics_t*) ts__malloc(sizeof(tm_topics_t));
   if (t == NULL) {
@@ -266,7 +405,7 @@ int tm_topics__subscribe(tm_topics_t* t, const char* topic, char qos, void* subs
   int err;
   ts_mutex__lock(&(t->mu));
   
-  err = tm_subnode__insert(&(t->root), topic, qos, subscriber);
+  err = tm_topic_node__insert(&(t->root), topic, qos, subscriber);
   if (err) {
     ts_error__set(&(t->err), err);
   }
@@ -275,13 +414,12 @@ int tm_topics__subscribe(tm_topics_t* t, const char* topic, char qos, void* subs
   
   return err;
 }
-
 int tm_topics__unsubscribe(tm_topics_t* t, const char* topic, void* subscriber) {
   int err;
   ts_mutex__lock(&(t->mu));
   
   
-  err = tm_subnode__remove(&(t->root), topic, subscriber);
+  err = tm_topic_node__remove(&(t->root), topic, subscriber);
   if (err) {
     ts_error__set(&(t->err), err);
   }
@@ -290,13 +428,12 @@ int tm_topics__unsubscribe(tm_topics_t* t, const char* topic, void* subscriber) 
   
   return err;
 }
-
 int tm_topics__subscribers(tm_topics_t* t, const char* topic, char qos, tm_subscribers_t** subscribers) {
   int err;
   ts_mutex__lock(&(t->mu));
   
   
-  err = tm_subnode__match(&(t->root), topic, subscribers);
+  err = tm_topic_node__match(&(t->root), topic, subscribers);
   if (err) {
     ts_error__set(&(t->err), err);
   }
@@ -306,6 +443,36 @@ int tm_topics__subscribers(tm_topics_t* t, const char* topic, char qos, tm_subsc
   return err;
 }
 
+
+int tm_topics__retain_msg(tm_topics_t* t, tm_mqtt_msg_t* msg) {
+  int err;
+  ts_mutex__lock(&(t->mu));
+  
+  if (msg->msg_core->payload->len == 0) { // remove retained message
+    err = tm_topic_node__remove_retain_msg(&(t->root), msg->msg_core->topic->buf);
+  } else {
+    err = tm_topic_node__insert_retain_msg(&(t->root), msg->msg_core->topic->buf, msg);
+  }
+  
+  if (err) {
+    ts_error__set(&(t->err), err);
+  }
+  
+  ts_mutex__unlock(&(t->mu));
+  return err;
+}
+int tm_topics__get_retained_msgs(tm_topics_t* t, const char* topic, ts_ptr_arr_t* retained_msgs) {
+  int err;
+  ts_mutex__lock(&(t->mu));
+  
+  err = tm_topic_node__match_retain_msgs(&(t->root), topic, retained_msgs);
+  if (err) {
+    ts_error__set(&(t->err), err);
+  }
+  
+  ts_mutex__unlock(&(t->mu));
+  return err;
+}
 
 
 static int tm_topics__valid_common(const char* topic, ts_error_t* err) {

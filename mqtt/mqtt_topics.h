@@ -3,6 +3,9 @@
 
 #include <internal/ts_mutex.h>
 #include <internal/ts_error.h>
+#include <internal/ts_array.h>
+
+#include "mqtt_message.h"
 
 #define TP_LEVEL_SEPARATOR       '/'
 #define TP_MULTI_LEVEL_WILDCARD  '#'
@@ -23,7 +26,10 @@ struct tm_subscribers_s {
 
 struct tm_topic_node_s {
     char* name;
+
     tm_subscribers_t* subscribers;
+
+    tm_mqtt_msg_t* retained_msg;
     
     tm_topic_node_t* children;
     
@@ -46,6 +52,9 @@ int topics__destroy(tm_topics_t* t);
 int tm_topics__subscribe(tm_topics_t* t, const char* topic, char qos, void* subscriber);
 int tm_topics__unsubscribe(tm_topics_t* t, const char* topic, void* subscriber);
 int tm_topics__subscribers(tm_topics_t* t, const char* topic, char qos, tm_subscribers_t** subscribers);
+
+int tm_topics__retain_msg(tm_topics_t* t, tm_mqtt_msg_t* msg);
+int tm_topics__get_retained_msgs(tm_topics_t* t, const char* topic, ts_ptr_arr_t* retained_msgs);
 
 int tm_topics__valid_topic_filter(const char* topic, ts_error_t* err);
 int tm_topics__valid_topic_name(const char* topic, ts_error_t* err);
