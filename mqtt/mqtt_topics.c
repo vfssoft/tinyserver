@@ -15,8 +15,8 @@ static tm_subscribers_t* create_subscriber(int qos, void* subscriber) {
   return sub;
 }
 
-static tm_subnode_t* tm_subnode__find_child_by_name(tm_subnode_t* parent, const char* name, int name_len) {
-  tm_subnode_t* cur = NULL;
+static tm_topic_node_t* tm_topic_node__find_child_by_name(tm_topic_node_t* parent, const char* name, int name_len) {
+  tm_topic_node_t* cur = NULL;
   DL_FOREACH(parent->children, cur) {
     // case sensitive
     if (strncmp(cur->name, name, name_len) == 0) {
@@ -25,10 +25,10 @@ static tm_subnode_t* tm_subnode__find_child_by_name(tm_subnode_t* parent, const 
   }
   return cur;
 }
-static tm_subnode_t* tm_subnode__add_child(tm_subnode_t* parent, const char* name, int name_len) {
-  tm_subnode_t* child;
+static tm_topic_node_t* tm_topic_node__add_child(tm_topic_node_t* parent, const char* name, int name_len) {
+  tm_topic_node_t* child;
   
-  child = (tm_subnode_t*) ts__malloc(sizeof(tm_subnode_t));
+  child = (tm_topic_node_t*) ts__malloc(sizeof(tm_topic_node_t));
   if (child == NULL) {
     return NULL;
   }
@@ -38,7 +38,7 @@ static tm_subnode_t* tm_subnode__add_child(tm_subnode_t* parent, const char* nam
     return NULL;
   }
   
-  memset(child, 0, sizeof(tm_subnode_t));
+  memset(child, 0, sizeof(tm_topic_node_t));
   
   child->parent = parent;
   strncpy(parent->name, name, name_len);
@@ -47,7 +47,7 @@ static tm_subnode_t* tm_subnode__add_child(tm_subnode_t* parent, const char* nam
   
   return child;
 }
-static void tm_subnode__remove_child(tm_subnode_t* parent, tm_subnode_t* child) {
+static void tm_topic_node__remove_child(tm_topic_node_t* parent, tm_topic_node_t* child) {
   DL_DELETE(parent->children, child);
   
   if (child->name) {
@@ -56,15 +56,15 @@ static void tm_subnode__remove_child(tm_subnode_t* parent, tm_subnode_t* child) 
   
   ts__free(child);
 }
-static int tm_subnode__child_count(tm_subnode_t* n) {
+static int tm_topic_node__child_count(tm_topic_node_t* n) {
   int count = 0;
-  tm_subnode_t* child = NULL;
+  tm_topic_node_t* child = NULL;
   
   DL_COUNT(n->children, child, count);
   
   return count;
 }
-static int tm_subnode__subscribers_count(tm_subnode_t* n) {
+static int tm_topic_node__subscribers_count(tm_topic_node_t* n) {
   int count;
   tm_subscribers_t* subscriber = NULL;
   
@@ -72,15 +72,15 @@ static int tm_subnode__subscribers_count(tm_subnode_t* n) {
   
   return count;
 }
-static void tm_subnode__remove_subscriber(tm_subnode_t* n, tm_subscribers_t* sub) {
+static void tm_topic_node__remove_subscriber(tm_topic_node_t* n, tm_subscribers_t* sub) {
   DL_DELETE(n->subscribers, sub);
   ts__free(sub);
 }
-static int tm_subnode__get_subscribers(tm_subnode_t* n, BOOL include_children, tm_subscribers_t** subscribers) {
+static int tm_topic_node__get_subscribers(tm_topic_node_t* n, BOOL include_children, tm_subscribers_t** subscribers) {
   int err = 0;
   tm_subscribers_t* sub = NULL;
   tm_subscribers_t* sub_copy = NULL;
-  tm_subnode_t* child_node = NULL;
+  tm_topic_node_t* child_node = NULL;
   
   // Implementation Note:
   // Always returns a copy of subscribers for simply
@@ -97,7 +97,7 @@ static int tm_subnode__get_subscribers(tm_subnode_t* n, BOOL include_children, t
   
   if (include_children) {
     DL_FOREACH(n->children, child_node) {
-      err = tm_subnode__get_subscribers(child_node, TRUE, subscribers);
+      err = tm_topic_node__get_subscribers(child_node, TRUE, subscribers);
       if (err) {
         return err;
       }
@@ -107,10 +107,10 @@ static int tm_subnode__get_subscribers(tm_subnode_t* n, BOOL include_children, t
   return 0;
 }
 
-static int tm_subnode__insert(tm_subnode_t* n, const char* topic, char qos, void* subscriber) {
+static int tm_topic_node__insert(tm_topic_node_t* n, const char* topic, char qos, void* subscriber) {
   const char* level = topic;
   int level_len = 0;
-  tm_subnode_t* child = NULL;
+  tm_topic_node_t* child = NULL;
   tm_subscribers_t* sub = NULL;
   
   if (level == NULL || level[0] == 0) {
@@ -134,22 +134,22 @@ static int tm_subnode__insert(tm_subnode_t* n, const char* topic, char qos, void
     level_len++;
   }
   
-  child = tm_subnode__find_child_by_name(n, level, level_len);
+  child = tm_topic_node__find_child_by_name(n, level, level_len);
   
   if (child == NULL) {
-    child = tm_subnode__add_child(n, level, level_len);
+    child = tm_topic_node__add_child(n, level, level_len);
     if (child == NULL) {
       return TS_ERR_OUT_OF_MEMORY;
     }
   }
   
-  return tm_subnode__insert(child, topic + level_len, qos, subscriber);
+  return tm_topic_node__insert(child, topic + level_len, qos, subscriber);
 }
-static int tm_subnode__remove(tm_subnode_t* n, const char* topic, void* subscriber) {
+static int tm_topic_node__remove(tm_topic_node_t* n, const char* topic, void* subscriber) {
   int err;
   const char* level = topic;
   int level_len = 0;
-  tm_subnode_t* child = NULL;
+  tm_topic_node_t* child = NULL;
   tm_subscribers_t* sub = NULL;
   tm_subscribers_t* tmp_sub = NULL;
   
@@ -157,14 +157,14 @@ static int tm_subnode__remove(tm_subnode_t* n, const char* topic, void* subscrib
     if (subscriber == NULL) {
       // it's signal to remove ALL subscribers
       DL_FOREACH_SAFE(n->subscribers, sub, tmp_sub) {
-        tm_subnode__remove_subscriber(n, sub);
+        tm_topic_node__remove_subscriber(n, sub);
       }
       return 0;
     }
     
     DL_FOREACH(n->subscribers, sub) {
       if (sub->subscriber == subscriber) {
-        tm_subnode__remove_subscriber(n, sub);
+        tm_topic_node__remove_subscriber(n, sub);
         return 0;
       }
     }
@@ -177,31 +177,31 @@ static int tm_subnode__remove(tm_subnode_t* n, const char* topic, void* subscrib
     level_len++;
   }
   
-  child = tm_subnode__find_child_by_name(n, level, level_len);
+  child = tm_topic_node__find_child_by_name(n, level, level_len);
   if (child == NULL) {
     return TS_ERR_NOT_FOUND; // no topic found
   }
   
-  err = tm_subnode__remove(child, topic + level_len, subscriber);
+  err = tm_topic_node__remove(child, topic + level_len, subscriber);
   if (err) {
     return err;
   }
   
-  if (tm_subnode__subscribers_count(child) == 0 && tm_subnode__child_count(child)) {
-    tm_subnode__remove_child(n, child);
+  if (tm_topic_node__subscribers_count(child) == 0 && tm_topic_node__child_count(child)) {
+    tm_topic_node__remove_child(n, child);
   }
   
   return 0;
 }
-static int tm_subnode__match(tm_subnode_t* n, const char* topic, tm_subscribers_t** subscribers) {
+static int tm_topic_node__match(tm_topic_node_t* n, const char* topic, tm_subscribers_t** subscribers) {
   int err = 0;
   const char* level = topic;
   int level_len = 0;
-  tm_subnode_t* child = NULL;
+  tm_topic_node_t* child = NULL;
   tm_subscribers_t* sub = NULL;
   
   if (level == NULL || level[0] == 0) {
-    err = tm_subnode__get_subscribers(n, FALSE, subscribers);
+    err = tm_topic_node__get_subscribers(n, FALSE, subscribers);
     if (err) {
       return err;
     }
@@ -210,7 +210,7 @@ static int tm_subnode__match(tm_subnode_t* n, const char* topic, tm_subscribers_
     // For example: "sport/tennis/player1/#" matches "sport/tennis/player1"
     DL_FOREACH(n->children, child) {
       if (strlen(child->name) == 1 && child->name[0] == TP_MULTI_LEVEL_WILDCARD) {
-        err = tm_subnode__get_subscribers(child, TRUE, subscribers);
+        err = tm_topic_node__get_subscribers(child, TRUE, subscribers);
         if (err) {
           return err;
         }
@@ -227,12 +227,12 @@ static int tm_subnode__match(tm_subnode_t* n, const char* topic, tm_subscribers_
   
   DL_FOREACH(n->children, child) {
     if (level_len == 1 && level[0] == TP_MULTI_LEVEL_WILDCARD) {
-      err = tm_subnode__get_subscribers(child, TRUE, subscribers);
+      err = tm_topic_node__get_subscribers(child, TRUE, subscribers);
       if (err) {
         return err;
       }
     } else if ((level_len == 1 && level[0] == TP_SINGLE_LEVEL_WILDCARD) || strncmp(level, child->name, level_len) == 0) {
-      err = tm_subnode__match(child, topic + level_len, subscribers);
+      err = tm_topic_node__match(child, topic + level_len, subscribers);
       if (err) {
         return err;
       }
@@ -248,15 +248,15 @@ tm_topics_t* topics__create() {
     return NULL;
   }
   
-  ts_mutex__init(&(t->sub_mu));
+  ts_mutex__init(&(t->mu));
   ts_error__init(&(t->err));
   
-  memset(&(t->sub_root), 0, sizeof(tm_subnode_t));
+  memset(&(t->root), 0, sizeof(tm_topic_node_t));
   
   return t;
 }
 int topics__destroy(tm_topics_t* t) {
-  ts_mutex__destroy(&(t->sub_mu));
+  ts_mutex__destroy(&(t->mu));
   
   // TODO: free sub_root
   return 0;
@@ -264,44 +264,44 @@ int topics__destroy(tm_topics_t* t) {
 
 int tm_topics__subscribe(tm_topics_t* t, const char* topic, char qos, void* subscriber) {
   int err;
-  ts_mutex__lock(&(t->sub_mu));
+  ts_mutex__lock(&(t->mu));
   
-  err = tm_subnode__insert(&(t->sub_root), topic, qos, subscriber);
+  err = tm_subnode__insert(&(t->root), topic, qos, subscriber);
   if (err) {
     ts_error__set(&(t->err), err);
   }
   
-  ts_mutex__unlock(&(t->sub_mu));
+  ts_mutex__unlock(&(t->mu));
   
   return err;
 }
 
 int tm_topics__unsubscribe(tm_topics_t* t, const char* topic, void* subscriber) {
   int err;
-  ts_mutex__lock(&(t->sub_mu));
+  ts_mutex__lock(&(t->mu));
   
   
-  err = tm_subnode__remove(&(t->sub_root), topic, subscriber);
+  err = tm_subnode__remove(&(t->root), topic, subscriber);
   if (err) {
     ts_error__set(&(t->err), err);
   }
   
-  ts_mutex__unlock(&(t->sub_mu));
+  ts_mutex__unlock(&(t->mu));
   
   return err;
 }
 
 int tm_topics__subscribers(tm_topics_t* t, const char* topic, char qos, tm_subscribers_t** subscribers) {
   int err;
-  ts_mutex__lock(&(t->sub_mu));
+  ts_mutex__lock(&(t->mu));
   
   
-  err = tm_subnode__match(&(t->sub_root), topic, subscribers);
+  err = tm_subnode__match(&(t->root), topic, subscribers);
   if (err) {
     ts_error__set(&(t->err), err);
   }
   
-  ts_mutex__unlock(&(t->sub_mu));
+  ts_mutex__unlock(&(t->mu));
   
   return err;
 }

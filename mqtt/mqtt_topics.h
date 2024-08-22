@@ -10,7 +10,7 @@
 #define TP_DOLLAR                '$'
 
 typedef struct tm_topics_s tm_topics_t;
-typedef struct tm_subnode_s tm_subnode_t;
+typedef struct tm_topic_node_s tm_topic_node_t;
 typedef struct tm_subscribers_s tm_subscribers_t;
 
 struct tm_subscribers_s {
@@ -21,21 +21,20 @@ struct tm_subscribers_s {
     tm_subscribers_t* next;
 };
 
-// subscription nodes
-struct tm_subnode_s {
+struct tm_topic_node_s {
     char* name;
     tm_subscribers_t* subscribers;
     
-    tm_subnode_t* children;
+    tm_topic_node_t* children;
     
-    tm_subnode_t* parent;
-    tm_subnode_t* prev;
-    tm_subnode_t* next;
+    tm_topic_node_t* parent;
+    tm_topic_node_t* prev;
+    tm_topic_node_t* next;
 };
 
 struct tm_topics_s {
-    ts_mutex_t   sub_mu;
-    tm_subnode_t sub_root;
+    ts_mutex_t   mu;
+    tm_topic_node_t root;
     
     ts_error_t err;
 };
