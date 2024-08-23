@@ -28,6 +28,8 @@ int tm__parse_packet(
     ts_error_t* err
 );
 
+const char* tm__pkt_name(int pkt_type);
+
 typedef struct tm_packet_decoder_s tm_packet_decoder_t;
 
 struct tm_packet_decoder_s {

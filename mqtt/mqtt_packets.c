@@ -1,6 +1,6 @@
 #include "mqtt_packets.h"
 
-static const char* tm__pkt_name(int pkt_type) {
+const char* tm__pkt_name(int pkt_type) {
   switch (pkt_type) {
     case PKT_TYPE_CONNECT: return "CONNECT";
     case PKT_TYPE_CONNACK: return "CONNACK";
