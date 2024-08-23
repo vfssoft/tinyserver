@@ -14,6 +14,8 @@ tm_mqtt_session_t* tm_mqtt_session__create(const char* client_id) {
   sess->connected = 0;
   sess->client_id = NULL;
   sess->clean_session = 1;
+  sess->in_msgs = NULL;
+  sess->out_msgs = NULL;
   
   ts_error__init(&(sess->err));
   
@@ -34,3 +36,11 @@ int tm_mqtt_session__destroy(tm_mqtt_session_t* sess) {
   return 0;
 }
 
+int tm_mqtt_session__add_in_msg(tm_mqtt_session_t* sess, tm_mqtt_msg_t* msg) {
+  DL_APPEND(sess->in_msgs, msg); // no lock
+  return 0;
+}
+int tm_mqtt_session__add_out_msg(tm_mqtt_session_t* sess, tm_mqtt_msg_t* msg) {
+  DL_APPEND(sess->out_msgs, msg); // no lock
+  return 0;
+}

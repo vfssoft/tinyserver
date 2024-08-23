@@ -49,3 +49,12 @@ int tm_mqtt_msg_core__dec_ref(tm_mqtt_msg_core_t* msg_core) {
   assert(msg_core->ref_count >= 0);
   return msg_core->ref_count;
 }
+
+int tm_mqtt_msg__get_state(tm_mqtt_msg_t* msg) {
+  return msg->state;
+}
+int tm_mqtt_msg__change_state(tm_mqtt_msg_t* msg, int new_state) {
+  // TODO:
+
+  return 0;
+}

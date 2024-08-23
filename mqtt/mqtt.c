@@ -328,6 +328,7 @@ tm_mqtt_msg_t* tm__create_message(tm_server_t* s, const char* topic, const char*
 
   msg->msg_core = msg_core;
   msg->flags = (dup ? 4 : 0) | (qos << 1) | retain;
+  msg->state = MSG_STATE_INIT;
 
   return msg;
 }

@@ -68,7 +68,7 @@ static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* 
       return tm_mqtt_conn__process_connect(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_PUBLISH:
-      break;
+      return tm_mqtt_conn__process_publish(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_PUBACK:
       break;
