@@ -224,6 +224,11 @@ const char* ts_server__get_conn_remote_host(ts_t* s, ts_conn_t* c) {
   ts_tcp_conn_t* conn = (ts_tcp_conn_t*) c;
   return conn->remote_addr;
 }
+int ts_server__has_pending_write_reqs(ts_t* server, ts_conn_t* c) {
+  //ts_server_t* server = (ts_server_t*) s;
+  ts_tcp_conn_t* conn = (ts_tcp_conn_t*) c;
+  return ts_conn__has_pending_write_reqs(conn);
+}
 int ts_server__get_error(ts_t* s) {
   ts_server_t* server = (ts_server_t*) s;
   return server->err.err;

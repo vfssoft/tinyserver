@@ -122,7 +122,7 @@ static void uv_on_write(uv_write_t *req, int status) {
   ts_server_t* server = conn->listener->server;
   ts_conn__destroy_write_req(conn, wr);
   
-  int has_pending_write_reqs = conn->write_reqs != NULL;
+  int has_pending_write_reqs = ts_conn__has_pending_write_reqs(conn);
   server->write_cb(server->cb_ctx, server, conn, status, !has_pending_write_reqs);
 }
 static void uv_on_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
@@ -516,4 +516,8 @@ int ts_conn__close(ts_tcp_conn_t* conn, uv_close_cb cb) {
     uv_close(h, cb);
   }
   return 0;
+}
+
+int ts_conn__has_pending_write_reqs(ts_tcp_conn_t* conn) {
+  return conn->write_reqs != NULL;
 }

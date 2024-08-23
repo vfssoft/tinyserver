@@ -42,4 +42,6 @@ int ts_conn__tcp_connected(ts_tcp_conn_t* conn);
 int ts_conn__send_data(ts_tcp_conn_t* conn, ts_buf_t* input);
 int ts_conn__close(ts_tcp_conn_t* conn, uv_close_cb cb);
 
+int ts_conn__has_pending_write_reqs(ts_tcp_conn_t* conn);
+
 #endif //TINYSERVER_TS_TCP_CONN_H
