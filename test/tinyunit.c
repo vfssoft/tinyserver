@@ -111,9 +111,11 @@ int run_tests() {
   win_enable_virtual_terminal_processing();
   
   long long start_time = get_current_time_millis();
-  int total_tests_count = sizeof(TESTS) / sizeof(TESTS[0]);
+  int total_tests_count = 0;
   int index = 1;
   test_entry_t* test;
+  
+  for (test = TESTS; test->entry; test++) { total_tests_count++; }
 
   for (test = TESTS; test->entry; test++) {
     if (!should_run_test(test)) {
