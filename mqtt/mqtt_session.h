@@ -26,6 +26,8 @@ tm_mqtt_session_t* tm_mqtt_session__create(const char* client_id);
 int tm_mqtt_session__destroy(tm_mqtt_session_t* sess);
 
 int tm_mqtt_session__add_in_msg(tm_mqtt_session_t* sess, tm_mqtt_msg_t* msg);
+tm_mqtt_msg_t* tm_mqtt_session__find_in_msg(tm_mqtt_session_t* sess, int pkt_id);
 int tm_mqtt_session__add_out_msg(tm_mqtt_session_t* sess, tm_mqtt_msg_t* msg);
+tm_mqtt_msg_t* tm_mqtt_session__find_out_msg(tm_mqtt_session_t* sess, int pkt_id);
 
 #endif //TINYSERVER_MQTT_SESSION_H

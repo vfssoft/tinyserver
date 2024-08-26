@@ -40,7 +40,26 @@ int tm_mqtt_session__add_in_msg(tm_mqtt_session_t* sess, tm_mqtt_msg_t* msg) {
   DL_APPEND(sess->in_msgs, msg); // no lock
   return 0;
 }
+tm_mqtt_msg_t* tm_mqtt_session__find_in_msg(tm_mqtt_session_t* sess, int pkt_id) {
+  tm_mqtt_msg_t* cur;
+  DL_FOREACH(sess->in_msgs, cur) {
+    if (cur->pkt_id == pkt_id) {
+      return cur;
+    }
+  }
+  return NULL;
+}
+
 int tm_mqtt_session__add_out_msg(tm_mqtt_session_t* sess, tm_mqtt_msg_t* msg) {
   DL_APPEND(sess->out_msgs, msg); // no lock
   return 0;
+}
+tm_mqtt_msg_t* tm_mqtt_session__find_out_msg(tm_mqtt_session_t* sess, int pkt_id) {
+  tm_mqtt_msg_t* cur;
+  DL_FOREACH(sess->out_msgs, cur) {
+    if (cur->pkt_id == pkt_id) {
+      return cur;
+    }
+  }
+  return NULL;
 }

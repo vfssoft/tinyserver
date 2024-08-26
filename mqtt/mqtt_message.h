@@ -39,6 +39,7 @@ struct tm_mqtt_msg_s {
   int flags; // DUP, QoS, RETAIN
 
   int state;
+  int pkt_id;
 
   tm_mqtt_msg_t* prev;
   tm_mqtt_msg_t* next;
@@ -49,6 +50,13 @@ int tm_mqtt_msg_core__destroy(tm_mqtt_msg_core_t* msg_core);
 
 int tm_mqtt_msg_core__add_ref(tm_mqtt_msg_core_t* msg_core);
 int tm_mqtt_msg_core__dec_ref(tm_mqtt_msg_core_t* msg_core);
+
+int tm_mqtt_msg__retain(tm_mqtt_msg_t* msg);
+void tm_mqtt_msg__set_retain(tm_mqtt_msg_t* msg, int retain);
+int tm_mqtt_msg__qos(tm_mqtt_msg_t* msg);
+void tm_mqtt_msg__set_qos(tm_mqtt_msg_t* msg, int qos);
+int tm_mqtt_msg__dup(tm_mqtt_msg_t* msg);
+void tm_mqtt_msg__set_dup(tm_mqtt_msg_t* msg, int dup);
 
 int tm_mqtt_msg__get_state(tm_mqtt_msg_t* msg);
 int tm_mqtt_msg__change_state(tm_mqtt_msg_t* msg, int new_state);

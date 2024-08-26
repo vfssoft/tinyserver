@@ -50,6 +50,34 @@ int tm_mqtt_msg_core__dec_ref(tm_mqtt_msg_core_t* msg_core) {
   return msg_core->ref_count;
 }
 
+int tm_mqtt_msg__retain(tm_mqtt_msg_t* msg) {
+  return (msg->flags & 0x01) == 0x01;
+}
+void tm_mqtt_msg__set_retain(tm_mqtt_msg_t* msg, int retain) {
+  if (retain) {
+    msg->flags |= 0x01;
+  } else {
+    msg->flags &= ~0x01;
+  }
+}
+int tm_mqtt_msg__qos(tm_mqtt_msg_t* msg) {
+  return (msg->flags & 0x06) >> 1;
+}
+void tm_mqtt_msg__set_qos(tm_mqtt_msg_t* msg, int qos) {
+  msg->flags &= ~0x06;
+  msg->flags |= (qos << 1);
+}
+int tm_mqtt_msg__dup(tm_mqtt_msg_t* msg) {
+  return (msg->flags & 0x80) == 0x80;
+}
+void tm_mqtt_msg__set_dup(tm_mqtt_msg_t* msg, int dup) {
+  if (dup) {
+    msg->flags |= 0x80;
+  } else {
+    msg->flags &= ~0x80;
+  }
+}
+
 int tm_mqtt_msg__get_state(tm_mqtt_msg_t* msg) {
   return msg->state;
 }
