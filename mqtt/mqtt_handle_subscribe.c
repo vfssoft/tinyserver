@@ -11,7 +11,7 @@ static int tm_mqtt_conn__send_suback(ts_t* server, ts_conn_t* c, int pkt_id, cha
   uint162bytes_be(pkt_id, suback+2);
   memcpy(suback + 4, return_codes, return_code_count);
 
-  return ts_server__write(server, c, suback, 4 + return_code_count);
+  return tm_mqtt_conn__send_packet(server, c, suback, 4 + return_code_count, pkt_id, NULL);
 }
 
 int tm_mqtt_conn__process_subscribe(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {

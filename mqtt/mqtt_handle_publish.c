@@ -4,15 +4,15 @@
 #include <internal/ts_log.h>
 #include <internal/ts_miscellany.h>
 
-static int tm_mqtt_conn__send_puback(ts_t* server, ts_conn_t* c, int pkt_id) {
+static int tm_mqtt_conn__send_puback(ts_t* server, ts_conn_t* c, int pkt_id, tm_mqtt_msg_t* msg) {
   char puback[4] = { 0x40, 0x02, 0x00, 0x00 };
   uint162bytes_be(pkt_id, puback+2);
-  return ts_server__write(server, c, puback, 4);
+  return tm_mqtt_conn__send_packet(server, c, puback, 4, pkt_id, msg);
 }
-static int tm_mqtt_conn__send_pubrec(ts_t* server, ts_conn_t* c, int pkt_id) {
+static int tm_mqtt_conn__send_pubrec(ts_t* server, ts_conn_t* c, int pkt_id, tm_mqtt_msg_t* msg) {
   char pubrec[4] = { 0x52, 0x02, 0x00, 0x00 };
   uint162bytes_be(pkt_id, pubrec+2);
-  return ts_server__write(server, c, pubrec, 4);
+  return tm_mqtt_conn__send_packet(server, c, pubrec, 4, pkt_id, msg);
 }
 
 int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
@@ -76,7 +76,7 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
     tm_mqtt_msg__change_state(msg, MSG_STATE_DONE);
   } else if (qos == 1) {
     tm_mqtt_msg__change_state(msg, MSG_STATE_SEND_PUBACK);
-    err = tm_mqtt_conn__send_puback(server, c, pkt_id);
+    err = tm_mqtt_conn__send_puback(server, c, pkt_id, msg);
     if (err) {
       LOG_ERROR("[%s] Failed to send PUBACK", conn_id);
       tm_mqtt_conn__abort(server, c);
@@ -84,7 +84,7 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
     }
   } else if (qos == 2) {
     tm_mqtt_msg__change_state(msg, MSG_STATE_SEND_PUBREC);
-    err = tm_mqtt_conn__send_pubrec(server, c, pkt_id);
+    err = tm_mqtt_conn__send_pubrec(server, c, pkt_id, msg);
     if (err) {
       LOG_ERROR("[%s] Failed to send PUBREC", conn_id);
       tm_mqtt_conn__abort(server, c);

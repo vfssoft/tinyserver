@@ -26,7 +26,7 @@ static void tm_mqtt_conn__generate_client_id(ts_t* server, ts_conn_t* c, char* c
 
 static int tm_mqtt_conn__send_connack(ts_t* server, ts_conn_t* c, BOOL sp, int return_code) {
   char connack[4] = { 0x20, 0x01, (char)(sp & 0xFF), (char)(return_code & 0xFF) };
-  return ts_server__write(server, c, connack, 4);
+  return ts_server__write(server, c, connack, 4); // No need to call tm_mqtt_conn__send_packet()
 }
 
 static void tm_mqtt_conn__send_connack_abort(ts_t* server, ts_conn_t* c, int return_code) {

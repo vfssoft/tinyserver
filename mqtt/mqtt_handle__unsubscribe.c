@@ -9,7 +9,7 @@ static int tm_mqtt_conn__send_unsuback(ts_t* server, ts_conn_t* c, int pkt_id) {
   unsuback[0] = (char)0xB0;
   unsuback[1] = (char)(2);
   uint162bytes_be(pkt_id, unsuback+2);
-  return ts_server__write(server, c, unsuback, 4);
+  return tm_mqtt_conn__send_packet(server, c, unsuback, 4, pkt_id, NULL);
 }
 
 int tm_mqtt_conn__process_unsubscribe(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {

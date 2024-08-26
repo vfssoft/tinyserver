@@ -9,7 +9,16 @@
 
 #include <internal/ts_data_buf.h>
 
+typedef struct tm_mqtt_conn_out_packet_s tm_mqtt_conn_out_packet_t;
 typedef struct tm_mqtt_conn_s tm_mqtt_conn_t;
+
+struct tm_mqtt_conn_out_packet_s {
+  int pkt_id;
+  tm_mqtt_msg_t* msg;
+  
+  tm_mqtt_conn_out_packet_t* prev;
+  tm_mqtt_conn_out_packet_t* next;
+};
 
 struct tm_mqtt_conn_s {
   int keep_alive;
@@ -19,6 +28,7 @@ struct tm_mqtt_conn_s {
   tm_mqtt_session_t* session;
     
   tm_server_t* server;
+  tm_mqtt_conn_out_packet_t* out_packets;
   
   ts_buf_t* in_buf;
   tm_packet_decoder_t decoder;
@@ -28,6 +38,7 @@ tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s);
 int tm_mqtt_conn__destroy(tm_mqtt_conn_t* conn);
 
 void tm_mqtt_conn__abort(ts_t* server, ts_conn_t* c);
+int tm_mqtt_conn__send_packet(ts_t* server, ts_conn_t* c, const char* data, int len, int pkt_id, tm_mqtt_msg_t* msg);
 
 int tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len);
 
@@ -42,5 +53,7 @@ int tm_mqtt_conn__process_unsubscribe(ts_t* server, ts_conn_t* c, const char* pk
 int tm_mqtt_conn__process_pingreq(ts_t* server, ts_conn_t* c);
 int tm_mqtt_conn__process_disconnect(ts_t* server, ts_conn_t* c);
 int tm_mqtt_conn__process_tcp_disconnect(ts_t* server, ts_conn_t* c);
+
+void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_write_more);
 
 #endif //TINYSERVER_MQTT_CONN_H

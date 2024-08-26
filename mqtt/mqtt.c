@@ -56,8 +56,7 @@ static void tm__conn_read_cb(void* ctx, ts_t* server, ts_conn_t* conn, const cha
 
 }
 static void tm__conn_write_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status, int can_write_more) {
-  tm_server_t* s = (tm_server_t*) ctx;
-
+  tm_mqtt_conn__write_cb(server, conn, status, can_write_more);
 }
 static void tm__idle_cb(void* ctx, ts_t* server) {
   tm_server_t* s = (tm_server_t*) ctx;
