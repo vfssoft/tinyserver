@@ -58,6 +58,9 @@ TEST_DECLARE(tls_echo_10m_data)
 TEST_DECLARE(ws_echo_10m_data)
 TEST_DECLARE(wss_echo_10m_data)
 
+
+TEST_DECLARE(mqtt_connect_tcp)
+
 TEST_LIST_START
         TEST_ENTRY(invalid_local_host, "Error")
         TEST_ENTRY(invalid_local_host_2, "Error")
@@ -111,6 +114,11 @@ TEST_LIST_START
         TEST_ENTRY(tls_echo_10m_data, "TLS")
         TEST_ENTRY(ws_echo_10m_data, "Websocket")
         TEST_ENTRY(wss_echo_10m_data, "TLS,Websocket")
+
+
+        TEST_ENTRY(mqtt_connect_tcp, "TCP,MQTT")
+        
+        
 TEST_LIST_END
 
 #endif //TINYSERVER_TEST_LIST_H
