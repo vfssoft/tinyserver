@@ -1,6 +1,9 @@
 #ifndef TINYSERVER_TM_H
 #define TINYSERVER_TM_H
 
+
+#include <ts.h>
+
 #define TS_EXTERN /* nothing */
 
 typedef void tm_t;
