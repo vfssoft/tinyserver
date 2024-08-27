@@ -3,7 +3,11 @@ project(tests)
 
 set(OPENSSL_ROOT_DIR "E:/ProgramFiles/OpenSSL")
 
-include_directories(../src ../include ../libuv/include ${OPENSSL_ROOT_DIR}/include)
+add_definitions(-DPAHO_WITH_SSL=TRUE)
+
+add_subdirectory(paho.mqtt.c)
+
+include_directories(../src ../include ../libuv/include ${OPENSSL_ROOT_DIR}/include paho.mqtt.c/src)
 
 add_executable(tests
         test.c
@@ -19,4 +23,4 @@ add_executable(tests
         mytcp.c
         )
 
-target_link_libraries(tests server_lib)
+target_link_libraries(tests server_lib path_mqtt)
