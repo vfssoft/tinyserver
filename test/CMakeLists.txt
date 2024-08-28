@@ -7,7 +7,7 @@ add_definitions(-DPAHO_WITH_SSL=TRUE -DPAHO_ENABLE_TESTING=FALSE -DTEST_MQTT)
 
 add_subdirectory(paho.mqtt.c)
 
-include_directories(../src ../include ../libuv/include ${OPENSSL_ROOT_DIR}/include paho.mqtt.c/src)
+include_directories(../src ../include ../libuv/include ${OPENSSL_ROOT_DIR}/include paho.mqtt.c)
 
 add_executable(tests
         test.c
@@ -22,6 +22,8 @@ add_executable(tests
         tinyunit.c
         mytcp.h
         mytcp.c
+        mymqtt.h
+        mymqtt.c
         )
 
-target_link_libraries(tests server_lib tm_lib paho-mqtt3a)
+target_link_libraries(tests server_lib tm_lib paho-mqtt3c)

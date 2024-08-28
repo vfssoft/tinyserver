@@ -1,4 +1,5 @@
 #include "mymqtt.h"
+#include "testutil.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -19,9 +20,34 @@ void delivered_cb(void *context, MQTTClient_deliveryToken dt) {
   //deliveredtoken = dt;
 }
 
-int mymqtt__init(mymqtt_t* c, const char* server, const char* client_id) {
+int mymqtt__init(mymqtt_t* c, int proto, const char* client_id) {
   int err;
-  MQTTClient_connectOptions default_opts = MQTTClient_connectOptions_initializer;
+  const char* server;
+  MQTTClient_connectOptions tcp_opts = MQTTClient_connectOptions_initializer;
+  MQTTClient_SSLOptions ssl_opts = MQTTClient_SSLOptions_initializer;
+  MQTTClient_connectOptions ws_opts = MQTTClient_connectOptions_initializer_ws;
+  
+  switch (proto) {
+    case TS_PROTO_TCP:
+      server = "127.0.0.1:11883";
+      memcpy(&(c->options), &tcp_opts, sizeof(MQTTClient_connectOptions));
+      break;
+      
+    case TS_PROTO_TLS:
+      server = "127.0.0.1:18883";
+      memcpy(&(c->options), &tcp_opts, sizeof(MQTTClient_connectOptions));
+      break;
+      
+    case TS_PROTO_WS:
+      server = "127.0.0.1:18080";
+      memcpy(&(c->options), &ws_opts, sizeof(MQTTClient_connectOptions));
+      break;
+      
+    case TS_PROTO_WSS:
+      server = "127.0.0.1:18083";
+      memcpy(&(c->options), &ws_opts, sizeof(MQTTClient_connectOptions));
+      break;
+  }
   
   err = MQTTClient_create(
       c->client,
@@ -39,14 +65,13 @@ int mymqtt__init(mymqtt_t* c, const char* server, const char* client_id) {
     return err;
   }
   
-  memcpy(&(c->options), &default_opts, sizeof(MQTTClient_connectOptions));
   c->options.keepAliveInterval = 10;
   c->options.cleansession = 1;
   
   return 0;
 }
 void mymqtt__destroy(mymqtt_t* c) {
-  return MQTTClient_destroy(c->client);
+  MQTTClient_destroy(c->client);
 }
 
 int mymqtt__connect(mymqtt_t* c) {

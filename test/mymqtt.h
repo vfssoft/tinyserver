@@ -6,12 +6,12 @@
 
 typedef struct mymqtt_s mymqtt_t;
 
-typedef struct mymqtt_s {
+struct mymqtt_s {
   MQTTClient client;
   MQTTClient_connectOptions options;
 };
 
-int mymqtt__init(mymqtt_t* c, const char* server, const char* client_id);
+int mymqtt__init(mymqtt_t* c, int proto, const char* client_id);
 void mymqtt__destroy(mymqtt_t* c);
 
 int mymqtt__connect(mymqtt_t* c);
