@@ -31,6 +31,8 @@ int mymqtt__init(mymqtt_t* c, int proto, const char* client_id) {
   tcp_opts.MQTTVersion = MQTTVERSION_3_1_1;
   ws_opts.MQTTVersion = MQTTVERSION_3_1_1;
   
+  ssl_opts.enableServerCertAuth = 0;
+  
   switch (proto) {
     case TS_PROTO_TCP:
       server = "127.0.0.1:11883";
@@ -38,18 +40,22 @@ int mymqtt__init(mymqtt_t* c, int proto, const char* client_id) {
       break;
       
     case TS_PROTO_TLS:
-      server = "127.0.0.1:18883";
+      server = "ssl://127.0.0.1:18883";
       memcpy(&(c->options), &tcp_opts, sizeof(MQTTClient_connectOptions));
+      c->options.ssl = (MQTTClient_SSLOptions*) malloc(sizeof(MQTTClient_SSLOptions));
+      memcpy(c->options.ssl, &ssl_opts, sizeof(MQTTClient_SSLOptions));
       break;
       
     case TS_PROTO_WS:
-      server = "127.0.0.1:18080";
+      server = "ws://127.0.0.1:18080";
       memcpy(&(c->options), &ws_opts, sizeof(MQTTClient_connectOptions));
       break;
       
     case TS_PROTO_WSS:
-      server = "127.0.0.1:18083";
+      server = "wss://127.0.0.1:18083";
       memcpy(&(c->options), &ws_opts, sizeof(MQTTClient_connectOptions));
+      c->options.ssl = (MQTTClient_SSLOptions*) malloc(sizeof(MQTTClient_SSLOptions));
+      memcpy(c->options.ssl, &ssl_opts, sizeof(MQTTClient_SSLOptions));
       break;
   }
   

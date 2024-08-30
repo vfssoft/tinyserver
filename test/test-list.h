@@ -60,6 +60,9 @@ TEST_DECLARE(wss_echo_10m_data)
 
 
 TEST_DECLARE(mqtt_connect_tcp)
+TEST_DECLARE(mqtt_connect_tls)
+TEST_DECLARE(mqtt_connect_ws)
+TEST_DECLARE(mqtt_connect_wss)
 
 TEST_LIST_START
         TEST_ENTRY(invalid_local_host, "Error")
@@ -117,6 +120,9 @@ TEST_LIST_START
 
 
         TEST_ENTRY(mqtt_connect_tcp, "TCP,MQTT")
+        TEST_ENTRY(mqtt_connect_tls, "TLS,MQTT")
+        TEST_ENTRY(mqtt_connect_ws, "Websocket,MQTT")
+        TEST_ENTRY(mqtt_connect_wss, "Websocket,TLS,MQTT")
         
         
 TEST_LIST_END

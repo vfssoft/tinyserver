@@ -38,8 +38,6 @@ static void mqtt_client_connect_cb(void *arg) {
   int proto = *(int*)arg;
   mymqtt_t client;
   mymqtt__init(&client, proto, "test_client_id");
-  //client.use_ssl = ts_use_ssl(proto);
-  //client.use_ws = ts_use_websocket(proto);
   
   err = mymqtt__connect(&client);
   ASSERT_EQ(err, 0);
@@ -62,7 +60,7 @@ static int mqtt_connect_imp(int proto) {
   cbs.connected_cb = mqtt_connected_cb;
   cbs.disconnected_cb = mqtt_disconnected_cb;
   
-  server = start_mqtt_server(TS_PROTO_TCP, &cbs);
+  server = start_mqtt_server(proto, &cbs);
   int r = tm__start(server);
   ASSERT_EQ(r, 0);
   
@@ -92,4 +90,13 @@ static int mqtt_connect_imp(int proto) {
 
 TEST_IMPL(mqtt_connect_tcp) {
   return mqtt_connect_imp(TS_PROTO_TCP);
+}
+TEST_IMPL(mqtt_connect_tls) {
+  return mqtt_connect_imp(TS_PROTO_TLS);
+}
+TEST_IMPL(mqtt_connect_ws) {
+  return mqtt_connect_imp(TS_PROTO_WS);
+}
+TEST_IMPL(mqtt_connect_wss) {
+  return mqtt_connect_imp(TS_PROTO_WSS);
 }
