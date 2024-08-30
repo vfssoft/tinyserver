@@ -27,6 +27,10 @@ int mymqtt__init(mymqtt_t* c, int proto, const char* client_id) {
   MQTTClient_SSLOptions ssl_opts = MQTTClient_SSLOptions_initializer;
   MQTTClient_connectOptions ws_opts = MQTTClient_connectOptions_initializer_ws;
   
+  // TODO: add a unit tests for protocol fallback
+  tcp_opts.MQTTVersion = MQTTVERSION_3_1_1;
+  ws_opts.MQTTVersion = MQTTVERSION_3_1_1;
+  
   switch (proto) {
     case TS_PROTO_TCP:
       server = "127.0.0.1:11883";

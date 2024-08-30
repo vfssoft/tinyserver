@@ -184,7 +184,10 @@ int tm__set_log_dir(tm_t* mq, const char* dir) {
   return err;
 }
 
-static void tm__default_log_cb(void* ctx, const char* msg) {  }
+static void tm__default_log_cb(void* ctx, int level, const char* msg) {
+  fprintf(stdout, "%s\n", msg);
+  fflush(stdout);
+}
 static void tm__default_auth_user_cb(void* ctx, tm_t* mq, const char* username, const char* password, int* ret_auth_ok) {  }
 static void tm__default_connected_cb(void* ctx, tm_t* mq, ts_conn_t* conn) {  }
 static void tm__default_disconnected_cb(void* ctx, tm_t* mq, ts_conn_t* conn) {  }

@@ -252,7 +252,7 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   
   conn->session->connected = TRUE;
   
-  s->callbacks.connected_cb(s->callbacks.cb_ctx, server, c);
+  s->callbacks.connected_cb(s->callbacks.cb_ctx, s, c);
   
 done:
   

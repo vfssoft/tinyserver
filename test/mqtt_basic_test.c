@@ -8,21 +8,29 @@ typedef struct test_conn_info_s {
     int disconnected_fired;
     tm_t* server;
     ts_conn_t* conn;
+    
+    char user[32];
+    char password[32];
 } test_conn_info_t;
 
-static int mqtt_connected_cb(void* ctx, tm_t* mq, ts_conn_t* conn) {
+static void mqtt_auth_user_cb(void* ctx, tm_t* mq, const char* username, const char* password, int* ret_auth_ok) {
+  test_conn_info_t* info = (test_conn_info_t*)ctx;
+  if (username == NULL && password == NULL && strlen(info->user) == 0) {
+    *ret_auth_ok = 1;
+  }
+}
+
+static void mqtt_connected_cb(void* ctx, tm_t* mq, ts_conn_t* conn) {
   test_conn_info_t* info = (test_conn_info_t*)ctx;
   info->connected_fired++;
   info->server = mq;
   info->conn = conn;
-  return 0;
 }
-static int mqtt_disconnected_cb(void* ctx, tm_t* mq, ts_conn_t* conn) {
+static void mqtt_disconnected_cb(void* ctx, tm_t* mq, ts_conn_t* conn) {
   test_conn_info_t* info = (test_conn_info_t*)ctx;
   info->disconnected_fired++;
   info->server = mq;
   info->conn = conn;
-  return 0;
 }
 
 static void mqtt_client_connect_cb(void *arg) {
@@ -49,9 +57,10 @@ static int mqtt_connect_imp(int proto) {
   tm_t* server;
   tm_callbacks_t cbs;
   memset(&cbs, 0, sizeof(tm_callbacks_t));
+  cbs.cb_ctx = &conn_info;
+  cbs.auth_cb = mqtt_auth_user_cb;
   cbs.connected_cb = mqtt_connected_cb;
   cbs.disconnected_cb = mqtt_disconnected_cb;
-  memset(&cbs, 0, sizeof(tm_callbacks_t));
   
   server = start_mqtt_server(TS_PROTO_TCP, &cbs);
   int r = tm__start(server);

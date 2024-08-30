@@ -28,11 +28,11 @@ int tm_mqtt_conn__process_tcp_disconnect(ts_t* server, ts_conn_t* c) {
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
   
-  tm_mqtt_conn__abort(server, c);
-  
-  if (!conn->session->connected) {
+  if (conn->session == NULL) {
     return 0;
   }
+  
+  tm_mqtt_conn__abort(server, c);
   
   conn->session->connected = 0;
   
@@ -43,12 +43,12 @@ int tm_mqtt_conn__process_tcp_disconnect(ts_t* server, ts_conn_t* c) {
     conn->will = NULL;
   }
   
-  // conn->session = NULL;
   if (conn->session->clean_session) {
     LOG_VERB("[%s] Clean session is set, discard the session state", conn_id);
     tm__remove_session(s, conn->session);
+    conn->session = NULL;
   }
   
-  s->callbacks.disconnected_cb(s->callbacks.cb_ctx, server, c);
+  s->callbacks.disconnected_cb(s->callbacks.cb_ctx, s, c);
   return 0;
 }

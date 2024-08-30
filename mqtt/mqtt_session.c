@@ -19,11 +19,10 @@ tm_mqtt_session_t* tm_mqtt_session__create(const char* client_id) {
   
   ts_error__init(&(sess->err));
   
-  sess->client_id = (char*) ts__malloc(strlen(client_id));
+  sess->client_id = ts__strdup(client_id);
   if (sess->client_id == NULL) {
     return NULL;
   }
-  strcpy(sess->client_id, client_id);
   
   return sess;
 }
