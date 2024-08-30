@@ -9,19 +9,19 @@
 typedef void tm_t;
 typedef struct tm_callbacks_s tm_callbacks_t;
 
-typedef int (*tm_log_cb)(void* ctx, const char* msg);
-typedef int (*tm_auth_user_cb)(void* ctx, tm_t* mq, const char* username, const char* password, int* ret_auth_ok);
-typedef int (*tm_connected)(void* ctx, tm_t* mq, ts_conn_t* conn);
-typedef int (*tm_disconnected)(void* ctx, tm_t* mq, ts_conn_t* conn);
-typedef int (*tm_subscribe_cb)(void* ctx, tm_t* mqt, ts_conn_t* conn, const char* topic, int requested_qos, int* granted_qos);
-typedef int (*tm_unsubscribe_cb)(void* ctx, tm_t* mqt, ts_conn_t* conn, const char* topic);
+typedef void (*tm_log_cb)(void* ctx, const char* msg);
+typedef void (*tm_auth_user_cb)(void* ctx, tm_t* mq, const char* username, const char* password, int* ret_auth_ok);
+typedef void (*tm_connected_cb)(void* ctx, tm_t* mq, ts_conn_t* conn);
+typedef void (*tm_disconnected_cb)(void* ctx, tm_t* mq, ts_conn_t* conn);
+typedef void (*tm_subscribe_cb)(void* ctx, tm_t* mqt, ts_conn_t* conn, const char* topic, int requested_qos, int* granted_qos);
+typedef void (*tm_unsubscribe_cb)(void* ctx, tm_t* mqt, ts_conn_t* conn, const char* topic);
 
 struct tm_callbacks_s {
     void* cb_ctx;
     tm_log_cb log_cb;
     tm_auth_user_cb auth_cb;
-    tm_connected connected_cb;
-    tm_disconnected disconnected_cb;
+    tm_disconnected_cb connected_cb;
+    tm_disconnected_cb disconnected_cb;
     tm_subscribe_cb subscriber_cb;
     tm_unsubscribe_cb unsubscribe_cb;
 };

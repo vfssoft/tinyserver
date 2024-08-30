@@ -184,12 +184,38 @@ int tm__set_log_dir(tm_t* mq, const char* dir) {
   return err;
 }
 
+static void tm__default_log_cb(void* ctx, const char* msg) {  }
+static void tm__default_auth_user_cb(void* ctx, tm_t* mq, const char* username, const char* password, int* ret_auth_ok) {  }
+static void tm__default_connected_cb(void* ctx, tm_t* mq, ts_conn_t* conn) {  }
+static void tm__default_disconnected_cb(void* ctx, tm_t* mq, ts_conn_t* conn) {  }
+static void tm__default_subscribe_cb(void* ctx, tm_t* mqt, ts_conn_t* conn, const char* topic, int requested_qos, int* granted_qos) {  }
+static void tm__default_unsubscribe_cb(void* ctx, tm_t* mqt, ts_conn_t* conn, const char* topic) {  }
+
 int tm__set_callbacks(tm_t* mq, tm_callbacks_t* cbs) {
   int err = 0;
   tm_server_t* s = (tm_server_t*) mq;
   memcpy(&(s->callbacks), cbs, sizeof(tm_callbacks_t));
   
-  err = ts_server_log_set_log_cb(s->server, cbs->cb_ctx, (ts_log_cb) cbs->log_cb);
+  if (cbs->log_cb == NULL) {
+    s->callbacks.log_cb = tm__default_log_cb;
+  }
+  if (cbs->auth_cb == NULL) {
+    s->callbacks.auth_cb = tm__default_auth_user_cb;
+  }
+  if (cbs->connected_cb == NULL) {
+    s->callbacks.connected_cb = tm__default_connected_cb;
+  }
+  if (cbs->disconnected_cb == NULL) {
+    s->callbacks.disconnected_cb = tm__default_disconnected_cb;
+  }
+  if (cbs->subscriber_cb == NULL) {
+    s->callbacks.subscriber_cb = tm__default_subscribe_cb;
+  }
+  if (cbs->unsubscribe_cb == NULL) {
+    s->callbacks.unsubscribe_cb = tm__default_unsubscribe_cb;
+  }
+  
+  err = ts_server_log_set_log_cb(s->server, s->callbacks.cb_ctx, (ts_log_cb) s->callbacks.log_cb);
   if (err) {
     tm__copy_server_err(s, s->server);
   }
