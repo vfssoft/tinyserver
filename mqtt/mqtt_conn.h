@@ -40,7 +40,7 @@ int tm_mqtt_conn__destroy(tm_mqtt_conn_t* conn);
 void tm_mqtt_conn__abort(ts_t* server, ts_conn_t* c);
 int tm_mqtt_conn__send_packet(ts_t* server, ts_conn_t* c, const char* data, int len, int pkt_id, tm_mqtt_msg_t* msg);
 
-int tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len);
+void tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len);
 
 int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off);
 int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off);

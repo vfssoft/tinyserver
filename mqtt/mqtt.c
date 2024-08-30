@@ -52,8 +52,8 @@ static void tm__conn_disconnected_cb(void* ctx, ts_t* server, ts_conn_t* conn, i
   }
 }
 static void tm__conn_read_cb(void* ctx, ts_t* server, ts_conn_t* conn, const char* data, int len) {
-  tm_server_t* s = (tm_server_t*) ctx;
-
+  //tm_server_t* s = (tm_server_t*) ctx;
+  tm_mqtt_conn__data_in(server, conn, data, len);
 }
 static void tm__conn_write_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status, int can_write_more) {
   tm_mqtt_conn__write_cb(server, conn, status, can_write_more);

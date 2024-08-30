@@ -25,7 +25,7 @@ static void tm_mqtt_conn__generate_client_id(ts_t* server, ts_conn_t* c, char* c
 }
 
 static int tm_mqtt_conn__send_connack(ts_t* server, ts_conn_t* c, BOOL sp, int return_code) {
-  char connack[4] = { 0x20, 0x01, (char)(sp & 0xFF), (char)(return_code & 0xFF) };
+  char connack[4] = { 0x20, 0x02, (char)(sp & 0xFF), (char)(return_code & 0xFF) };
   return ts_server__write(server, c, connack, 4); // No need to call tm_mqtt_conn__send_packet()
 }
 
@@ -61,7 +61,7 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
   
   err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
-  if (err || tmp_len != 4 || strcmp(tmp_ptr, "MQTT") != 0) {
+  if (err || tmp_len != 4 || strncmp(tmp_ptr, "MQTT", 4) != 0) {
     LOG_ERROR("[%s] Invalid protocol name", conn_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
@@ -101,6 +101,8 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
     goto done;
   }
   memcpy(client_id, tmp_ptr, tmp_len);
+  client_id[tmp_len] = 0;
+  
   if (tmp_len == 0) {
     // empty client id
     if (!clean_session) {

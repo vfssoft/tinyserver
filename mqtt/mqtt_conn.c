@@ -14,6 +14,11 @@ tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s) {
     return NULL;
   }
   memset(conn, 0, sizeof(tm_mqtt_conn_t));
+  
+  conn->in_buf = ts_buf__create(64);
+  if (conn->in_buf == NULL) {
+    return NULL;
+  }
 
   tm_packet_decoder__set(&(conn->decoder), NULL, 0);
   ts_error__init(&(s->err));
@@ -79,7 +84,7 @@ static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* 
   switch (pkt_type) {
 
     case PKT_TYPE_CONNECT:
-      if (conn->session->connected) {
+      if (conn->session && conn->session->connected) {
         LOG_ERROR("[%s] Already connected but receive another CONNECT", ts_server__get_conn_remote_host(server, c));
         tm_mqtt_conn__abort(server, c);
         return 0;
@@ -121,7 +126,7 @@ static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* 
   }
   return 0;
 }
-int tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len) {
+void tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len) {
   int err;
   tm_mqtt_conn_t* conn;
   int total_bytes_consumed = 0;
@@ -181,8 +186,7 @@ int tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len)
 
 done:
   conn->last_active_time = ts_server__now(server);
-  
-  return 0;
+
 }
 
 void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_write_more) {

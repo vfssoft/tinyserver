@@ -28,6 +28,7 @@ int tm__parse_packet(
     ts_error_t* error
 )
 {
+  int b;
   int offset = 0;
   int pkt_type;
   int flags;
@@ -88,7 +89,8 @@ int tm__parse_packet(
   *remaining_length = 0;
   offset = 1;
   while (1) {
-    *remaining_length += ((data[offset] & 0x7F) * multiplier);
+    b = data[offset++];
+    *remaining_length += ((b & 0x7F) * multiplier);
     multiplier *= 128;
   
     if (multiplier > 128*128*128) {
@@ -97,11 +99,9 @@ int tm__parse_packet(
       return 0;
     }
     
-    if ((data[offset] & 0x80) != 0x80) {
+    if ((b & 0x80) != 0x80) {
       break; // parse remaining length successfully
     }
-    
-    offset++;
     
     if (offset >= data_len) {
       return 0; // we want more data, but no
@@ -164,6 +164,7 @@ int tm_packet_decoder__read_int16_string(tm_packet_decoder_t* decoder, int* retl
   if (err) return err;
 
   *retstr = tm_packet_decoder__ptr(decoder);
+  decoder->offset += *retlen;
   return 0;
 }
 

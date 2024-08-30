@@ -50,7 +50,7 @@ int mymqtt__init(mymqtt_t* c, int proto, const char* client_id) {
   }
   
   err = MQTTClient_create(
-      c->client,
+      &(c->client),
       server,
       client_id,
       MQTTCLIENT_PERSISTENCE_DEFAULT,
