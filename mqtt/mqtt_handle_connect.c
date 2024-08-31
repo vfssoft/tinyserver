@@ -124,7 +124,7 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
     conn->session = NULL;
   }
   if (conn->session == NULL) {
-    LOG_DEBUG("[%s] Create new session for the current client", conn_id);
+    LOG_DEBUG("[%s] Create new session for the current client: %s", conn_id, client_id);
     conn->session = tm__create_session(s, client_id);
     if (conn->session == NULL) {
       LOG_ERROR("[%s] Out of memory", conn_id);
@@ -216,7 +216,7 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
     }
   
     password = tm__string(tmp_ptr, tmp_len);
-    if (password) {
+    if (password == NULL) {
       LOG_ERROR("[%s] Out of memory", conn_id);
       tm_mqtt_conn__abort(server, c);
       goto done;

@@ -84,6 +84,13 @@ void mymqtt__destroy(mymqtt_t* c) {
   MQTTClient_destroy(c->client);
 }
 
+void mymqtt__set_user(mymqtt_t* c, const char* user) {
+  c->options.username = strdup(user);
+}
+void mymqtt__set_password(mymqtt_t* c, const char* password) {
+  c->options.password = strdup(password);
+}
+
 int mymqtt__connect(mymqtt_t* c) {
   int err;
   

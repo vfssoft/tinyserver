@@ -14,6 +14,9 @@ struct mymqtt_s {
 int mymqtt__init(mymqtt_t* c, int proto, const char* client_id);
 void mymqtt__destroy(mymqtt_t* c);
 
+void mymqtt__set_user(mymqtt_t* c, const char* user);
+void mymqtt__set_password(mymqtt_t* c, const char* password);
+
 int mymqtt__connect(mymqtt_t* c);
 int mymqtt__disconnect(mymqtt_t* c);
 

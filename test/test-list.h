@@ -64,6 +64,9 @@ TEST_DECLARE(mqtt_connect_tls)
 TEST_DECLARE(mqtt_connect_ws)
 TEST_DECLARE(mqtt_connect_wss)
 
+TEST_DECLARE(mqtt_auth_user)
+TEST_DECLARE(mqtt_auth_user_fail)
+
 TEST_LIST_START
         TEST_ENTRY(invalid_local_host, "Error")
         TEST_ENTRY(invalid_local_host_2, "Error")
@@ -124,6 +127,8 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_connect_ws, "Websocket,MQTT")
         TEST_ENTRY(mqtt_connect_wss, "Websocket,TLS,MQTT")
         
+        TEST_ENTRY(mqtt_auth_user, "MQTT")
+        TEST_ENTRY(mqtt_auth_user_fail, "MQTT")
         
 TEST_LIST_END
 
