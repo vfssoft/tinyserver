@@ -200,5 +200,6 @@ extern test_entry_t TESTS[];
 
 int run_tests();
 int set_tests_categories(const char* categories);
+int set_tests_excluded_categories(const char* categories);
 
 #endif //TINYSERVER_TINYUNIT_H

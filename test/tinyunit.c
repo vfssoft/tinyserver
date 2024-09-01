@@ -16,7 +16,8 @@
   fprintf(stdout, format, __VA_ARGS__); \
   fflush(stdout);
 
-static char* selected_categories[16][64] = { 0 }; // we supported at most 16 categories
+static char selected_categories[16][64] = { 0 }; // we supported at most 16 categories
+static char excluded_categories[16][64] = { 0 };
 
 static int win_enable_virtual_terminal_processing() {
 #ifdef WIN32
@@ -83,21 +84,40 @@ static int is_category_selected(const char* category) {
   }
   return 0;
 }
-static int should_run_test(test_entry_t* t) {
-  if (selected_categories[0][0] == 0) {  // no filter, run ALL tests
-    return 1;
-  }
-
-  char* category = strtok(t->categories, ",");
-  while (category != NULL) {
-    if (is_category_selected(category)) {
+static int is_category_excluded(const char* category) {
+  for (int i = 0; i < 16; i++) {
+    if (stricmp(category, (char*)excluded_categories[i]) == 0) {
       return 1;
     }
-  
-    category = strtok(NULL, ",");
+  }
+  return 0;
+}
+static int should_run_test(test_entry_t* t) {
+  int is_selected = selected_categories[0][0] == 0; // no filter, run ALL tests
+
+  if (!is_selected) {
+    char* category = strtok(t->categories, ",");
+    while (category != NULL) {
+      if (is_category_selected(category)) {
+        is_selected = 1;
+        break;
+      }
+      category = strtok(NULL, ",");
+    }
   }
   
-  return 0;
+  if (is_selected && excluded_categories[0][0] != 0) {
+    char* category = strtok(t->categories, ",");
+    while (category != NULL) {
+      if (is_category_excluded(category)) {
+        is_selected = 0;
+        break;
+      }
+      category = strtok(NULL, ",");
+    }
+  }
+  
+  return is_selected;
 }
 
 static void run_test(test_entry_t* t) {
@@ -143,6 +163,22 @@ int set_tests_categories(const char* categories) {
   token = strtok(categories, ",");
   while (token != NULL) {
     strcpy((char*)selected_categories[cnt], token);
+    cnt++;
+    token = strtok(NULL, ",");
+  }
+  
+  return 0;
+}
+int set_tests_excluded_categories(const char* categories) {
+  // excluded_categories is used to exclude unit tests from the selected unit tests
+  for (int i = 0; i < 16; i++) excluded_categories[i][0] = 0;
+  
+  char* token;
+  int cnt = 0;
+  
+  token = strtok(categories, ",");
+  while (token != NULL) {
+    strcpy((char*)excluded_categories[cnt], token);
     cnt++;
     token = strtok(NULL, ",");
   }
