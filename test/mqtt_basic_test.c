@@ -15,6 +15,8 @@ typedef struct test_conn_info_s {
     int auth_fail;
     
     int proto;
+    
+    int client_err;
 } test_conn_info_t;
 
 static void mqtt_auth_user_cb(void* ctx, tm_t* mq, const char* username, const char* password, int* ret_auth_ok) {
@@ -173,4 +175,55 @@ TEST_IMPL(mqtt_auth_user) {
 }
 TEST_IMPL(mqtt_auth_user_fail) {
   return mqtt_auth_user_impl(1);
+}
+
+static void mqtt_client_connect_with_invalid_protocol_cb(void *arg) {
+  test_conn_info_t* info = (test_conn_info_t*)arg;
+  mymqtt_t client;
+  mymqtt__init(&client, info->proto, "test_client_id");
+  
+  info->client_err = mymqtt__connect(&client);
+  ASSERT_NE(info->client_err, 0);
+}
+static int mqtt_invalid_transport_protocol_impl(int server_proto, int server_port, int client_proto) {
+  test_conn_info_t conn_info;
+  memset(&conn_info, 0, sizeof(conn_info));
+  conn_info.proto = client_proto;
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, &conn_info);
+  
+  server = start_mqtt_server_custom_port(server_proto, server_port, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  uv_thread_t client_thread;
+  uv_thread_create(&client_thread, mqtt_client_connect_with_invalid_protocol_cb, (void*)&conn_info);
+  
+  while (conn_info.client_err == 0) tm__run(server);
+  ASSERT_NE(conn_info.client_err, 0);
+
+  tm__stop(server);
+  uv_thread_join(&client_thread);
+  return 0;
+}
+
+TEST_IMPL(mqtt_invalid_protocol_tcp_tls_test) {
+  return mqtt_invalid_transport_protocol_impl(TS_PROTO_TCP, MQTT_TLS_PORT, TS_PROTO_TLS);
+}
+TEST_IMPL(mqtt_invalid_protocol_tcp_ws_test) {
+  return mqtt_invalid_transport_protocol_impl(TS_PROTO_TCP, MQTT_WS_PORT, TS_PROTO_WS);
+}
+TEST_IMPL(mqtt_invalid_protocol_tcp_wss_test) {
+  return mqtt_invalid_transport_protocol_impl(TS_PROTO_TCP, MQTT_WSS_PORT, TS_PROTO_WSS);
+}
+TEST_IMPL(mqtt_invalid_protocol_tls_tcp_test) {
+  return mqtt_invalid_transport_protocol_impl(TS_PROTO_TLS, MQTT_PLAIN_PORT, TS_PROTO_TCP);
+}
+TEST_IMPL(mqtt_invalid_protocol_tls_ws_test) {
+  return mqtt_invalid_transport_protocol_impl(TS_PROTO_TLS, MQTT_WS_PORT, TS_PROTO_WS);
+}
+TEST_IMPL(mqtt_invalid_protocol_tls_wss_test) {
+  return mqtt_invalid_transport_protocol_impl(TS_PROTO_TLS, MQTT_WSS_PORT, TS_PROTO_WSS);
 }

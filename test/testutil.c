@@ -33,6 +33,9 @@ ts_t* start_server(int proto) {
 }
 
 tm_t* start_mqtt_server(int proto, tm_callbacks_t* cbs) {
+  return start_mqtt_server_custom_port(proto, -1, cbs);
+}
+tm_t* start_mqtt_server_custom_port(int proto, int listen_port, tm_callbacks_t* cbs) {
   const char* dir_path = cur_dir();
   char crtpath[1024];
   char keypath[1024];
@@ -46,17 +49,17 @@ tm_t* start_mqtt_server(int proto, tm_callbacks_t* cbs) {
   
   switch (proto) {
     case TS_PROTO_TCP:
-      tm__set_listener_host_port(tm, 0, "127.0.0.1", MQTT_PLAIN_PORT);
+      tm__set_listener_host_port(tm, 0, "127.0.0.1", listen_port < 0 ? MQTT_PLAIN_PORT: listen_port);
       break;
     case TS_PROTO_TLS:
-      tm__set_listener_host_port(tm, 0, "127.0.0.1", MQTT_TLS_PORT);
+      tm__set_listener_host_port(tm, 0, "127.0.0.1", listen_port < 0 ? MQTT_TLS_PORT: listen_port);
       tm__set_listener_certs(tm, 0, crtpath, keypath);
       break;
     case TS_PROTO_WS:
-      tm__set_listener_host_port(tm, 0, "127.0.0.1", MQTT_WS_PORT);
+      tm__set_listener_host_port(tm, 0, "127.0.0.1", listen_port < 0 ? MQTT_WS_PORT: listen_port);
       break;
     case TS_PROTO_WSS:
-      tm__set_listener_host_port(tm, 0, "127.0.0.1", MQTT_WSS_PORT);
+      tm__set_listener_host_port(tm, 0, "127.0.0.1", listen_port < 0 ? MQTT_WSS_PORT: listen_port);
       tm__set_listener_certs(tm, 0, crtpath, keypath);
       break;
     default:

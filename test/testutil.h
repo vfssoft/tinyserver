@@ -15,6 +15,7 @@ const char* cur_dir();
 ts_t* start_server(int proto);
 
 tm_t* start_mqtt_server(int proto, tm_callbacks_t* cbs);
+tm_t* start_mqtt_server_custom_port(int proto, int listen_port, tm_callbacks_t* cbs);
 
 void assert_bytes_equals(const char* d1, int d1len, const char* d2, int d2len);
 

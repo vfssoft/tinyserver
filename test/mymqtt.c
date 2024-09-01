@@ -77,6 +77,7 @@ int mymqtt__init(mymqtt_t* c, int proto, const char* client_id) {
   
   c->options.keepAliveInterval = 10;
   c->options.cleansession = 1;
+  c->options.connectTimeout = 3;
   
   return 0;
 }
