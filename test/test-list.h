@@ -58,6 +58,8 @@ TEST_DECLARE(tls_echo_10m_data)
 TEST_DECLARE(ws_echo_10m_data)
 TEST_DECLARE(wss_echo_10m_data)
 
+TEST_DECLARE(tls_invalid_handshake_record_test)
+TEST_DECLARE(tls_invalid_handshake_record_1kzero_test)
 
 TEST_DECLARE(mqtt_connect_tcp)
 TEST_DECLARE(mqtt_connect_tls)
@@ -128,6 +130,8 @@ TEST_LIST_START
         TEST_ENTRY(ws_echo_10m_data, "Websocket")
         TEST_ENTRY(wss_echo_10m_data, "TLS,Websocket")
 
+        TEST_ENTRY(tls_invalid_handshake_record_test, "TLS")
+        TEST_ENTRY(tls_invalid_handshake_record_1kzero_test, "TLS")
 
         TEST_ENTRY(mqtt_connect_tcp, "TCP,MQTT")
         TEST_ENTRY(mqtt_connect_tls, "TLS,MQTT")

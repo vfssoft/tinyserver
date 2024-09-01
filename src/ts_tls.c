@@ -31,13 +31,6 @@ static void ts_tls__destroy_openssl() {
   openssl_lib_initialized = 0;
 }
 
-static int ts_tls__get_openssl_error(int err) {
-  if (err == 0 || err == -1 || err == 1) {
-    return (int) ERR_get_error();
-  } else {
-    return err;
-  }
-}
 static void ts_tls__print_openssl_errors(ts_error_t* errt) {
   int ssl_err = ERR_get_error();
   
@@ -54,7 +47,7 @@ static void ts_tls__print_openssl_errors(ts_error_t* errt) {
 static void ts_tls__set_err(ts_tls_t* tls, int err) {
   // don't process the error, convert error should be done out side of this function
   tls->state = TS_STATE_DISCONNECTED;
-  ts_error__set_msg(&tls->err, err, "TLS Error");
+  ts_error__set_msg(&tls->err, err, ERR_error_string(err, NULL));
 }
 static void ts_tls__set_err2(ts_tls_t* tls) {
   tls->state = TS_STATE_DISCONNECTED;
@@ -263,7 +256,7 @@ int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
         break;
   
       default:
-        ts_tls__set_err(tls, ts_tls__get_openssl_error(ssl_err));
+        ts_tls__set_err(tls, (int) ERR_get_error());
         goto done;
     }
 
@@ -283,7 +276,7 @@ done:
     LOG_ERROR("[%s][TLS] TLS handshake failed: %d %s", conn->remote_addr, tls->err.err, tls->err.msg);
   }
   
-  return 0;
+  return tls->err.err;
 }
 
 int ts_tls__decrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
@@ -321,7 +314,7 @@ int ts_tls__decrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
             return 0;
           
           default:
-            ts_tls__set_err(tls, ts_tls__get_openssl_error(ssl_read_ret));
+            ts_tls__set_err(tls, (int) ERR_get_error());
             return tls->err.err;
         }
       }
@@ -364,7 +357,7 @@ int ts_tls__encrypt(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
           }
           break;
         default:
-          ts_tls__set_err(tls, ts_tls__get_openssl_error(ssl_write_ret));
+          ts_tls__set_err(tls, (int) ERR_get_error());
           return tls->err.err;
       }
     }

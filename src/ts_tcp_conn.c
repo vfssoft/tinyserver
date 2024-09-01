@@ -273,7 +273,7 @@ static int ts_conn__process_ssl_socket_data(ts_tcp_conn_t* conn, ts_ro_buf_t* in
 
 done:
   if (err) {
-    LOG_ERROR("[%s] TLS error: %d %s", conn->err.err, conn->err.msg);
+    LOG_ERROR("[%s] TLS error: %d %s", conn->remote_addr, conn->err.err, conn->err.msg);
   }
   return err;
 }
@@ -351,7 +351,7 @@ static int ts_conn__process_ws_socket_data(ts_tcp_conn_t* conn, ts_ro_buf_t* inp
 
 done:
   if (err) {
-    LOG_ERROR("[%s] Websocket error: %d %s", conn->err.err, conn->err.msg);
+    LOG_ERROR("[%s] Websocket error: %d %s", conn->remote_addr, conn->err.err, conn->err.msg);
   }
   if (output_sock) {
     ts_buf__destroy(output_sock);
@@ -403,12 +403,17 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
 
   if (nread < 0) {
     LOG_ERROR("[%s] Connection error: %d %s", conn->remote_addr, nread, uv_strerror(nread));
+    err = nread;
+  }
+
+done:
+  
+  if (err) {
     ts_server__disconnect(server, conn);
   }
 
   uv_on_free_buffer(buf);
 
-done:
   return;
 }
 

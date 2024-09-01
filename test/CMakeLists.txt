@@ -12,6 +12,7 @@ add_executable(tests
         basic_errors_test.c
         tcp_connect_test.c
         tcp_read_write_test.c
+        tls_test.c
         mqtt_basic_test.c
         testutil.h
         testutil.c
