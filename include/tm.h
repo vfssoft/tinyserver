@@ -20,7 +20,7 @@ struct tm_callbacks_s {
     void* cb_ctx;
     tm_log_cb log_cb;
     tm_auth_user_cb auth_cb;
-    tm_disconnected_cb connected_cb;
+    tm_connected_cb connected_cb;
     tm_disconnected_cb disconnected_cb;
     tm_subscribe_cb subscriber_cb;
     tm_unsubscribe_cb unsubscribe_cb;
