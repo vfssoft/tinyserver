@@ -227,3 +227,21 @@ TEST_IMPL(mqtt_invalid_protocol_tls_ws_test) {
 TEST_IMPL(mqtt_invalid_protocol_tls_wss_test) {
   return mqtt_invalid_transport_protocol_impl(TS_PROTO_TLS, MQTT_WSS_PORT, TS_PROTO_WSS);
 }
+TEST_IMPL(mqtt_invalid_protocol_ws_tcp_test) {
+  return mqtt_invalid_transport_protocol_impl(TS_PROTO_WS, MQTT_PLAIN_PORT, TS_PROTO_TCP);
+}
+TEST_IMPL(mqtt_invalid_protocol_ws_tls_test) {
+  return mqtt_invalid_transport_protocol_impl(TS_PROTO_WS, MQTT_TLS_PORT, TS_PROTO_TLS);
+}
+TEST_IMPL(mqtt_invalid_protocol_ws_wss_test) {
+  return mqtt_invalid_transport_protocol_impl(TS_PROTO_WS, MQTT_WSS_PORT, TS_PROTO_WSS);
+}
+TEST_IMPL(mqtt_invalid_protocol_wss_tcp_test) {
+  return mqtt_invalid_transport_protocol_impl(TS_PROTO_WSS, MQTT_PLAIN_PORT, TS_PROTO_TCP);
+}
+TEST_IMPL(mqtt_invalid_protocol_wss_tls_test) {
+  return mqtt_invalid_transport_protocol_impl(TS_PROTO_WSS, MQTT_TLS_PORT, TS_PROTO_TLS);
+}
+TEST_IMPL(mqtt_invalid_protocol_wss_ws_test) {
+  return mqtt_invalid_transport_protocol_impl(TS_PROTO_WSS, MQTT_WS_PORT, TS_PROTO_WS);
+}

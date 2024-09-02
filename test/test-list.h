@@ -75,6 +75,12 @@ TEST_DECLARE(mqtt_invalid_protocol_tcp_wss_test)
 TEST_DECLARE(mqtt_invalid_protocol_tls_tcp_test)
 TEST_DECLARE(mqtt_invalid_protocol_tls_ws_test)
 TEST_DECLARE(mqtt_invalid_protocol_tls_wss_test)
+TEST_DECLARE(mqtt_invalid_protocol_ws_tcp_test)
+TEST_DECLARE(mqtt_invalid_protocol_ws_tls_test)
+TEST_DECLARE(mqtt_invalid_protocol_ws_wss_test)
+TEST_DECLARE(mqtt_invalid_protocol_wss_tcp_test)
+TEST_DECLARE(mqtt_invalid_protocol_wss_tls_test)
+TEST_DECLARE(mqtt_invalid_protocol_wss_ws_test)
 
 TEST_LIST_START
         TEST_ENTRY(invalid_local_host, "Error")
@@ -147,6 +153,12 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_invalid_protocol_tls_tcp_test, "MQTT")
         TEST_ENTRY(mqtt_invalid_protocol_tls_ws_test, "MQTT")
         TEST_ENTRY(mqtt_invalid_protocol_tls_wss_test, "MQTT")
+        TEST_ENTRY(mqtt_invalid_protocol_ws_tcp_test, "MQTT")
+        TEST_ENTRY(mqtt_invalid_protocol_ws_tls_test, "MQTT")
+        TEST_ENTRY(mqtt_invalid_protocol_ws_wss_test, "MQTT")
+        TEST_ENTRY(mqtt_invalid_protocol_wss_tcp_test, "MQTT")
+        TEST_ENTRY(mqtt_invalid_protocol_wss_tls_test, "MQTT")
+        TEST_ENTRY(mqtt_invalid_protocol_wss_ws_test, "MQTT")
 TEST_LIST_END
 
 #endif //TINYSERVER_TEST_LIST_H

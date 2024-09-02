@@ -262,6 +262,19 @@ int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
   
   end_of_headers = strstr(ws->in_buf->buf, "\r\n\r\n");
   if (end_of_headers == NULL) {
+    // quick fail
+    if (ws->in_buf->len >= 3 && strncmp(ws->in_buf->buf, "GET", 3) != 0) {
+      ts_error__set_msg(&(ws->err), TS_ERR_INVALID_WS_HEADERS, "Invalid Websocket Opening Handshake");
+      goto done;
+    }
+    if (strstr(ws->in_buf->buf, "\r\n") != NULL) {
+      // first line is received, check the first line
+      if (strstr(ws->in_buf->buf, "HTTP/1.1\r\n") == NULL) {
+        ts_error__set_msg(&(ws->err), TS_ERR_INVALID_WS_HEADERS, "Invalid Websocket Opening Handshake");
+        goto done;
+      }
+    }
+    
     return 0; // more data is needed
   }
   

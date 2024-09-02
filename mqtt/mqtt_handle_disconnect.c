@@ -26,11 +26,11 @@ int tm_mqtt_conn__process_tcp_disconnect(ts_t* server, ts_conn_t* c) {
   const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
-  s = conn->server;
-  
-  if (conn->session == NULL) {
+  if (conn == NULL || conn->session == NULL) {
+    // We're at the very beginning state that mqtt_conn is not created or the session is not initialized
     return 0;
   }
+  s = conn->server;
   
   tm_mqtt_conn__abort(server, c);
   
