@@ -79,3 +79,35 @@ void assert_bytes_equals(const char* d1, int d1len, const char* d2, int d2len) {
     ASSERT_EQ(d1[i], d2[i]);
   }
 }
+
+
+static unsigned char hex_char_to_byte(char high, char low) {
+  unsigned char byte = 0;
+  
+  // Convert high nibble
+  if (high >= '0' && high <= '9') {
+    byte |= (high - '0') << 4;
+  } else if (high >= 'a' && high <= 'f') {
+    byte |= (high - 'a' + 10) << 4;
+  } else if (high >= 'A' && high <= 'F') {
+    byte |= (high - 'A' + 10) << 4;
+  }
+  
+  // Convert low nibble
+  if (low >= '0' && low <= '9') {
+    byte |= (low - '0');
+  } else if (low >= 'a' && low <= 'f') {
+    byte |= (low - 'a' + 10);
+  } else if (low >= 'A' && low <= 'F') {
+    byte |= (low - 'A' + 10);
+  }
+  
+  return byte;
+}
+void decode_hex(const char* hex, unsigned char* bytes) {
+  int len = strlen(hex);
+  int out_len = len / 2;
+  for (size_t i = 0; i < out_len; i++) {
+    bytes[i] = hex_char_to_byte(hex[2 * i], hex[2 * i + 1]);
+  }
+}

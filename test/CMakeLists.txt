@@ -14,6 +14,7 @@ add_executable(tests
         tcp_read_write_test.c
         tls_test.c
         mqtt_basic_test.c
+        mqtt_invalid_packet_test.c
         testutil.h
         testutil.c
         tinyunit.h

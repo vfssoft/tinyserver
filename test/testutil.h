@@ -19,4 +19,6 @@ tm_t* start_mqtt_server_custom_port(int proto, int listen_port, tm_callbacks_t* 
 
 void assert_bytes_equals(const char* d1, int d1len, const char* d2, int d2len);
 
+void decode_hex(const char* hex, unsigned char* bytes);
+
 #endif //TINYSERVER_TESTUTIL_H
