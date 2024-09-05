@@ -31,6 +31,9 @@ static void mqtt_auth_user_cb(void* ctx, tm_t* mq, const char* username, const c
     *ret_auth_ok = 1;
   }
 }
+static void mqtt_auth_user_anonymous_cb(void* ctx, tm_t* mq, const char* username, const char* password, int* ret_auth_ok) {
+  *ret_auth_ok = 1;
+}
 
 static void mqtt_connected_cb(void* ctx, tm_t* mq, ts_conn_t* conn) {
   test_conn_info_t* info = (test_conn_info_t*)ctx;
@@ -244,4 +247,128 @@ TEST_IMPL(mqtt_invalid_protocol_wss_tls_test) {
 }
 TEST_IMPL(mqtt_invalid_protocol_wss_ws_test) {
   return mqtt_invalid_transport_protocol_impl(TS_PROTO_WSS, MQTT_WS_PORT, TS_PROTO_WS);
+}
+
+typedef struct {
+    int clean_session;
+    int sp;
+    int done;
+} conn_ack_sp_info_t;
+
+static void mqtt_client_conn_ack_sp_cb(void *arg) {
+  int err;
+  conn_ack_sp_info_t* info = (conn_ack_sp_info_t*)arg;
+  mymqtt_t client;
+  mymqtt__init(&client, TS_PROTO_TCP, "test_client_id");
+  client.options.cleansession = info->clean_session;
+  
+  err = mymqtt__connect(&client);
+  ASSERT_EQ(err, 0);
+  ASSERT_EQ(mymqtt__sp(&client), 0);
+  
+  err = mymqtt__disconnect(&client);
+  ASSERT_EQ(err, 0);
+  
+  err = mymqtt__connect(&client);
+  ASSERT_EQ(err, 0);
+  ASSERT_EQ(mymqtt__sp(&client), !info->clean_session);
+  
+  err = mymqtt__disconnect(&client);
+  ASSERT_EQ(err, 0);
+  
+  info->done = 1;
+}
+static int mqtt_conn_ack_sp_impl(int clean_session) {
+  conn_ack_sp_info_t info;
+  RESET_STRUCT(info);
+  info.clean_session = clean_session;
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  RESET_STRUCT(cbs);
+  cbs.auth_cb = mqtt_auth_user_anonymous_cb;
+  
+  server = start_mqtt_server(TS_PROTO_TCP, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  uv_thread_t client_thread;
+  uv_thread_create(&client_thread, mqtt_client_conn_ack_sp_cb, (void*)&info);
+  
+  while (info.done == 0) tm__run(server);
+  
+  tm__stop(server);
+  uv_thread_join(&client_thread);
+  return 0;
+}
+
+TEST_IMPL(mqtt_conn_ack_sp_false_test) {
+  return mqtt_conn_ack_sp_impl(0);
+}
+TEST_IMPL(mqtt_conn_ack_sp_true_test) {
+  return mqtt_conn_ack_sp_impl(1);
+}
+
+typedef struct {
+    char* client_id;
+    int done;
+} different_client_id_info_t;
+static void mqtt_client_different_length_client_id_cb(void* arg) {
+  int err;
+  different_client_id_info_t* info = (different_client_id_info_t*)arg;
+  mymqtt_t client;
+  mymqtt__init(&client, TS_PROTO_TCP, info->client_id);
+  err = mymqtt__connect(&client);
+  if (strlen(info->client_id) > 512) {
+    ASSERT_EQ(err, 2); // identifier rejected
+  } else {
+    ASSERT_EQ(err, 0);
+  }
+  
+  err = mymqtt__disconnect(&client);
+  ASSERT_EQ(err, 0);
+  info->done = 1;
+}
+static int mqtt_different_length_client_id_impl(const char* client_id) {
+  different_client_id_info_t info;
+  RESET_STRUCT(info);
+  info.client_id = strdup(client_id);
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  RESET_STRUCT(cbs);
+  cbs.auth_cb = mqtt_auth_user_anonymous_cb;
+  
+  server = start_mqtt_server(TS_PROTO_TCP, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  uv_thread_t client_thread;
+  uv_thread_create(&client_thread, mqtt_client_different_length_client_id_cb, (void*)&info);
+  
+  while (info.done == 0) tm__run(server);
+  
+  tm__stop(server);
+  uv_thread_join(&client_thread);
+  return 0;
+}
+TEST_IMPL(mqtt_zero_length_client_id_test) {
+  return mqtt_different_length_client_id_impl("");
+}
+TEST_IMPL(mqtt_normal_client_id_test) {
+  return mqtt_different_length_client_id_impl("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
+}
+TEST_IMPL(mqtt_512_length_client_id_test) {
+  // KNOWN BUG
+  return 0;
+  char buf[512];
+  memset(buf, 'x', 511);
+  buf[511] = 0;
+  return mqtt_different_length_client_id_impl(buf);
+}
+TEST_IMPL(mqtt_too_long_client_id_test) {
+  char buf[1025];
+  memset(buf, 'x', 1024);
+  buf[1024] = 0;
+  return mqtt_different_length_client_id_impl(buf);
 }

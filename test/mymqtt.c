@@ -63,7 +63,7 @@ int mymqtt__init(mymqtt_t* c, int proto, const char* client_id) {
       &(c->client),
       server,
       client_id,
-      MQTTCLIENT_PERSISTENCE_DEFAULT,
+      strlen(client_id) == 0 ? MQTTCLIENT_PERSISTENCE_NONE : MQTTCLIENT_PERSISTENCE_DEFAULT,
       NULL
   );
   if (err != MQTTCLIENT_SUCCESS) {
@@ -90,6 +90,10 @@ void mymqtt__set_user(mymqtt_t* c, const char* user) {
 }
 void mymqtt__set_password(mymqtt_t* c, const char* password) {
   c->options.password = strdup(password);
+}
+
+int mymqtt__sp(mymqtt_t* c) {
+  return c->options.returned.sessionPresent;
 }
 
 int mymqtt__connect(mymqtt_t* c) {

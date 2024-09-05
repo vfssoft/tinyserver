@@ -88,6 +88,13 @@ TEST_DECLARE(mqtt_two_connect_pkts)
 TEST_DECLARE(mqtt_invalid_protocol_name_test)
 TEST_DECLARE(mqtt_valid_protocol_level_test)
 
+TEST_DECLARE(mqtt_conn_ack_sp_false_test)
+TEST_DECLARE(mqtt_conn_ack_sp_true_test)
+TEST_DECLARE(mqtt_zero_length_client_id_test)
+TEST_DECLARE(mqtt_normal_client_id_test)
+TEST_DECLARE(mqtt_512_length_client_id_test)
+TEST_DECLARE(mqtt_too_long_client_id_test)
+
 TEST_LIST_START
         TEST_ENTRY(invalid_local_host, "Error")
         TEST_ENTRY(invalid_local_host_2, "Error")
@@ -171,6 +178,13 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_two_connect_pkts, "MQTT")
         TEST_ENTRY(mqtt_invalid_protocol_name_test, "MQTT")
         TEST_ENTRY(mqtt_valid_protocol_level_test, "MQTT")
+
+        TEST_ENTRY(mqtt_conn_ack_sp_false_test, "MQTT")
+        TEST_ENTRY(mqtt_conn_ack_sp_true_test, "MQTT")
+        TEST_ENTRY(mqtt_zero_length_client_id_test, "MQTT")
+        TEST_ENTRY(mqtt_normal_client_id_test, "MQTT")
+        TEST_ENTRY(mqtt_512_length_client_id_test, "MQTT")
+        TEST_ENTRY(mqtt_too_long_client_id_test, "MQTT")
 TEST_LIST_END
 
 #endif //TINYSERVER_TEST_LIST_H

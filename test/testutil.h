@@ -10,6 +10,8 @@
 #define MQTT_WS_PORT    18080
 #define MQTT_WSS_PORT   18083
 
+#define RESET_STRUCT(s) memset(&s, 0, sizeof(s))
+
 const char* cur_dir();
 
 ts_t* start_server(int proto);
