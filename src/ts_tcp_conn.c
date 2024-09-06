@@ -123,7 +123,7 @@ static void uv_on_write(uv_write_t *req, int status) {
   ts_conn__destroy_write_req(conn, wr);
   
   int has_pending_write_reqs = ts_conn__has_pending_write_reqs(conn);
-  server->write_cb(server->cb_ctx, server, conn, status, !has_pending_write_reqs);
+  ts_server__internal_write_cb(server, conn, status, !has_pending_write_reqs);
 }
 static void uv_on_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
   // TODO: add mem pool
@@ -257,7 +257,7 @@ static int ts_conn__process_ssl_socket_data(ts_tcp_conn_t* conn, ts_ro_buf_t* in
       if (old_state == TS_STATE_HANDSHAKING) {
         // tls handshake is done
         if (!ts_use_websocket(listener->protocol)) {
-          server->connected_cb(server->cb_ctx, server, conn, 0);
+          ts_server__internal_connected_cb(server, conn, 0);
         }
       }
       break;
@@ -336,7 +336,7 @@ static int ts_conn__process_ws_socket_data(ts_tcp_conn_t* conn, ts_ro_buf_t* inp
     case TS_STATE_CONNECTED:
       if (old_state == TS_STATE_HANDSHAKING) {
         // websocket handshake is done
-        server->connected_cb(server->cb_ctx, server, conn, 0);
+        ts_server__internal_connected_cb(server, conn, 0);
       }
       break;
 
@@ -397,7 +397,7 @@ static void uv_on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
     }
     
     if (input.len > 0) {
-      server->read_cb(server->cb_ctx, server, conn, input.buf, input.len);
+      ts_server__internal_read_cb(server, conn, input.buf, input.len);
     }
   }
 
@@ -467,7 +467,7 @@ int ts_conn__tcp_connected(ts_tcp_conn_t* conn) {
   }
   
   if (listener->protocol == TS_PROTO_TCP) {
-    server->connected_cb(server->cb_ctx, server, conn, 0);
+    ts_server__internal_connected_cb(server, conn, 0);
   }
   
   return 0;

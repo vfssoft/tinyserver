@@ -17,7 +17,7 @@ static void ts_log__default_log_cb(void* ctx, int level, const char* msg) {
 
 
 
-int ts_log__init(ts_log_t* log) {
+int ts_log__init(ts_log_t* log, void* server) {
 #if _DEBUG
   log->log_level = TS_LOG_LEVEL_DEBUG;
 #else
@@ -25,8 +25,7 @@ int ts_log__init(ts_log_t* log) {
 #endif
   log->log_dest = TS_LOG_DEST_EVENT;
   log->log_dir = NULL;
-  log->log_ctx = NULL;
-  log->log_cb = ts_log__default_log_cb;
+  log->server = server;
 
   log->log_timestamp = 1;
   log->log_timestamp_format = NULL;
@@ -74,7 +73,7 @@ static int ts_log__vprintf(ts_log_t* log, int level, const char* func, int linen
 
   ts_mutex__lock(&(log->mutex));
   if (log->log_dest & TS_LOG_DEST_EVENT) {
-    log->log_cb(log->log_ctx, level, line);
+    ts_server__internal_log_cb(log->server, line);
   }
   if (log->log_dest & TS_LOG_DEST_FILE) {
     // TODO:

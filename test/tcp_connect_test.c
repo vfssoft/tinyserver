@@ -28,19 +28,17 @@ typedef struct test_conn_info_s {
   ts_conn_t* conn;
 } test_conn_info_t;
 
-static int connected_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status) {
+static void connected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status) {
   test_conn_info_t* info = (test_conn_info_t*)ctx;
   info->connected_fired++;
   info->server = server;
   info->conn = conn;
-  return 0;
 }
-static int disconnected_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status) {
+static void disconnected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status) {
   test_conn_info_t* info = (test_conn_info_t*)ctx;
   info->disconnected_fired++;
   info->server = server;
   info->conn = conn;
-  return 0;
 }
 
 static int server_connect_impl(int proto) {
@@ -48,9 +46,12 @@ static int server_connect_impl(int proto) {
   memset(&conn_info, 0, sizeof(conn_info));
 
   ts_t* server = start_server(proto);
-  ts_server__set_cb_ctx(server, &conn_info);
-  ts_server__set_connected_cb(server, connected_cb);
-  ts_server__set_disconnected_cb(server, disconnected_cb);
+  ts_callbacks_t cbs;
+  RESET_STRUCT(cbs);
+  cbs.ctx = &conn_info;
+  cbs.connected_cb = connected_cb;
+  cbs.disconnected_cb = disconnected_cb;
+  ts_server__set_callbacks(server, &cbs);
 
   uv_thread_t client_thread;
   uv_thread_create(&client_thread, client_connect_cb, (void*)&proto);
@@ -106,12 +107,11 @@ static void client_connect_wait_disconnect_cb(void *arg) {
   char readbuf[1];
   mytcp__read(&client, readbuf, 1);
 }
-static int connected_reject_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status) {
+static void connected_reject_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status) {
   test_conn_info_t* info = (test_conn_info_t*)ctx;
   info->connected_fired++;
 
   ts_server__disconnect(server, conn);
-  return 0;
 }
 
 static int server_disconnect_impl(int proto) {
@@ -119,9 +119,12 @@ static int server_disconnect_impl(int proto) {
   memset(&conn_info, 0, sizeof(conn_info));
 
   ts_t* server = start_server(proto);
-  ts_server__set_cb_ctx(server, &conn_info);
-  ts_server__set_connected_cb(server, connected_reject_cb);
-  ts_server__set_disconnected_cb(server, disconnected_cb);
+  ts_callbacks_t cbs;
+  RESET_STRUCT(cbs);
+  cbs.ctx = &conn_info;
+  cbs.connected_cb = connected_reject_cb;
+  cbs.disconnected_cb = disconnected_cb;
+  ts_server__set_callbacks(server, &cbs);
 
   uv_thread_t client_thread;
   uv_thread_create(&client_thread, client_connect_wait_disconnect_cb, &proto);
@@ -188,9 +191,12 @@ static int tcp_server__connect_disconnect_impl(int proto, int afterSec) {
   memset(&conn_info, 0, sizeof(conn_info));
 
   ts_t* server = start_server(proto);
-  ts_server__set_cb_ctx(server, &conn_info);
-  ts_server__set_connected_cb(server, connected_cb);
-  ts_server__set_disconnected_cb(server, disconnected_cb);
+  ts_callbacks_t cbs;
+  RESET_STRUCT(cbs);
+  cbs.ctx = &conn_info;
+  cbs.connected_cb = connected_cb;
+  cbs.disconnected_cb = disconnected_cb;
+  ts_server__set_callbacks(server, &cbs);
 
   test_proto_aftersec_t client_args;
   client_args.proto = proto;
@@ -251,9 +257,12 @@ static int tcp_server_clients_impl(int proto, int client_cnt) {
   memset(&conn_info, 0, sizeof(conn_info));
 
   ts_t* server = start_server(proto);
-  ts_server__set_cb_ctx(server, &conn_info);
-  ts_server__set_connected_cb(server, connected_cb);
-  ts_server__set_disconnected_cb(server, disconnected_cb);
+  ts_callbacks_t cbs;
+  RESET_STRUCT(cbs);
+  cbs.ctx = &conn_info;
+  cbs.connected_cb = connected_cb;
+  cbs.disconnected_cb = disconnected_cb;
+  ts_server__set_callbacks(server, &cbs);
 
 
   uv_thread_t* client_threads = (uv_thread_t*) malloc(sizeof(uv_thread_t) * client_cnt);

@@ -6,8 +6,8 @@ static void uv_on_tcp_conn_close(uv_handle_t* handle) {
   ts_tcp_conn_t* conn = (ts_tcp_conn_t*)handle;
   ts_server_listener_t* listener = conn->listener;
   ts_server_t* server = listener->server;
- 
-  server->disconnected_cb(server->cb_ctx, server, conn, 0);
+  
+  ts_server__internal_disconnected_cb(server, conn, 0);
 
   uv_read_stop((uv_stream_t*)&conn->uvtcp);
   
@@ -72,29 +72,16 @@ done:
   }
 }
 
-static void ts_server__default_connected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status) {}
-static void ts_server__default_disconnected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status) {}
-static void ts_server__default_write_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status, int write_more) {}
-static void ts_server__default_idle_cb(void* ctx, ts_t* server) {}
-static void ts_server__default_read_cb(void* ctx, ts_t* server, ts_conn_t* conn, const char* data, int len) {}
-
 ts_t* ts_server__create() {
   ts_server_t* server = (ts_server_t*) ts__malloc(sizeof(ts_server_t));
   memset(server, 0, sizeof(ts_server_t));
   server->listeners = NULL;
   server->listener_count = 0;
   
-  server->connected_cb = ts_server__default_connected_cb;
-  server->disconnected_cb = ts_server__default_disconnected_cb;
-  server->read_cb = ts_server__default_read_cb;
-  server->write_cb = ts_server__default_write_cb;
-  server->idle_cb = ts_server__default_idle_cb;
-  server->cb_ctx = NULL;
-  
   server->conns = NULL;
   ts_error__init(&server->err);
 
-  ts_log__init(&server->log);
+  ts_log__init(&server->log, server);
   
   server->uvloop = uv_default_loop();
 
@@ -247,4 +234,37 @@ unsigned long long ts_server__now(ts_t* s) {
   ts_server_t* server = (ts_server_t*) s;
   return uv_now(server->uvloop);
 }
+
+
+void ts_server__internal_connected_cb(ts_server_t* server, ts_conn_t* conn, int status) {
+  if (server->callbacks.connected_cb) {
+    server->callbacks.connected_cb(server->callbacks.ctx, server, conn, status);
+  }
+}
+void ts_server__internal_disconnected_cb(ts_server_t* server, ts_conn_t* conn, int status) {
+  if (server->callbacks.disconnected_cb) {
+    server->callbacks.disconnected_cb(server->callbacks.ctx, server, conn, status);
+  }
+}
+void ts_server__internal_read_cb(ts_server_t* server, ts_conn_t* conn, const char* data, int len) {
+  if (server->callbacks.read_cb) {
+    server->callbacks.read_cb(server->callbacks.ctx, server, conn, data, len);
+  }
+}
+void ts_server__internal_write_cb(ts_server_t* server, ts_conn_t* conn, int status, int can_write_more) {
+  if (server->callbacks.write_cb) {
+    server->callbacks.write_cb(server->callbacks.ctx, server, conn, status, can_write_more);
+  }
+}
+void ts_server__internal_idle_cb(ts_server_t* server) {
+  if (server->callbacks.idle_cb) {
+    server->callbacks.idle_cb(server->callbacks.ctx, server);
+  }
+}
+void ts_server__internal_log_cb(ts_server_t* server, const char* msg) {
+  if (server->callbacks.log_cb) {
+    server->callbacks.log_cb(server->callbacks.ctx, server, msg);
+  }
+}
+
 

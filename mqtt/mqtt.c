@@ -61,6 +61,18 @@ static void tm__conn_write_cb(void* ctx, ts_t* server, ts_conn_t* conn, int stat
 static void tm__idle_cb(void* ctx, ts_t* server) {
   tm_server_t* s = (tm_server_t*) ctx;
 }
+static void tm__set_ts_server_cbs(tm_server_t* s) {
+  ts_callbacks_t ts_callbacks;
+  memset(&ts_callbacks, 0, sizeof(ts_callbacks));
+  ts_callbacks.ctx = s;
+  ts_callbacks.connected_cb = tm__conn_connected_cb;
+  ts_callbacks.read_cb = tm__conn_read_cb;
+  ts_callbacks.write_cb = tm__conn_write_cb;
+  ts_callbacks.disconnected_cb = tm__conn_disconnected_cb;
+  ts_callbacks.idle_cb = tm__idle_cb;
+  // If log_cb is set at tm_t level, pass it to ts_t.
+  ts_server__set_callbacks(s->server, &ts_callbacks);
+}
 
 tm_t* tm__create() {
   tm_server_t* s = (tm_server_t*) ts__malloc(sizeof(tm_server_t));
@@ -76,15 +88,9 @@ tm_t* tm__create() {
     return NULL;
   }
   
-  ts_error__reset(&(s->err));
-
-  ts_server__set_cb_ctx(s->server, s);
-  ts_server__set_connected_cb(s->server, tm__conn_connected_cb);
-  ts_server__set_read_cb(s->server, tm__conn_read_cb);
-  ts_server__set_write_cb(s->server, tm__conn_write_cb);
-  ts_server__set_disconnected_cb(s->server, tm__conn_disconnected_cb);
-  ts_server__set_idle_cb(s->server, tm__idle_cb);
+  tm__set_ts_server_cbs(s);
   
+  ts_error__reset(&(s->err));
   ts_mutex__init(&(s->sessions_mu));
   ts_mutex__init(&(s->messages_mu));
   return s;
@@ -218,10 +224,7 @@ int tm__set_callbacks(tm_t* mq, tm_callbacks_t* cbs) {
     s->callbacks.unsubscribe_cb = tm__default_unsubscribe_cb;
   }
   
-  err = ts_server_log_set_log_cb(s->server, s->callbacks.cb_ctx, (ts_log_cb) s->callbacks.log_cb);
-  if (err) {
-    tm__copy_server_err(s, s->server);
-  }
+  tm__set_ts_server_cbs(s);
   
   return err;
 }

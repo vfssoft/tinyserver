@@ -1,34 +1,9 @@
 #include "ts_internal.h"
 
 
-int ts_server__set_cb_ctx(ts_t* s, void* ctx) {
+int ts_server__set_callbacks(ts_t* s, ts_callbacks_t* cbs) {
   ts_server_t* server = (ts_server_t*) s;
-  server->cb_ctx = ctx;
-  return 0;
-}
-int ts_server__set_connected_cb(ts_t* s, ts_server_connected_cb cb) {
-  ts_server_t* server = (ts_server_t*) s;
-  server->connected_cb = cb;
-  return 0;
-}
-int ts_server__set_disconnected_cb(ts_t* s, ts_server_disconnected_cb cb) {
-  ts_server_t* server = (ts_server_t*) s;
-  server->disconnected_cb = cb;
-  return 0;
-}
-int ts_server__set_read_cb(ts_t* s, ts_server_read_cb cb) {
-  ts_server_t* server = (ts_server_t*) s;
-  server->read_cb = cb;
-  return 0;
-}
-int ts_server__set_write_cb(ts_t* s, ts_server_write_cb cb) {
-  ts_server_t* server = (ts_server_t*) s;
-  server->write_cb = cb;
-  return 0;
-}
-int ts_server__set_idle_cb(ts_t* s, ts_server_idle_cb cb) {
-  ts_server_t* server = (ts_server_t*) s;
-  server->idle_cb = cb;
+  memcpy(&(server->callbacks), cbs, sizeof(ts_callbacks_t));
   return 0;
 }
 int ts_server__set_listener_count(ts_t* s, int cnt) {
@@ -90,11 +65,5 @@ int ts_server_log_set_log_dest(ts_t* s, int dest) {
 int ts_server_log_set_log_dir(ts_t* s, const char* dir) {
   ts_server_t* server = (ts_server_t*) s;
   server->log.log_dir = ts__strdup(dir);
-  return 0;
-}
-int ts_server_log_set_log_cb(ts_t* s, void* ctx, ts_log_cb cb) {
-  ts_server_t* server = (ts_server_t*) s;
-  server->log.log_ctx = ctx;
-  server->log.log_cb = cb;
   return 0;
 }

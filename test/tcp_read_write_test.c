@@ -40,18 +40,16 @@ static void client_cb(void *arg) {
   ASSERT_EQ(err, 0);
 }
 
-static int read_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, const char* data, int len) {
+static void read_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, const char* data, int len) {
   test_conn_info_t* info = (test_conn_info_t*)ctx;
   info->read_fired++;
   memcpy(info->databuf, data, len);
 
   ts_server__write(server, conn, data, len);
-  return 0;
 }
-static int write_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status, int write_more) {
+static void write_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status, int write_more) {
   test_conn_info_t* info = (test_conn_info_t*)ctx;
   info->write_fired++;
-  return 0;
 }
 
 static int server_echo_impl(int proto, const char* data, int data_len) {
@@ -59,9 +57,12 @@ static int server_echo_impl(int proto, const char* data, int data_len) {
   memset(&conn_info, 0, sizeof(conn_info));
 
   ts_t* server = start_server(proto);
-  ts_server__set_cb_ctx(server, &conn_info);
-  ts_server__set_read_cb(server, read_cb);
-  ts_server__set_write_cb(server, write_cb);
+  ts_callbacks_t cbs;
+  RESET_STRUCT(cbs);
+  cbs.ctx = &conn_info;
+  cbs.read_cb = read_cb;
+  cbs.write_cb = write_cb;
+  ts_server__set_callbacks(server, &cbs);
 
   test_echo_client_arg_t client_args;
   client_args.proto = proto;
@@ -158,9 +159,12 @@ static int server_echo2_impl(int proto, const char* data, int data_len) {
   memset(&conn_info, 0, sizeof(conn_info));
   
   ts_t* server = start_server(proto);
-  ts_server__set_cb_ctx(server, &conn_info);
-  ts_server__set_read_cb(server, read_cb);
-  ts_server__set_write_cb(server, write_cb);
+  ts_callbacks_t cbs;
+  RESET_STRUCT(cbs);
+  cbs.ctx = &conn_info;
+  cbs.read_cb = read_cb;
+  cbs.write_cb = write_cb;
+  ts_server__set_callbacks(server, &cbs);
 
   test_echo_client_arg_t client_args;
   client_args.proto = proto;
@@ -262,8 +266,11 @@ static int tcp_server__echo_large_data_impl(int proto, int data_size) {
   memset(info.recv_buf, 'x', data_size);
   
   ts_t* server = start_server(proto);
-  ts_server__set_cb_ctx(server, &info);
-  ts_server__set_read_cb(server, echo_read_cb);
+  ts_callbacks_t cbs;
+  RESET_STRUCT(cbs);
+  cbs.read_cb = echo_read_cb;
+  cbs.ctx = &info;
+  ts_server__set_callbacks(server, &cbs);
 
   uv_thread_t client_thread;
   uv_thread_create(&client_thread, client_large_data_cb, &info);

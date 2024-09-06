@@ -11,8 +11,7 @@ struct ts_log_s {
     int log_level;
     int log_dest;
     char* log_dir;
-    void* log_ctx;
-    ts_log_cb log_cb;
+    void* server;
     
     int log_timestamp;
     char* log_timestamp_format;
@@ -30,7 +29,7 @@ struct ts_log_s {
 #define LOG_DEBUG(fmt, ...)    ts_log__log(ts_server__get_log(server), TS_LOG_LEVEL_DEBUG,   __FUNCTION__, __LINE__, fmt, __VA_ARGS__)
 #define LOG_DEBUG_EX(fmt, ...) ts_log__log(ts_server__get_log(server), TS_LOG_LEVEL_DEBUGEX, __FUNCTION__, __LINE__, fmt, __VA_ARGS__)
 
-int ts_log__init(ts_log_t* log);
+int ts_log__init(ts_log_t* log, void* server);
 int ts_log__destroy(ts_log_t* log);
 
 int ts_log__log(ts_log_t* log, int level, const char* func, int lineno, const char* fmt, ...);

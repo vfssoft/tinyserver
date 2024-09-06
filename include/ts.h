@@ -11,24 +11,29 @@ extern "C" {
 
 typedef void ts_t;
 typedef void ts_conn_t;
-
+typedef struct ts_callbacks_s ts_callbacks_t;
 
 typedef void (*ts_server_connected_cb)(void* ctx, ts_t* server, ts_conn_t* conn, int status);
 typedef void (*ts_server_disconnected_cb)(void* ctx, ts_t* server, ts_conn_t* conn, int status);
 typedef void (*ts_server_read_cb)(void* ctx, ts_t* server, ts_conn_t* conn, const char* data, int len);
 typedef void (*ts_server_write_cb)(void* ctx, ts_t* server, ts_conn_t* conn, int status, int can_write_more);
 typedef void (*ts_server_idle_cb)(void* ctx, ts_t* server);
+typedef void (*ts_log_cb)(void* ctx, ts_t* server, const char* msg);
 
-typedef void (*ts_log_cb)(void* ctx, int level, const char* msg);
+struct ts_callbacks_s {
+    void* ctx;
+    ts_server_connected_cb connected_cb;
+    ts_server_disconnected_cb disconnected_cb;
+    ts_server_read_cb read_cb;
+    ts_server_write_cb write_cb;
+    ts_server_idle_cb idle_cb;
+    ts_log_cb log_cb;
+};
+
 
 TS_EXTERN ts_t* ts_server__create();
 TS_EXTERN int ts_server__destroy(ts_t* server);
-TS_EXTERN int ts_server__set_cb_ctx(ts_t* server, void* ctx);
-TS_EXTERN int ts_server__set_connected_cb(ts_t* server, ts_server_connected_cb cb);
-TS_EXTERN int ts_server__set_disconnected_cb(ts_t* server, ts_server_disconnected_cb cb);
-TS_EXTERN int ts_server__set_read_cb(ts_t* server, ts_server_read_cb cb);
-TS_EXTERN int ts_server__set_write_cb(ts_t* server, ts_server_write_cb cb);
-TS_EXTERN int ts_server__set_idle_cb(ts_t* server, ts_server_idle_cb cb);
+TS_EXTERN int ts_server__set_callbacks(ts_t* server, ts_callbacks_t* cbs);
 TS_EXTERN int ts_server__set_listener_count(ts_t* server, int cnt);
 TS_EXTERN int ts_server__set_listener_host_port(ts_t* server, int idx, const char* host, int port);
 TS_EXTERN int ts_server__set_listener_use_ipv6(ts_t* server, int idx, int use);
@@ -51,7 +56,6 @@ TS_EXTERN const char* ts_server__get_error_msg(ts_t* server);
 TS_EXTERN  int ts_server_log_set_log_level(ts_t* server, int log_level);
 TS_EXTERN  int ts_server_log_set_log_dest(ts_t* server, int dest);
 TS_EXTERN  int ts_server_log_set_log_dir(ts_t* server, const char* dir);
-TS_EXTERN  int ts_server_log_set_log_cb(ts_t* server, void* ctx, ts_log_cb cb);
 
 // internal utils
 TS_EXTERN unsigned long long ts_server__now(ts_t* server);
