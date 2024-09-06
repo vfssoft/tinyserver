@@ -264,6 +264,10 @@ void ts_server__internal_idle_cb(ts_server_t* server) {
 void ts_server__internal_log_cb(ts_server_t* server, const char* msg) {
   if (server->callbacks.log_cb) {
     server->callbacks.log_cb(server->callbacks.ctx, server, msg);
+  } else {
+#if _DEBUG
+    printf("%s\n", msg);
+#endif
   }
 }
 

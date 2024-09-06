@@ -10,13 +10,6 @@ static const char* log_level_strs[] = {
   "DBGex"
 };
 
-
-static void ts_log__default_log_cb(void* ctx, int level, const char* msg) {
-  printf("%s\n", msg);
-}
-
-
-
 int ts_log__init(ts_log_t* log, void* server) {
 #if _DEBUG
   log->log_level = TS_LOG_LEVEL_DEBUG;
