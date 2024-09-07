@@ -216,6 +216,26 @@ int ts_server__has_pending_write_reqs(ts_t* server, ts_conn_t* c) {
   ts_tcp_conn_t* conn = (ts_tcp_conn_t*) c;
   return ts_conn__has_pending_write_reqs(conn);
 }
+int ts_server__conn_start_timer(ts_t* s, ts_conn_t* c, int timeoutMS, int repeatMS) {
+  int err;
+  ts_server_t* server = (ts_server_t*) s;
+  ts_tcp_conn_t* conn = (ts_tcp_conn_t*) c;
+  err = ts_conn__start_timer(conn, timeoutMS, repeatMS);
+  if (err) {
+    ts_error__copy(&server->err, &conn->err);
+  }
+  return err;
+}
+int ts_server__conn_stop_timer(ts_t* s, ts_conn_t* c) {
+  int err;
+  ts_server_t* server = (ts_server_t*) s;
+  ts_tcp_conn_t* conn = (ts_tcp_conn_t*) c;
+  err = ts_conn__stop_timer(conn);
+  if (err) {
+    ts_error__copy(&server->err, &conn->err);
+  }
+  return err;
+}
 int ts_server__get_error(ts_t* s) {
   ts_server_t* server = (ts_server_t*) s;
   return server->err.err;
@@ -259,6 +279,11 @@ void ts_server__internal_write_cb(ts_server_t* server, ts_conn_t* conn, int stat
 void ts_server__internal_idle_cb(ts_server_t* server) {
   if (server->callbacks.idle_cb) {
     server->callbacks.idle_cb(server->callbacks.ctx, server);
+  }
+}
+void ts_server__internal_timer_cb(ts_server_t* server, ts_conn_t* conn) {
+  if (server->callbacks.timer_cb) {
+    server->callbacks.timer_cb(server->callbacks.ctx, server, conn);
   }
 }
 void ts_server__internal_log_cb(ts_server_t* server, const char* msg) {

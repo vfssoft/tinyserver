@@ -18,6 +18,7 @@ typedef void (*ts_server_disconnected_cb)(void* ctx, ts_t* server, ts_conn_t* co
 typedef void (*ts_server_read_cb)(void* ctx, ts_t* server, ts_conn_t* conn, const char* data, int len);
 typedef void (*ts_server_write_cb)(void* ctx, ts_t* server, ts_conn_t* conn, int status, int can_write_more);
 typedef void (*ts_server_idle_cb)(void* ctx, ts_t* server);
+typedef void (*ts_server_timer_cb)(void* ctx, ts_t* server, ts_conn_t* conn);
 typedef void (*ts_log_cb)(void* ctx, ts_t* server, const char* msg);
 
 struct ts_callbacks_s {
@@ -27,6 +28,7 @@ struct ts_callbacks_s {
     ts_server_read_cb read_cb;
     ts_server_write_cb write_cb;
     ts_server_idle_cb idle_cb;
+    ts_server_timer_cb timer_cb;
     ts_log_cb log_cb;
 };
 
@@ -49,6 +51,8 @@ TS_EXTERN void* ts_server__get_conn_user_data(ts_t* server, ts_conn_t* conn);
 TS_EXTERN void ts_server__set_conn_user_data(ts_t* server, ts_conn_t* conn, void* user_data);
 TS_EXTERN const char* ts_server__get_conn_remote_host(ts_t* server, ts_conn_t* c);
 TS_EXTERN int ts_server__has_pending_write_reqs(ts_t* server, ts_conn_t* c);
+TS_EXTERN int ts_server__conn_start_timer(ts_t* server, ts_conn_t* conn, int timeoutMS, int repeatMS);
+TS_EXTERN int ts_server__conn_stop_timer(ts_t* server, ts_conn_t* conn);
 
 TS_EXTERN int ts_server__get_error(ts_t* server);
 TS_EXTERN const char* ts_server__get_error_msg(ts_t* server);

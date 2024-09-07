@@ -31,6 +31,7 @@ struct ts_tcp_conn_s {
     char remote_addr[64];
 
     void* user_data;
+    uv_timer_t* timer;
     
     ts_tcp_conn_t* prev;
     ts_tcp_conn_t* next;
@@ -43,5 +44,9 @@ int ts_conn__send_data(ts_tcp_conn_t* conn, ts_buf_t* input);
 int ts_conn__close(ts_tcp_conn_t* conn, uv_close_cb cb);
 
 int ts_conn__has_pending_write_reqs(ts_tcp_conn_t* conn);
+
+// timer
+int ts_conn__start_timer(ts_tcp_conn_t* conn, int timeoutMS, int repeatMS);
+int ts_conn__stop_timer(ts_tcp_conn_t* conn);
 
 #endif //TINYSERVER_TS_TCP_CONN_H

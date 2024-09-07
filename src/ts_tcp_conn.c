@@ -20,6 +20,7 @@ int ts_conn__init(ts_server_listener_t* listener, ts_tcp_conn_t* conn) {
   memset(conn->remote_addr, 0, sizeof(conn->remote_addr));
 
   conn->user_data = NULL;
+  conn->timer = NULL; // by default, the timer is disabled
 
   if (use_ssl) {
     conn->tls_buf = ts_buf__create(0);
@@ -92,6 +93,8 @@ int ts_conn__destroy(ts_server_listener_t* listener, ts_tcp_conn_t* conn) {
     ts_buf__destroy(conn->ws_buf);
     conn->ws_buf = NULL;
   }
+  
+  ts_conn__stop_timer(conn);
   conn->listener = NULL;
   return 0;
 }
@@ -525,4 +528,42 @@ int ts_conn__close(ts_tcp_conn_t* conn, uv_close_cb cb) {
 
 int ts_conn__has_pending_write_reqs(ts_tcp_conn_t* conn) {
   return conn->write_reqs != NULL;
+}
+
+
+static void uv_on_timer_cb(uv_timer_t* timer) {
+  ts_tcp_conn_t* conn = (ts_tcp_conn_t*) timer->data;
+  ts_server__internal_timer_cb(conn->listener->server, conn);
+}
+int ts_conn__start_timer(ts_tcp_conn_t* conn, int timeoutMS, int repeatMS) {
+  int err;
+  
+  conn->timer = (uv_timer_t*) ts__malloc(sizeof(uv_timer_t));
+  if (conn->timer == NULL) {
+    ts_error__set(&conn->err, TS_ERR_OUT_OF_MEMORY);
+    return TS_ERR_OUT_OF_MEMORY;
+  }
+  conn->timer->data = conn; // attach the conn to timer
+  
+  err = uv_timer_init(conn->listener->uvloop, conn->timer);
+  if (err) {
+    ts_error__set_msg(&conn->err, err, uv_strerror(err));
+    return err;
+  }
+  err = uv_timer_start(conn->timer, uv_on_timer_cb, timeoutMS, repeatMS);
+  if (err) {
+    ts_error__set_msg(&conn->err, err, uv_strerror(err));
+    return err;
+  }
+  
+  return 0;
+}
+int ts_conn__stop_timer(ts_tcp_conn_t* conn) {
+  if (conn->timer) {
+    uv_timer_stop(conn->timer);
+    ts__free(conn->timer);
+  }
+  
+  conn->timer = NULL;
+  return 0;
 }
