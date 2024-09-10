@@ -54,42 +54,6 @@ static int win_enable_virtual_terminal_processing() {
   return 0;
 }
 
-static long long get_current_time_millis() {
-#ifdef _WIN32
-  FILETIME ft;
-  LARGE_INTEGER li;
-  
-  GetSystemTimePreciseAsFileTime(&ft);
-  
-  li.LowPart = ft.dwLowDateTime;
-  li.HighPart = ft.dwHighDateTime;
-  
-  return (long long)(li.QuadPart / 10000LL - 11644473600000LL);
-#else
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
-  return (long long)tv.tv_sec * 1000 + tv.tv_usec / 1000;
-#endif
-}
-
-long get_current_process_memory_usage() {
-#ifdef _WIN32
-  PROCESS_MEMORY_COUNTERS_EX pmc;
-  if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc))) {
-    return pmc.PrivateUsage;
-  } else {
-    return -1;
-  }
-#else
-  struct rusage ru;
-  if (getrusage(RUSAGE_SELF, &ru) == 0) {
-      return ru.ru_maxrss * 1024; // Convert kilobytes to bytes
-  } else {
-      return -1;
-  }
-#endif
-}
-
 static int is_category_selected(const char* category) {
   for (int i = 0; i < 16; i++) {
     if (stricmp(category, (char*)selected_categories[i]) == 0) {

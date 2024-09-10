@@ -23,4 +23,7 @@ void assert_bytes_equals(const char* d1, int d1len, const char* d2, int d2len);
 
 void decode_hex(const char* hex, unsigned char* bytes);
 
+long long get_current_time_millis();
+long get_current_process_memory_usage();
+
 #endif //TINYSERVER_TESTUTIL_H

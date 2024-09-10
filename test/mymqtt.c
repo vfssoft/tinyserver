@@ -6,9 +6,8 @@
 
 void conn_lost_cb(void *context, char *cause)
 {
-  printf("\nConnection lost\n");
-  if (cause)
-    printf("     cause: %s\n", cause);
+  mymqtt_t* c = (mymqtt_t*)context;
+  c->conn_lost_reason = strdup(cause);
 }
 
 int msg_arrived_cb(void *context, char *topicName, int topicLen, MQTTClient_message *message) {
@@ -70,7 +69,7 @@ int mymqtt__init(mymqtt_t* c, int proto, const char* client_id) {
     return err;
   }
   
-  err = MQTTClient_setCallbacks(c->client, NULL, conn_lost_cb, msg_arrived_cb, delivered_cb);
+  err = MQTTClient_setCallbacks(c->client, c, conn_lost_cb, msg_arrived_cb, delivered_cb);
   if (err != MQTTCLIENT_SUCCESS) {
     return err;
   }
@@ -90,6 +89,9 @@ void mymqtt__set_user(mymqtt_t* c, const char* user) {
 }
 void mymqtt__set_password(mymqtt_t* c, const char* password) {
   c->options.password = strdup(password);
+}
+void mymqtt__set_keep_alive(mymqtt_t* c, int keep_alive) {
+  c->options.keepAliveInterval = keep_alive;
 }
 
 int mymqtt__sp(mymqtt_t* c) {

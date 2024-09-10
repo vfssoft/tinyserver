@@ -9,6 +9,8 @@ typedef struct mymqtt_s mymqtt_t;
 struct mymqtt_s {
   MQTTClient client;
   MQTTClient_connectOptions options;
+  
+  char* conn_lost_reason;
 };
 
 int mymqtt__init(mymqtt_t* c, int proto, const char* client_id);
@@ -16,6 +18,7 @@ void mymqtt__destroy(mymqtt_t* c);
 
 void mymqtt__set_user(mymqtt_t* c, const char* user);
 void mymqtt__set_password(mymqtt_t* c, const char* password);
+void mymqtt__set_keep_alive(mymqtt_t* c, int keep_alive);
 
 int mymqtt__sp(mymqtt_t* c);
 

@@ -2,6 +2,15 @@
 #include "testutil.h"
 #include "tinyunit.h"
 
+#ifdef WIN32
+#include <windows.h>
+#include <Psapi.h>
+#include <sysinfoapi.h>
+#else
+#include <sys/time.h>
+#include <sys/resource.h>
+#endif
+
 
 const char* cur_dir() {
   char* file = strdup(__FILE__);
@@ -110,4 +119,40 @@ void decode_hex(const char* hex, unsigned char* bytes) {
   for (size_t i = 0; i < out_len; i++) {
     bytes[i] = hex_char_to_byte(hex[2 * i], hex[2 * i + 1]);
   }
+}
+
+long long get_current_time_millis() {
+#ifdef _WIN32
+  FILETIME ft;
+  LARGE_INTEGER li;
+  
+  GetSystemTimePreciseAsFileTime(&ft);
+  
+  li.LowPart = ft.dwLowDateTime;
+  li.HighPart = ft.dwHighDateTime;
+  
+  return (long long)(li.QuadPart / 10000LL - 11644473600000LL);
+#else
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return (long long)tv.tv_sec * 1000 + tv.tv_usec / 1000;
+#endif
+}
+
+long get_current_process_memory_usage() {
+#ifdef _WIN32
+  PROCESS_MEMORY_COUNTERS_EX pmc;
+  if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc))) {
+    return pmc.PrivateUsage;
+  } else {
+    return -1;
+  }
+#else
+  struct rusage ru;
+  if (getrusage(RUSAGE_SELF, &ru) == 0) {
+      return ru.ru_maxrss * 1024; // Convert kilobytes to bytes
+  } else {
+      return -1;
+  }
+#endif
 }
