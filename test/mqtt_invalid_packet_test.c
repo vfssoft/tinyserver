@@ -298,3 +298,116 @@ TEST_IMPL(mqtt_zero_clientid_but_not_clean_session_test) {
   ASSERT_EQ(info.recv_buf[3], 0x02);
   return 0;
 }
+
+typedef struct {
+  int done;
+} client_timed_out_info_t;
+static void mqtt_client_timed_out_cb(void *arg) {
+  int err;
+  client_timed_out_info_t* info = (client_timed_out_info_t*)arg;
+  mytcp_t client;
+  mytcp__init_mutex();
+  mytcp__init(&client);
+  
+  err = mytcp__connect(&client, "127.0.0.1", MQTT_PLAIN_PORT);
+  ASSERT_EQ(err, 0);
+  
+  const char* hex = "101a00044d51545404020001000e746573745f636c69656e745f6964"; // keep_alive: 1s
+  int len = strlen(hex) / 2;
+  char buf[63];
+  decode_hex(hex, buf);
+  
+  err = mytcp__write(&client, buf, len);
+  ASSERT_EQ(err, len);
+  
+  err = mytcp__read(&client, buf, 4);
+  ASSERT_EQ(err, 4);
+  ASSERT_EQ(buf[3], 0x00); // acked
+  
+  wait(2500);
+  
+  char tmpbuf[1];
+  err = mytcp__read(&client, tmpbuf, 1);
+  ASSERT_EQ(err, 0);
+  
+  err = mytcp__disconnect(&client);
+  ASSERT_EQ(err, 0);
+  
+  info->done = 1;
+}
+static int mqtt_keep_alive_timed_out_imp() {
+  client_timed_out_info_t info;
+  RESET_STRUCT(info);
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  memset(&cbs, 0, sizeof(tm_callbacks_t));
+  cbs.auth_cb = mqtt_server_auth_cb;
+  
+  server = start_mqtt_server(TS_PROTO_TCP, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  uv_thread_t client_thread;
+  uv_thread_create(&client_thread, mqtt_client_timed_out_cb, (void*)&info);
+  
+  while (info.done == 0) {
+    tm__run(server);
+  }
+  
+  tm__stop(server);
+  uv_thread_join(&client_thread);
+  
+  return 0;
+}
+TEST_IMPL(mqtt_keep_alive_timed_out_test) {
+  return mqtt_keep_alive_timed_out_imp();
+}
+
+
+static void mqtt_client_on_pkt_after_connected_cb(void *arg) {
+  int err;
+  int* done = (int*)arg;
+  mytcp_t client;
+  mytcp__init_mutex();
+  mytcp__init(&client);
+  
+  err = mytcp__connect(&client, "127.0.0.1", MQTT_PLAIN_PORT);
+  ASSERT_EQ(err, 0);
+  
+  char tmpbuf[1];
+  err = mytcp__read(&client, tmpbuf, 1);
+  ASSERT_EQ(err, 0);
+  
+  err = mytcp__disconnect(&client);
+  ASSERT_EQ(err, 0);
+  
+  *done = 1;
+}
+static int mqtt_no_pkt_after_connected_imp() {
+  int done = 0;
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  memset(&cbs, 0, sizeof(tm_callbacks_t));
+  cbs.auth_cb = mqtt_server_auth_cb;
+  
+  server = start_mqtt_server(TS_PROTO_TCP, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  uv_thread_t client_thread;
+  uv_thread_create(&client_thread, mqtt_client_on_pkt_after_connected_cb, (void*)&done);
+  
+  while (done == 0) {
+    tm__run(server);
+  }
+  
+  tm__stop(server);
+  uv_thread_join(&client_thread);
+  
+  return 0;
+}
+TEST_IMPL(mqtt_no_pkt_after_connected_test) {
+  return mqtt_no_pkt_after_connected_imp();
+}

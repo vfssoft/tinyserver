@@ -156,3 +156,10 @@ long get_current_process_memory_usage() {
   }
 #endif
 }
+
+void wait(int milliseconds) {
+  unsigned long long end_time_marker = get_current_time_millis() + milliseconds;
+  while (get_current_time_millis() < end_time_marker) {
+    Sleep(20);
+  }
+}

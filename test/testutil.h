@@ -26,4 +26,6 @@ void decode_hex(const char* hex, unsigned char* bytes);
 long long get_current_time_millis();
 long get_current_process_memory_usage();
 
+void wait(int milliseconds);
+
 #endif //TINYSERVER_TESTUTIL_H
