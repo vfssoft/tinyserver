@@ -372,3 +372,55 @@ TEST_IMPL(mqtt_too_long_client_id_test) {
   buf[1024] = 0;
   return mqtt_different_length_client_id_impl(buf);
 }
+
+typedef struct {
+    int keep_alive;
+    int done;
+} client_ping_info_t;
+
+static void mqtt_client_ping_client_cb(void* arg) {
+  int err;
+  client_ping_info_t* info = (client_ping_info_t*) arg;
+  mymqtt_t client;
+  mymqtt__init(&client, TS_PROTO_TCP, "client");
+  mymqtt__set_keep_alive(&client, info->keep_alive);
+  err = mymqtt__connect(&client);
+  ASSERT_EQ(err, 0);
+  
+  unsigned long long end_time_marker = get_current_time_millis() + (info->keep_alive * 1.5 + 1) * 1000;
+  while (end_time_marker > get_current_time_millis()) Sleep(1000);
+  
+  err = mymqtt__disconnect(&client);
+  ASSERT_EQ(err, 0);
+  info->done = 1;
+}
+static int mqtt_ping_impl(int keep_alive) {
+  client_ping_info_t info;
+  RESET_STRUCT(info);
+  info.keep_alive = keep_alive;
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  RESET_STRUCT(cbs);
+  cbs.auth_cb = mqtt_auth_user_anonymous_cb;
+  
+  server = start_mqtt_server(TS_PROTO_TCP, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  uv_thread_t client_thread;
+  uv_thread_create(&client_thread, mqtt_client_ping_client_cb, (void*)&info);
+  
+  while (info.done == 0) tm__run(server);
+  
+  tm__stop(server);
+  uv_thread_join(&client_thread);
+  return 0;
+}
+
+TEST_IMPL(mqtt_keep_alive_test) {
+  return mqtt_ping_impl(3);
+}
+TEST_IMPL(mqtt_keep_alive_zero_test) {
+  return mqtt_ping_impl(0);
+}

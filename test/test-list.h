@@ -100,6 +100,9 @@ TEST_DECLARE(mqtt_normal_client_id_test)
 TEST_DECLARE(mqtt_512_length_client_id_test)
 TEST_DECLARE(mqtt_too_long_client_id_test)
 
+TEST_DECLARE(mqtt_keep_alive_test)
+TEST_DECLARE(mqtt_keep_alive_zero_test)
+
 TEST_LIST_START
         TEST_ENTRY(invalid_local_host, "Error")
         TEST_ENTRY(invalid_local_host_2, "Error")
@@ -195,6 +198,9 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_normal_client_id_test, "MQTT")
         TEST_ENTRY(mqtt_512_length_client_id_test, "MQTT")
         TEST_ENTRY(mqtt_too_long_client_id_test, "MQTT")
+
+        TEST_ENTRY(mqtt_keep_alive_test, "MQTT")
+        TEST_ENTRY(mqtt_keep_alive_zero_test, "MQTT")
 TEST_LIST_END
 
 #endif //TINYSERVER_TEST_LIST_H
