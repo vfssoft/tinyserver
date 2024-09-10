@@ -22,6 +22,7 @@ struct tm_mqtt_conn_out_packet_s {
 
 struct tm_mqtt_conn_s {
   int keep_alive;
+  unsigned long long next_recv_time; // use 'next' on purpose, milliseconds
   
   unsigned long long last_active_time;
   tm_mqtt_msg_t* will;
@@ -34,8 +35,8 @@ struct tm_mqtt_conn_s {
   tm_packet_decoder_t decoder;
 };
 
-tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s);
-int tm_mqtt_conn__destroy(tm_mqtt_conn_t* conn);
+tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s, ts_conn_t* conn);
+int tm_mqtt_conn__destroy(ts_t* server, ts_conn_t* conn);
 
 void tm_mqtt_conn__abort(ts_t* server, ts_conn_t* c);
 int tm_mqtt_conn__send_packet(ts_t* server, ts_conn_t* c, const char* data, int len, int pkt_id, tm_mqtt_msg_t* msg);
@@ -55,5 +56,7 @@ int tm_mqtt_conn__process_disconnect(ts_t* server, ts_conn_t* c);
 int tm_mqtt_conn__process_tcp_disconnect(ts_t* server, ts_conn_t* c);
 
 void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_write_more);
+
+void tm_mqtt_conn__timer_cb(ts_t* server, ts_conn_t* c);
 
 #endif //TINYSERVER_MQTT_CONN_H

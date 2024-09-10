@@ -22,13 +22,11 @@ static void tm__conn_connected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int 
   
   ts_error__init(&err);
   
-  mqtt_conn = tm_mqtt_conn__create(s);
+  mqtt_conn = tm_mqtt_conn__create(s, conn);
   if (mqtt_conn == NULL) {
     ts_error__set(&err, TS_ERR_OUT_OF_MEMORY);
     goto done;
   }
-  
-  ts_server__set_conn_user_data(server, conn, mqtt_conn);
   
 done:
   if (err.err) {
@@ -42,14 +40,10 @@ done:
 }
 static void tm__conn_disconnected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status) {
   //tm_server_t* s = (tm_server_t*) ctx;
-  tm_mqtt_conn_t* mqtt_conn;
-  
+
   tm_mqtt_conn__process_tcp_disconnect(server, conn);
   
-  mqtt_conn = (tm_mqtt_conn_t* )ts_server__get_conn_user_data(server, conn);
-  if (mqtt_conn) {
-    tm_mqtt_conn__destroy(mqtt_conn);
-  }
+  tm_mqtt_conn__destroy(server, conn);
 }
 static void tm__conn_read_cb(void* ctx, ts_t* server, ts_conn_t* conn, const char* data, int len) {
   //tm_server_t* s = (tm_server_t*) ctx;
@@ -61,6 +55,9 @@ static void tm__conn_write_cb(void* ctx, ts_t* server, ts_conn_t* conn, int stat
 static void tm__idle_cb(void* ctx, ts_t* server) {
   tm_server_t* s = (tm_server_t*) ctx;
 }
+static void tm__timer_cb(void* ctx, ts_t* server, ts_conn_t* conn) {
+  tm_mqtt_conn__timer_cb(server, conn);
+}
 static void tm__set_ts_server_cbs(tm_server_t* s) {
   ts_callbacks_t ts_callbacks;
   memset(&ts_callbacks, 0, sizeof(ts_callbacks));
@@ -70,6 +67,7 @@ static void tm__set_ts_server_cbs(tm_server_t* s) {
   ts_callbacks.write_cb = tm__conn_write_cb;
   ts_callbacks.disconnected_cb = tm__conn_disconnected_cb;
   ts_callbacks.idle_cb = tm__idle_cb;
+  ts_callbacks.timer_cb = tm__timer_cb;
   // If log_cb is set at tm_t level, pass it to ts_t.
   ts_server__set_callbacks(s->server, &ts_callbacks);
 }

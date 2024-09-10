@@ -6,7 +6,7 @@
 #include <internal/ts_log.h>
 
 
-tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s) {
+tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s, ts_conn_t* c) {
   tm_mqtt_conn_t* conn;
   
   conn = (tm_mqtt_conn_t*) ts__malloc(sizeof(tm_mqtt_conn_t));
@@ -25,10 +25,20 @@ tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s) {
 
   conn->server = s;
   
+  conn->next_recv_time = ts_server__now(s->server) + 5000;
+  ts_server__set_conn_user_data(s->server, c, conn);
+  ts_server__conn_start_timer(s->server, c, 1000, 1000);
+  
   return conn;
 }
 
-int tm_mqtt_conn__destroy(tm_mqtt_conn_t* conn) {
+int tm_mqtt_conn__destroy(ts_t* server, ts_conn_t* c) {
+  tm_mqtt_conn_t* conn;
+  tm_server_t* s;
+  
+  conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
+  //s = conn->server; // conn may be NULL
+  
   if (conn) {
     if (conn->session) {
       // TODO:
@@ -37,6 +47,9 @@ int tm_mqtt_conn__destroy(tm_mqtt_conn_t* conn) {
     if (conn->in_buf) {
       ts_buf__destroy(conn->in_buf);
     }
+  
+    ts_server__conn_stop_timer(server, c);
+    ts_server__set_conn_user_data(server, c, NULL);
     
     ts__free(conn);
   }
@@ -140,7 +153,11 @@ void tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   ts_error__init(&errt);
-
+  
+  if (conn->keep_alive > 0) {
+    conn->next_recv_time = ts_server__now(server) + (int)(conn->keep_alive * 1000 * 1.5);
+  }
+  
   if (ts_buf__get_length(conn->in_buf) == 0) {
     buf = data;
     buf_len = len;
@@ -203,5 +220,21 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
     tm_mqtt_conn__abort(server, c);
   } else {
     // TODO: mark the success state
+  }
+}
+
+void tm_mqtt_conn__timer_cb(ts_t* server, ts_conn_t* c) {
+  int err;
+  tm_mqtt_conn_t* conn;
+  const char* conn_id = ts_server__get_conn_remote_host(server, c);
+  conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
+  
+  if (conn->next_recv_time > 0) {
+    // When keep_alive is zero and the client connected, conn->next_recv_time should be zero
+    unsigned long long now = ts_server__now(server);
+    if (now > conn->next_recv_time) {
+      LOG_ERROR("[%s] Client has been idle for too long(KeepAlive:%d), disconnect from it", conn_id, conn->keep_alive);
+      tm_mqtt_conn__abort(server, c);
+    }
   }
 }
