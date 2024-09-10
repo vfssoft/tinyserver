@@ -535,6 +535,12 @@ static void uv_on_timer_cb(uv_timer_t* timer) {
   ts_tcp_conn_t* conn = (ts_tcp_conn_t*) timer->data;
   ts_server__internal_timer_cb(conn->listener->server, conn);
 }
+static void uv_on_timer_close_cb(uv_handle_t* timer) {
+  //ts_tcp_conn_t* conn = (ts_tcp_conn_t*) timer->data;
+  //ts__free(conn->timer);
+  //conn->timer = NULL;
+  ts__free(timer);
+}
 int ts_conn__start_timer(ts_tcp_conn_t* conn, int timeoutMS, int repeatMS) {
   int err;
   
@@ -559,11 +565,9 @@ int ts_conn__start_timer(ts_tcp_conn_t* conn, int timeoutMS, int repeatMS) {
   return 0;
 }
 int ts_conn__stop_timer(ts_tcp_conn_t* conn) {
-  if (conn->timer) {
+  if (conn->timer && !uv_is_closing(conn->timer)) {
     uv_timer_stop(conn->timer);
-    ts__free(conn->timer);
+    uv_close((uv_handle_t*)conn->timer, uv_on_timer_close_cb);
   }
-  
-  conn->timer = NULL;
   return 0;
 }
