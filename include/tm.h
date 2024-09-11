@@ -9,7 +9,7 @@
 typedef void tm_t;
 typedef struct tm_callbacks_s tm_callbacks_t;
 
-typedef void (*tm_log_cb)(void* ctx, int level, const char* msg);
+typedef void (*tm_log_cb)(void* ctx, tm_t* mq, const char* msg);
 typedef void (*tm_auth_user_cb)(void* ctx, tm_t* mq, const char* username, const char* password, int* ret_auth_ok);
 typedef void (*tm_connected_cb)(void* ctx, tm_t* mq, ts_conn_t* conn);
 typedef void (*tm_disconnected_cb)(void* ctx, tm_t* mq, ts_conn_t* conn);

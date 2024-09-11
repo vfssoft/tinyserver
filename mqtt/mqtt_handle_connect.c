@@ -1,6 +1,7 @@
 #include "mqtt_conn.h"
 #include "mqtt_utils.h"
 
+#include <tm.h>
 #include <internal/ts_mem.h>
 #include <internal/ts_log.h>
 #include <internal/ts_crypto.h>
@@ -231,8 +232,7 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   }
   
   // auth user
-  s->callbacks.auth_cb(
-      s->callbacks.cb_ctx,
+  tm__internal_auth_user_cb(
       s,
       username == NULL ? NULL : username->buf,
       password == NULL ? NULL : password->buf,
@@ -252,7 +252,7 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   
   conn->session->connected = TRUE;
   
-  s->callbacks.connected_cb(s->callbacks.cb_ctx, s, c);
+  tm__internal_connected_cb(s, c);
   
 done:
   

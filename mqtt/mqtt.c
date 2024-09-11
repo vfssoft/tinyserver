@@ -58,6 +58,10 @@ static void tm__idle_cb(void* ctx, ts_t* server) {
 static void tm__timer_cb(void* ctx, ts_t* server, ts_conn_t* conn) {
   tm_mqtt_conn__timer_cb(server, conn);
 }
+static void tm__log_cb(void* ctx, ts_t* server, const char* msg) {
+  tm_server_t* s = (tm_server_t*) ctx;
+  tm__internal_log_cb(s, msg);
+}
 static void tm__set_ts_server_cbs(tm_server_t* s) {
   ts_callbacks_t ts_callbacks;
   memset(&ts_callbacks, 0, sizeof(ts_callbacks));
@@ -68,7 +72,7 @@ static void tm__set_ts_server_cbs(tm_server_t* s) {
   ts_callbacks.disconnected_cb = tm__conn_disconnected_cb;
   ts_callbacks.idle_cb = tm__idle_cb;
   ts_callbacks.timer_cb = tm__timer_cb;
-  // If log_cb is set at tm_t level, pass it to ts_t.
+  ts_callbacks.log_cb = tm__log_cb;
   ts_server__set_callbacks(s->server, &ts_callbacks);
 }
 
@@ -192,39 +196,11 @@ static void tm__default_log_cb(void* ctx, int level, const char* msg) {
   fprintf(stdout, "%s\n", msg);
   fflush(stdout);
 }
-static void tm__default_auth_user_cb(void* ctx, tm_t* mq, const char* username, const char* password, int* ret_auth_ok) {  }
-static void tm__default_connected_cb(void* ctx, tm_t* mq, ts_conn_t* conn) {  }
-static void tm__default_disconnected_cb(void* ctx, tm_t* mq, ts_conn_t* conn) {  }
-static void tm__default_subscribe_cb(void* ctx, tm_t* mqt, ts_conn_t* conn, const char* topic, int requested_qos, int* granted_qos) {  }
-static void tm__default_unsubscribe_cb(void* ctx, tm_t* mqt, ts_conn_t* conn, const char* topic) {  }
-
 int tm__set_callbacks(tm_t* mq, tm_callbacks_t* cbs) {
-  int err = 0;
   tm_server_t* s = (tm_server_t*) mq;
   memcpy(&(s->callbacks), cbs, sizeof(tm_callbacks_t));
-  
-  if (cbs->log_cb == NULL) {
-    s->callbacks.log_cb = tm__default_log_cb;
-  }
-  if (cbs->auth_cb == NULL) {
-    s->callbacks.auth_cb = tm__default_auth_user_cb;
-  }
-  if (cbs->connected_cb == NULL) {
-    s->callbacks.connected_cb = tm__default_connected_cb;
-  }
-  if (cbs->disconnected_cb == NULL) {
-    s->callbacks.disconnected_cb = tm__default_disconnected_cb;
-  }
-  if (cbs->subscriber_cb == NULL) {
-    s->callbacks.subscriber_cb = tm__default_subscribe_cb;
-  }
-  if (cbs->unsubscribe_cb == NULL) {
-    s->callbacks.unsubscribe_cb = tm__default_unsubscribe_cb;
-  }
-  
   tm__set_ts_server_cbs(s);
-  
-  return err;
+  return 0;
 }
 
 int tm__start(tm_t* mq) {
@@ -273,6 +249,37 @@ const char* tm__get_error_msg(tm_t* mq) {
   return s->err.msg;
 }
 
+
+void tm__internal_log_cb(tm_server_t* mq, const char* msg) {
+  if (mq->callbacks.log_cb) {
+    mq->callbacks.log_cb(mq->callbacks.cb_ctx, mq, msg);
+  }
+}
+void tm__internal_auth_user_cb(tm_server_t* mq, const char* username, const char* password, int* ret_auth_ok) {
+  if (mq->callbacks.auth_cb) {
+    mq->callbacks.auth_cb(mq->callbacks.cb_ctx, mq, username, password, ret_auth_ok);
+  }
+}
+void tm__internal_connected_cb(tm_server_t* mq, ts_conn_t* conn) {
+  if (mq->callbacks.connected_cb) {
+    mq->callbacks.connected_cb(mq->callbacks.cb_ctx, mq, conn);
+  }
+}
+void tm__internal_disconnected_cb(tm_server_t* mq, ts_conn_t* conn) {
+  if (mq->callbacks.disconnected_cb) {
+    mq->callbacks.disconnected_cb(mq->callbacks.cb_ctx, mq, conn);
+  }
+}
+void tm__internal_subscribe_cb(tm_server_t* mq, ts_conn_t* conn, const char* topic, int requested_qos, int* granted_qos) {
+  if (mq->callbacks.subscriber_cb) {
+    mq->callbacks.subscriber_cb(mq->callbacks.cb_ctx, mq, conn, topic, requested_qos, granted_qos);
+  }
+}
+void tm__internal_unsubscribe_cb(tm_server_t* mq, ts_conn_t* conn, const char* topic) {
+  if (mq->callbacks.unsubscribe_cb) {
+    mq->callbacks.unsubscribe_cb(mq->callbacks.cb_ctx, mq, conn, topic);
+  }
+}
 
 tm_mqtt_session_t* tm__find_session(tm_server_t* s, const char* client_id) {
   tm_mqtt_session_t* sess;

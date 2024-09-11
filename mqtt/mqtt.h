@@ -27,6 +27,14 @@ struct tm_server_s {
     tm_topics_t* topics;
 };
 
+// internal callbacks
+void tm__internal_log_cb(tm_server_t* mq, const char* msg);
+void tm__internal_auth_user_cb(tm_server_t* mq, const char* username, const char* password, int* ret_auth_ok);
+void tm__internal_connected_cb(tm_server_t* mq, ts_conn_t* conn);
+void tm__internal_disconnected_cb(tm_server_t* mq, ts_conn_t* conn);
+void tm__internal_subscribe_cb(tm_server_t* mqt, ts_conn_t* conn, const char* topic, int requested_qos, int* granted_qos);
+void tm__internal_unsubscribe_cb(tm_server_t* mqt, ts_conn_t* conn, const char* topic);
+
 // session methods
 tm_mqtt_session_t* tm__find_session(tm_server_t* s, const char* client_id);
 tm_mqtt_session_t* tm__create_session(tm_server_t* s, const char* client_id);

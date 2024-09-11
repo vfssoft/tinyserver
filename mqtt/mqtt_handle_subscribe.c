@@ -55,8 +55,8 @@ int tm_mqtt_conn__process_subscribe(ts_t* server, ts_conn_t* c, const char* pkt_
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
-    
-    s->callbacks.subscriber_cb(s->callbacks.cb_ctx, s, c, topic, granted_qos, &granted_qos);
+  
+    tm__internal_subscribe_cb(s, c, topic, granted_qos, &granted_qos);
     return_codes[return_codes_count++] = (char)granted_qos;
     
     if (tm__is_valid_qos(granted_qos)) {

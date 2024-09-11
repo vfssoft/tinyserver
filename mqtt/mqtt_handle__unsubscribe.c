@@ -51,7 +51,7 @@ int tm_mqtt_conn__process_unsubscribe(ts_t* server, ts_conn_t* c, const char* pk
     memcpy(topic, tmp_ptr, tmp_len);
     topic[tmp_len] = 0;
     
-    s->callbacks.unsubscribe_cb(s->callbacks.cb_ctx, s, c, topic);
+    tm__internal_unsubscribe_cb(s, c, topic);
     
     err = tm__on_unsubscription(server, c, topic);
     if (err) {

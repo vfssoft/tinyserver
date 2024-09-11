@@ -49,6 +49,6 @@ int tm_mqtt_conn__process_tcp_disconnect(ts_t* server, ts_conn_t* c) {
     conn->session = NULL;
   }
   
-  s->callbacks.disconnected_cb(s->callbacks.cb_ctx, s, c);
+  tm__internal_disconnected_cb(s, c);
   return 0;
 }
