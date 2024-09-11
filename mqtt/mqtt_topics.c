@@ -476,7 +476,7 @@ int tm_topics__get_retained_msgs(tm_topics_t* t, const char* topic, ts_ptr_arr_t
 
 
 static int tm_topics__valid_common(const char* topic, ts_error_t* err) {
-  if (topic == NULL) {
+  if (topic == NULL || topic[0] == 0) {
     ts_error__set_msg(err, TS_ERR_INVALID_TOPIC, "Topic MUST be at least one character long");
     return err->err;
   }

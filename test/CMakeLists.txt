@@ -4,7 +4,14 @@ project(tests)
 set(OPENSSL_ROOT_DIR "E:/ProgramFiles/OpenSSL")
 set(PAHO_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/paho.mqtt.c")
 
-include_directories(../src ../include ../libuv/include ${OPENSSL_ROOT_DIR}/include ${PAHO_ROOT_DIR}/build/include)
+include_directories(
+        ../src
+        ../include
+        ../libuv/include
+        ${OPENSSL_ROOT_DIR}/include
+        ${PAHO_ROOT_DIR}/build/include
+        ../mqtt
+)
 
 add_executable(tests
         test.c
@@ -15,6 +22,7 @@ add_executable(tests
         tls_test.c
         mqtt_basic_test.c
         mqtt_invalid_packet_test.c
+        mqtt_topic_test.c
         testutil.h
         testutil.c
         tinyunit.h

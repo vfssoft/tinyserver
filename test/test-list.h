@@ -105,6 +105,11 @@ TEST_DECLARE(mqtt_keep_alive_zero_test)
 TEST_DECLARE(mqtt_keep_alive_timed_out_test)
 TEST_DECLARE(mqtt_no_pkt_after_connected_test)
 
+TEST_DECLARE(mqtt_valid_topic_name_test)
+TEST_DECLARE(mqtt_valid_topic_filter_test)
+TEST_DECLARE(mqtt_invalid_topic_name_test)
+TEST_DECLARE(mqtt_invalid_topic_filter_test)
+
 TEST_LIST_START
         TEST_ENTRY(invalid_local_host, "Error")
         TEST_ENTRY(invalid_local_host_2, "Error")
@@ -205,6 +210,11 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_keep_alive_zero_test, "MQTT")
         TEST_ENTRY(mqtt_keep_alive_timed_out_test, "MQTT")
         TEST_ENTRY(mqtt_no_pkt_after_connected_test, "MQTT")
+
+        TEST_ENTRY(mqtt_valid_topic_name_test, "MQTT")
+        TEST_ENTRY(mqtt_valid_topic_filter_test, "MQTT")
+        TEST_ENTRY(mqtt_invalid_topic_name_test, "MQTT")
+        TEST_ENTRY(mqtt_invalid_topic_filter_test, "MQTT")
 TEST_LIST_END
 
 #endif //TINYSERVER_TEST_LIST_H
