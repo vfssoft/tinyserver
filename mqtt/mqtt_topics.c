@@ -32,16 +32,16 @@ static tm_topic_node_t* tm_topic_node__add_child(tm_topic_node_t* parent, const 
   if (child == NULL) {
     return NULL;
   }
+  memset(child, 0, sizeof(tm_topic_node_t));
   
-  child->name = (char*) ts__malloc(name_len);
+  child->name = (char*) ts__malloc(name_len + 1);
   if (child->name == NULL) {
     return NULL;
   }
   
-  memset(child, 0, sizeof(tm_topic_node_t));
-  
   child->parent = parent;
-  strncpy(parent->name, name, name_len);
+  strncpy(child->name, name, name_len);
+  child->name[name_len] = 0;
   
   DL_APPEND(parent->children, child);
   
@@ -149,7 +149,12 @@ static int tm_topic_node__insert(tm_topic_node_t* n, const char* topic, char qos
     }
   }
   
-  return tm_topic_node__insert(child, topic + level_len, qos, subscriber);
+  return tm_topic_node__insert(
+      child,
+      level[level_len] == '\0' ? topic + level_len : topic + level_len + 1,
+      qos,
+      subscriber
+  );
 }
 static int tm_topic_node__remove(tm_topic_node_t* n, const char* topic, void* subscriber) {
   int err;
@@ -232,13 +237,16 @@ static int tm_topic_node__match(tm_topic_node_t* n, const char* topic, tm_subscr
   }
   
   DL_FOREACH(n->children, child) {
-    if (level_len == 1 && level[0] == TP_MULTI_LEVEL_WILDCARD) {
+    if (strlen(child->name) == 1 && child->name[0] == TP_MULTI_LEVEL_WILDCARD) {
       err = tm_topic_node__get_subscribers(child, TRUE, subscribers);
       if (err) {
         return err;
       }
-    } else if ((level_len == 1 && level[0] == TP_SINGLE_LEVEL_WILDCARD) || strncmp(level, child->name, level_len) == 0) {
-      err = tm_topic_node__match(child, topic + level_len, subscribers);
+    } else if ((strlen(child->name) == 1 && child->name[0] == TP_SINGLE_LEVEL_WILDCARD) || strncmp(level, child->name, level_len) == 0) {
+      err = tm_topic_node__match(
+          child,
+          level[level_len] == '\0' ? topic + level_len : topic + level_len + 1,
+          subscribers);
       if (err) {
         return err;
       }
