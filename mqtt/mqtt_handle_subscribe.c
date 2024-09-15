@@ -60,7 +60,7 @@ int tm_mqtt_conn__process_subscribe(ts_t* server, ts_conn_t* c, const char* pkt_
     return_codes[return_codes_count++] = (char)granted_qos;
     
     if (tm__is_valid_qos(granted_qos)) {
-      err = tm__on_subscription(server, c, topic, granted_qos);
+      err = tm__on_subscription(s, c, topic, granted_qos);
       if (err) {
         tm_mqtt_conn__abort(server, c);
         goto done;

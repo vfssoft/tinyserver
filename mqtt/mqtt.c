@@ -374,12 +374,16 @@ void tm__remove_message(tm_server_t* s, tm_mqtt_msg_t* msg) {
   ts__free(msg);
 }
 
-int tm__on_subscription(ts_t* server, ts_conn_t* c, const char* topic, int granted_qos) {
-  assert(0);
-  return 0;
+int tm__on_subscription(tm_server_t* s, ts_conn_t* c, const char* topic, int granted_qos) {
+  int err;
+  tm_mqtt_conn_t* conn = (tm_mqtt_conn_t*)ts_server__get_conn_user_data(s->server, c);
+  err = tm_topics__subscribe(s->topics, topic, (char)granted_qos, conn->session);
+  return err;
 }
-int tm__on_unsubscription(ts_t* server, ts_conn_t* c, const char* topic) {
-  assert(0);
-  return 0;
+int tm__on_unsubscription(tm_server_t* s, ts_conn_t* c, const char* topic) {
+  int err;
+  tm_mqtt_conn_t* conn = (tm_mqtt_conn_t*)ts_server__get_conn_user_data(s->server, c);
+  err = tm_topics__unsubscribe(s->topics, topic, conn->session);
+  return err;
 }
 

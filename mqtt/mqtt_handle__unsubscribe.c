@@ -53,9 +53,9 @@ int tm_mqtt_conn__process_unsubscribe(ts_t* server, ts_conn_t* c, const char* pk
     
     tm__internal_unsubscribe_cb(s, c, topic);
     
-    err = tm__on_unsubscription(server, c, topic);
+    err = tm__on_unsubscription(s, c, topic);
     if (err) {
-      tm_mqtt_conn__abort(server, c);
+      tm_mqtt_conn__abort(s, c);
       goto done;
     }
     
