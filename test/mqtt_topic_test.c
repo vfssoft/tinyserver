@@ -154,4 +154,60 @@ TEST_IMPL(mqtt_sub_unmatched_test) {
   }
 }
 
+int mqtt_sub_matched_multiple_impl(
+    const char* topic_filters[], int topic_filters_count,
+    const char* topic_name,
+    const int* matched_indexes, int matched_cnt
+) {
+  int err;
+  tm_topics_t* topics = tm_topics__create();
+  int* subs = (int*) malloc(sizeof(int) * topic_filters_count);
+  tm_subscribers_t* subscribers = NULL;
+  
+  for (int i = 0; i < topic_filters_count; i++) {
+    subs[i] = i;
+    err = tm_topics__subscribe(topics, topic_filters[i], 0, &(subs[i]));
+    ASSERT_EQ(err, 0);
+  }
+  
+  err = tm_topics__subscribers(topics, topic_name, 0, &subscribers);
+  ASSERT_EQ(err, 0);
+  
+  int count = 0;
+  tm_subscribers_t* tmp_subscribers;
+  DL_COUNT(subscribers, tmp_subscribers, count);
+  ASSERT_EQ(count, matched_cnt);
+  
+  int idx = 0;
+  DL_FOREACH(subscribers, tmp_subscribers) {
+    int* val = (int*)tmp_subscribers->subscriber;
+    ASSERT_EQ(*val, matched_indexes[idx++]);
+  }
+  
+  tm_topics__destroy(topics);
+  free(subscribers);
+  
+  return 0;
+}
 
+TEST_IMPL(mqtt_sub_matched_multiple_test) {
+  const char* topic_filters[] = {
+      "sport/tennis/player1/#",
+      "sport/tennis/player1/test",
+      "sport/tennis/player1/+"
+  };
+  const char* topic_name = "sport/tennis/player1/test";
+  const int matched_indexes[] = { 0, 1, 2 };
+  return mqtt_sub_matched_multiple_impl(topic_filters, ARRAYSIZE(topic_filters), topic_name, matched_indexes, ARRAYSIZE(matched_indexes));
+}
+
+TEST_IMPL(mqtt_sub_matched_multiple_test2) {
+  const char* topic_filters[] = {
+      "sport/tennis/player1/#",
+      "sport/tennis/player1/notmatch",
+      "sport/tennis/player1/+"
+  };
+  const char* topic_name = "sport/tennis/player1/test";
+  const int matched_indexes[] = { 0, 2 };
+  return mqtt_sub_matched_multiple_impl(topic_filters, ARRAYSIZE(topic_filters), topic_name, matched_indexes, ARRAYSIZE(matched_indexes));
+}
