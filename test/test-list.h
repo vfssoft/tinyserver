@@ -111,6 +111,7 @@ TEST_DECLARE(mqtt_invalid_topic_name_test)
 TEST_DECLARE(mqtt_invalid_topic_filter_test)
 
 TEST_DECLARE(mqtt_sub_matched_test)
+TEST_DECLARE(mqtt_sub_unmatched_test)
 
 TEST_LIST_START
         TEST_ENTRY(invalid_local_host, "Error")
@@ -218,6 +219,7 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_invalid_topic_name_test, "MQTT")
         TEST_ENTRY(mqtt_invalid_topic_filter_test, "MQTT")
         TEST_ENTRY(mqtt_sub_matched_test, "MQTT")
+        TEST_ENTRY(mqtt_sub_unmatched_test, "MQTT")
 TEST_LIST_END
 
 #endif //TINYSERVER_TEST_LIST_H

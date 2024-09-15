@@ -119,42 +119,46 @@ static int tm_topic_node__insert(tm_topic_node_t* n, const char* topic, char qos
   tm_topic_node_t* child = NULL;
   tm_subscribers_t* sub = NULL;
   
-  if (level == NULL || level[0] == 0) {
-    DL_FOREACH(n->subscribers, sub) {
-      if (sub->subscriber == subscriber) {
-        sub->qos = qos;
-        return 0;
+  int start = 0;
+  int end = 0;
+  while (1) {
+    char c = topic[end];
+    if (c != TP_LEVEL_SEPARATOR && c != 0) {
+      end++;
+    } else {
+      level = topic + start;
+      level_len = end - start;
+      
+      child = tm_topic_node__find_child_by_name(n, level, level_len);
+      if (child == NULL) {
+        child = tm_topic_node__add_child(n, level, level_len);
+        if (child == NULL) {
+          return TS_ERR_OUT_OF_MEMORY;
+        }
+      }
+      n = child;
+      end++;
+      start = end;
+      
+      if (c == 0) {
+        break;
       }
     }
-    
-    sub = create_subscriber(qos, subscriber);
-    if (sub == NULL) {
-      return TS_ERR_OUT_OF_MEMORY;
-    }
-    DL_APPEND(n->subscribers, sub);
-    return 0;
   }
   
-  // find next topic level
-  while (level[level_len] != TP_LEVEL_SEPARATOR && level[level_len] != '\0') {
-    level_len++;
-  }
-  
-  child = tm_topic_node__find_child_by_name(n, level, level_len);
-  
-  if (child == NULL) {
-    child = tm_topic_node__add_child(n, level, level_len);
-    if (child == NULL) {
-      return TS_ERR_OUT_OF_MEMORY;
+  DL_FOREACH(n->subscribers, sub) {
+    if (sub->subscriber == subscriber) {
+      sub->qos = qos;
+      return 0;
     }
   }
   
-  return tm_topic_node__insert(
-      child,
-      level[level_len] == '\0' ? topic + level_len : topic + level_len + 1,
-      qos,
-      subscriber
-  );
+  sub = create_subscriber(qos, subscriber);
+  if (sub == NULL) {
+    return TS_ERR_OUT_OF_MEMORY;
+  }
+  DL_APPEND(n->subscribers, sub);
+  return 0;
 }
 static int tm_topic_node__remove(tm_topic_node_t* n, const char* topic, void* subscriber) {
   int err;
@@ -211,7 +215,9 @@ static int tm_topic_node__match(tm_topic_node_t* n, const char* topic, tm_subscr
   tm_topic_node_t* child = NULL;
   tm_subscribers_t* sub = NULL;
   
-  if (level == NULL || level[0] == 0) {
+  // level == NULL, we matched whole topic
+  // level != NULL && level[0] == 0, we have a matched parent
+  if (level == NULL/* || level[0] == 0*/) {
     err = tm_topic_node__get_subscribers(n, FALSE, subscribers);
     if (err) {
       return err;
@@ -245,7 +251,7 @@ static int tm_topic_node__match(tm_topic_node_t* n, const char* topic, tm_subscr
     } else if ((strlen(child->name) == 1 && child->name[0] == TP_SINGLE_LEVEL_WILDCARD) || strncmp(level, child->name, level_len) == 0) {
       err = tm_topic_node__match(
           child,
-          level[level_len] == '\0' ? topic + level_len : topic + level_len + 1,
+          level[level_len] == '\0' ? NULL : level + level_len + 1,
           subscribers);
       if (err) {
         return err;
