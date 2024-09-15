@@ -113,27 +113,30 @@ static int tm_topic_node__empty(tm_topic_node_t* n) {
       n->retained_msg == NULL;
 }
 
-static int tm_topic_node__insert(tm_topic_node_t* n, const char* topic, char qos, void* subscriber) {
-  const char* level = topic;
-  int level_len = 0;
+static int tm_topic_node__get_by_topic(tm_topic_node_t* n, const char* topic, BOOL create_if_not_exist, tm_topic_node_t** found_node) {
   tm_topic_node_t* child = NULL;
-  tm_subscribers_t* sub = NULL;
-  
   int start = 0;
   int end = 0;
+  
+  *found_node = NULL; // not found
+  
   while (1) {
     char c = topic[end];
     if (c != TP_LEVEL_SEPARATOR && c != 0) {
       end++;
     } else {
-      level = topic + start;
-      level_len = end - start;
+      const char* level = topic + start;
+      int level_len = end - start;
       
       child = tm_topic_node__find_child_by_name(n, level, level_len);
       if (child == NULL) {
-        child = tm_topic_node__add_child(n, level, level_len);
-        if (child == NULL) {
-          return TS_ERR_OUT_OF_MEMORY;
+        if (create_if_not_exist) {
+          child = tm_topic_node__add_child(n, level, level_len);
+          if (child == NULL) {
+            return TS_ERR_OUT_OF_MEMORY;
+          }
+        } else {
+          return TS_ERR_NOT_FOUND;
         }
       }
       n = child;
@@ -145,6 +148,29 @@ static int tm_topic_node__insert(tm_topic_node_t* n, const char* topic, char qos
       }
     }
   }
+  
+  *found_node = n;
+  return 0;
+}
+static int tm_topic_node__free_empty_nodes(tm_topic_node_t* node) {
+  while (node != NULL && tm_topic_node__empty(node)) {
+    tm_topic_node_t* parent = node->parent;
+    tm_topic_node__remove_child(parent, node);
+    node = parent;
+  }
+  return 0;
+}
+
+static int tm_topic_node__insert(tm_topic_node_t* n, const char* topic, char qos, void* subscriber) {
+  int err;
+  tm_topic_node_t* child = NULL;
+  tm_subscribers_t* sub = NULL;
+  
+  err = tm_topic_node__get_by_topic(n, topic, TRUE, &child);
+  if (err) {
+    return err;
+  }
+  n = child;
   
   DL_FOREACH(n->subscribers, sub) {
     if (sub->subscriber == subscriber) {
@@ -162,51 +188,37 @@ static int tm_topic_node__insert(tm_topic_node_t* n, const char* topic, char qos
 }
 static int tm_topic_node__remove(tm_topic_node_t* n, const char* topic, void* subscriber) {
   int err;
-  const char* level = topic;
-  int level_len = 0;
   tm_topic_node_t* child = NULL;
   tm_subscribers_t* sub = NULL;
   tm_subscribers_t* tmp_sub = NULL;
+  BOOL removed = FALSE;
   
-  if (level == NULL || level[0] == 0) {
-    if (subscriber == NULL) {
-      // it's signal to remove ALL subscribers
-      DL_FOREACH_SAFE(n->subscribers, sub, tmp_sub) {
-        tm_topic_node__remove_subscriber(n, sub);
-      }
-      return 0;
-    }
-    
-    DL_FOREACH(n->subscribers, sub) {
-      if (sub->subscriber == subscriber) {
-        tm_topic_node__remove_subscriber(n, sub);
-        return 0;
-      }
-    }
-    
-    return TS_ERR_NOT_FOUND; // no topic found
-  }
-  
-  // find next topic level
-  while (level[level_len] != TP_LEVEL_SEPARATOR && level[level_len] != '\0') {
-    level_len++;
-  }
-  
-  child = tm_topic_node__find_child_by_name(n, level, level_len);
-  if (child == NULL) {
-    return TS_ERR_NOT_FOUND; // no topic found
-  }
-  
-  err = tm_topic_node__remove(child, topic + level_len, subscriber);
+  err = tm_topic_node__get_by_topic(n, topic, FALSE, &child);
   if (err) {
     return err;
   }
+  n = child;
   
-  if (tm_topic_node__empty(child)) {
-    tm_topic_node__remove_child(n, child);
+  if (subscriber == NULL) {
+    // it's signal to remove ALL subscribers
+    DL_FOREACH_SAFE(n->subscribers, sub, tmp_sub) {
+      tm_topic_node__remove_subscriber(n, sub);
+      removed = TRUE;
+    }
+  } else {
+    DL_FOREACH(n->subscribers, sub) {
+      if (sub->subscriber == subscriber) {
+        tm_topic_node__remove_subscriber(n, sub);
+        removed = TRUE;
+        break;
+      }
+    }
+  }
+  if (!removed) {
+    return TS_ERR_NOT_FOUND; // no topic found
   }
   
-  return 0;
+  return tm_topic_node__free_empty_nodes(n);
 }
 static int tm_topic_node__match(tm_topic_node_t* n, const char* topic, tm_subscribers_t** subscribers) {
   int err = 0;

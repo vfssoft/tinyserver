@@ -127,6 +127,7 @@ TEST_IMPL(mqtt_sub_matched_test) {
     
     tm_topics__destroy(topics);
   }
+  return 0;
 }
 TEST_IMPL(mqtt_sub_unmatched_test) {
   char* sub_unmathced[] = {
@@ -152,6 +153,7 @@ TEST_IMPL(mqtt_sub_unmatched_test) {
   
     tm_topics__destroy(topics);
   }
+  return 0;
 }
 
 int mqtt_sub_matched_multiple_impl(
@@ -210,4 +212,62 @@ TEST_IMPL(mqtt_sub_matched_multiple_test2) {
   const char* topic_name = "sport/tennis/player1/test";
   const int matched_indexes[] = { 0, 2 };
   return mqtt_sub_matched_multiple_impl(topic_filters, ARRAYSIZE(topic_filters), topic_name, matched_indexes, ARRAYSIZE(matched_indexes));
+}
+
+TEST_IMPL(mqtt_sub_unsub_test) {
+  const char* topic_filters[] = {
+      "/A/B/C",
+      "#",
+      "/test/+",
+      "/+/A0"
+  };
+  
+  int err;
+  for (int i = 0; i < ARRAYSIZE(topic_filters); i++) {
+    tm_subscribers_t* subscribers = NULL;
+    tm_topics_t* topics = tm_topics__create();
+    
+    err = tm_topics__subscribe(topics, topic_filters[i], 0, NULL);
+    ASSERT_EQ(err, 0);
+  
+    err = tm_topics__subscribers(topics, topic_filters[i], 0, &subscribers);
+    ASSERT_EQ(err, 0);
+    ASSERT_NE(subscribers, NULL);
+    
+    err = tm_topics__unsubscribe(topics, topic_filters[i], NULL);
+    ASSERT_EQ(err, 0);
+  
+    subscribers = NULL;
+    err = tm_topics__subscribers(topics, topic_filters[i], 0, &subscribers);
+    ASSERT_EQ(err, 0);
+    ASSERT_EQ(subscribers, NULL);
+  
+    tm_topics__destroy(topics);
+  }
+  return 0;
+}
+TEST_IMPL(mqtt_sub_unsub_unmatched_test) {
+  int err;
+  const char* topic_filter = "A/B/C";
+  tm_subscribers_t* subscribers = NULL;
+  tm_topics_t* topics = tm_topics__create();
+  
+  err = tm_topics__subscribe(topics, topic_filter, 0, NULL);
+  ASSERT_EQ(err, 0);
+  
+  err = tm_topics__subscribers(topics, topic_filter, 0, &subscribers);
+  ASSERT_EQ(err, 0);
+  ASSERT_NE(subscribers, NULL);
+  
+  err = tm_topics__unsubscribe(topics, "fake", NULL);
+  ASSERT_EQ(err, (int)TS_ERR_NOT_FOUND);
+  
+  subscribers = NULL;
+  err = tm_topics__subscribers(topics, topic_filter, 0, &subscribers);
+  ASSERT_EQ(err, 0);
+  ASSERT_NE(subscribers, NULL);
+  
+  tm_topics__destroy(topics);
+
+  return 0;
 }
