@@ -115,6 +115,10 @@ TEST_DECLARE(mqtt_sub_matched_multiple_test)
 TEST_DECLARE(mqtt_sub_matched_multiple_test2)
 TEST_DECLARE(mqtt_sub_unsub_test)
 TEST_DECLARE(mqtt_sub_unsub_unmatched_test)
+TEST_DECLARE(mqtt_retain_msg_test)
+TEST_DECLARE(mqtt_retain_msg_update_test)
+TEST_DECLARE(mqtt_retain_msg_delete_test)
+TEST_DECLARE(mqtt_get_retain_msg_not_found_test)
 
 TEST_LIST_START
         TEST_ENTRY(invalid_local_host, "Error")
@@ -227,6 +231,10 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_sub_matched_multiple_test2, "MQTT")
         TEST_ENTRY(mqtt_sub_unsub_test, "MQTT")
         TEST_ENTRY(mqtt_sub_unsub_unmatched_test, "MQTT")
+        TEST_ENTRY(mqtt_retain_msg_test, "MQTT")
+        TEST_ENTRY(mqtt_retain_msg_update_test, "MQTT")
+        TEST_ENTRY(mqtt_retain_msg_delete_test, "MQTT")
+        TEST_ENTRY(mqtt_get_retain_msg_not_found_test, "MQTT")
 TEST_LIST_END
 
 #endif //TINYSERVER_TEST_LIST_H

@@ -298,66 +298,34 @@ static int tm_topic_node__get_retained_msgs(tm_topic_node_t* n, BOOL include_chi
   return 0;
 }
 static int tm_topic_node__insert_retain_msg(tm_topic_node_t* n, const char* topic, tm_mqtt_msg_t* msg) {
-  const char* level = topic;
-  int level_len = 0;
-  tm_topic_node_t* child = NULL;
-  
-  if (level == NULL || level[0] == 0) {
-    n->retained_msg = msg;
-    return 0;
-  }
-  
-  // find next topic level
-  while (level[level_len] != TP_LEVEL_SEPARATOR && level[level_len] != '\0') {
-    level_len++;
-  }
-  
-  child = tm_topic_node__find_child_by_name(n, level, level_len);
-  
-  if (child == NULL) {
-    child = tm_topic_node__add_child(n, level, level_len);
-    if (child == NULL) {
-      return TS_ERR_OUT_OF_MEMORY;
-    }
-  }
-  
-  return tm_topic_node__insert_retain_msg(child, topic + level_len, msg);
-}
-static int tm_topic_node__remove_retain_msg(tm_topic_node_t* n, const char* topic) {
   int err;
-  const char* level = topic;
-  int level_len = 0;
   tm_topic_node_t* child = NULL;
   
-  if (level == NULL || level[0] == 0) {
-    if (n->retained_msg) {
-      // TODO: free the message if no reference to it
-      n->retained_msg = NULL;
-    }
-  
-    return TS_ERR_NOT_FOUND; // no topic found
-  }
-  
-  // find next topic level
-  while (level[level_len] != TP_LEVEL_SEPARATOR && level[level_len] != '\0') {
-    level_len++;
-  }
-  
-  child = tm_topic_node__find_child_by_name(n, level, level_len);
-  if (child == NULL) {
-    return TS_ERR_NOT_FOUND; // no topic found
-  }
-  
-  err = tm_topic_node__remove_retain_msg(child, topic + level_len);
+  err = tm_topic_node__get_by_topic(n, topic, TRUE, &child);
   if (err) {
     return err;
   }
+  child->retained_msg = msg;
+  return 0;
+}
+static int tm_topic_node__remove_retain_msg(tm_topic_node_t* n, const char* topic) {
+  int err;
+  tm_topic_node_t* child = NULL;
   
-  if (tm_topic_node__empty(child)) {
-    tm_topic_node__remove_child(n, child);
+  err = tm_topic_node__get_by_topic(n, topic, FALSE, &child);
+  if (err) {
+    return err;
+  }
+  n = child;
+
+  if (n->retained_msg) {
+    // TODO: free the message if no reference to it
+    n->retained_msg = NULL;
+  } else {
+    return TS_ERR_NOT_FOUND; // no topic found
   }
   
-  return 0;
+  return tm_topic_node__free_empty_nodes(n);
 }
 static int tm_topic_node__match_retain_msgs(tm_topic_node_t* n, const char* topic, ts_ptr_arr_t* retained_msgs) {
   int err = 0;
@@ -365,7 +333,9 @@ static int tm_topic_node__match_retain_msgs(tm_topic_node_t* n, const char* topi
   int level_len = 0;
   tm_topic_node_t* child = NULL;
   
-  if (level == NULL || level[0] == 0) {
+  // level == NULL, we matched whole topic
+  // level != NULL && level[0] == 0, we have a matched parent
+  if (level == NULL/* || level[0] == 0*/) {
     err = tm_topic_node__get_retained_msgs(n, FALSE, retained_msgs);
     if (err) {
       return err;
@@ -397,14 +367,18 @@ static int tm_topic_node__match_retain_msgs(tm_topic_node_t* n, const char* topi
         return err;
       }
     } else if ((level_len == 1 && level[0] == TP_SINGLE_LEVEL_WILDCARD) || strncmp(level, child->name, level_len) == 0) {
-      err = tm_topic_node__match_retain_msgs(child, topic + level_len, retained_msgs);
+      err = tm_topic_node__match_retain_msgs(
+          child,
+          level[level_len] == '\0' ? NULL : level + level_len + 1,
+          retained_msgs
+      );
       if (err) {
         return err;
       }
     }
   }
   
-  return 0;
+  return ts_ptr_arr__get_count(retained_msgs) > 0 ? 0 : TS_ERR_NOT_FOUND;
 }
 
 tm_topics_t* tm_topics__create() {

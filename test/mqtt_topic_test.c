@@ -271,3 +271,89 @@ TEST_IMPL(mqtt_sub_unsub_unmatched_test) {
 
   return 0;
 }
+
+static tm_mqtt_msg_t* create_retain_msg(const char* topic) {
+  tm_mqtt_msg_t* msg = (tm_mqtt_msg_t*) malloc(sizeof(tm_mqtt_msg_t));
+  tm_mqtt_msg_core_t* msg_core = (tm_mqtt_msg_core_t*) malloc(sizeof(tm_mqtt_msg_core_t));
+  msg->msg_core = msg_core;
+  
+  msg_core->topic = ts_buf__create(0);
+  ts_buf__set_str(msg_core->topic, topic, strlen(topic));
+  
+  msg_core->payload = ts_buf__create(0);
+  ts_buf__set_str(msg_core->payload, "A", 1);
+  
+  return msg;
+}
+
+TEST_IMPL(mqtt_retain_msg_test) {
+  int err;
+  tm_topics_t* topics = tm_topics__create();
+  tm_mqtt_msg_t* msg = create_retain_msg("A/B/C");
+  
+  err = tm_topics__retain_msg(topics, msg);
+  ASSERT_EQ(err, 0);
+  
+  ts_ptr_arr_t* retained_msgs = ts_ptr_arr__create(1);
+  err = tm_topics__get_retained_msgs(topics, "A/B/C", retained_msgs);
+  ASSERT_EQ(err, 0);
+  ASSERT_EQ(1, ts_ptr_arr__get_count(retained_msgs));
+  
+  tm_topics__destroy(topics);
+  return 0;
+}
+TEST_IMPL(mqtt_retain_msg_update_test) {
+  int err;
+  tm_topics_t* topics = tm_topics__create();
+  tm_mqtt_msg_t* old_msg = create_retain_msg("A/B/C");
+  tm_mqtt_msg_t* new_msg = create_retain_msg("A/B/C");
+  ts_buf__set_str(new_msg->msg_core->payload, "B", 1);
+  
+  err = tm_topics__retain_msg(topics, old_msg);
+  ASSERT_EQ(err, 0);
+  
+  err = tm_topics__retain_msg(topics, new_msg);
+  ASSERT_EQ(err, 0);
+  
+  ts_ptr_arr_t* retained_msgs = ts_ptr_arr__create(1);
+  err = tm_topics__get_retained_msgs(topics, "A/B/C", retained_msgs);
+  ASSERT_EQ(err, 0);
+  ASSERT_EQ(1, ts_ptr_arr__get_count(retained_msgs));
+  
+  tm_mqtt_msg_t* msg = (tm_mqtt_msg_t*)ts_ptr_arr__at(retained_msgs, 0);
+  ASSERT_STR_EQ("B", msg->msg_core->payload->buf);
+  
+  tm_topics__destroy(topics);
+  return 0;
+}
+TEST_IMPL(mqtt_retain_msg_delete_test) {
+  int err;
+  tm_topics_t* topics = tm_topics__create();
+  tm_mqtt_msg_t* msg = create_retain_msg("A/B/C");
+  
+  err = tm_topics__retain_msg(topics, msg);
+  ASSERT_EQ(err, 0);
+  
+  ts_buf__set_str(msg->msg_core->payload, "", 0);
+  err = tm_topics__retain_msg(topics, msg);
+  ASSERT_EQ(err, 0);
+  
+  ts_ptr_arr_t* retained_msgs = ts_ptr_arr__create(1);
+  err = tm_topics__get_retained_msgs(topics, "A/B/C", retained_msgs);
+  ASSERT_EQ(err, 0);
+  ASSERT_EQ(0, ts_ptr_arr__get_count(retained_msgs));
+  
+  tm_topics__destroy(topics);
+  return 0;
+}
+TEST_IMPL(mqtt_get_retain_msg_not_found_test) {
+  int err;
+  tm_topics_t* topics = tm_topics__create();
+  
+  ts_ptr_arr_t* retained_msgs = ts_ptr_arr__create(1);
+  err = tm_topics__get_retained_msgs(topics, "A/B/C", retained_msgs);
+  ASSERT_EQ(err, (int)TS_ERR_NOT_FOUND);
+  
+  tm_topics__destroy(topics);
+  return 0;
+}
