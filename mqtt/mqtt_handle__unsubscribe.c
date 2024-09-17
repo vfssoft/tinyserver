@@ -54,7 +54,10 @@ int tm_mqtt_conn__process_unsubscribe(ts_t* server, ts_conn_t* c, const char* pk
     tm__internal_unsubscribe_cb(s, c, topic);
     
     err = tm__on_unsubscription(s, c, topic);
-    if (err) {
+    if (err == TS_ERR_NOT_FOUND) {
+      // permit it
+      LOG_VERB("%s Try to unsubscribe a topic that is not subscribed: %s", conn_id, topic);
+    } else if (err) {
       tm_mqtt_conn__abort(s, c);
       goto done;
     }
