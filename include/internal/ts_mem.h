@@ -9,6 +9,7 @@
 void *ts__calloc(size_t nmemb, size_t size);
 void ts__free(void *mem);
 void *ts__malloc(size_t size);
+void *ts__malloc_zeros(size_t size);
 #ifdef WITH_MEMORY_TRACKING
 unsigned long ts__memory_used(void);
 unsigned long ts__max_memory_used(void);
