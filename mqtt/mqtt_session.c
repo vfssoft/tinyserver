@@ -3,7 +3,7 @@
 #include <ts.h>
 #include <internal/ts_mem.h>
 
-tm_mqtt_session_t* tm_mqtt_session__create(const char* client_id) {
+static tm_mqtt_session_t* tm_mqtt_session__create(const char* client_id) {
   tm_mqtt_session_t* sess;
   
   sess = (tm_mqtt_session_t*) ts__malloc(sizeof(tm_mqtt_session_t));
@@ -26,7 +26,7 @@ tm_mqtt_session_t* tm_mqtt_session__create(const char* client_id) {
   
   return sess;
 }
-int tm_mqtt_session__destroy(tm_mqtt_session_t* sess) {
+static int tm_mqtt_session__destroy(tm_mqtt_session_t* sess) {
   if (sess->client_id) {
     ts__free(sess->client_id);
   }
@@ -61,4 +61,56 @@ tm_mqtt_msg_t* tm_mqtt_session__find_out_msg(tm_mqtt_session_t* sess, int pkt_id
     }
   }
   return NULL;
+}
+
+
+
+tm_session_mgr_t* tm_session_mgr__create() {
+  tm_session_mgr_t* mgr;
+  
+  mgr = (tm_session_mgr_t*) ts__malloc(sizeof(tm_session_mgr_t));
+  if (mgr == NULL) {
+    return NULL;
+  }
+  memset(mgr, 0, sizeof(tm_session_mgr_t));
+  
+  ts_mutex__init(&(mgr->mu));
+  
+  return mgr;
+}
+void tm_session_mgr__destroy(tm_session_mgr_t* mgr) {
+  ts_mutex__destroy(&(mgr->mu));
+  ts__free(mgr);
+}
+
+tm_mqtt_session_t* tm_session_mgr__find(tm_session_mgr_t* mgr, const char* client_id) {
+  tm_mqtt_session_t* sess;
+  
+  ts_mutex__lock(&(mgr->mu));
+  HASH_FIND_STR(mgr->sessions, client_id, sess);
+  ts_mutex__unlock(&(mgr->mu));
+  
+  return sess;
+}
+tm_mqtt_session_t* tm_session_mgr__add(tm_session_mgr_t* mgr, const char* client_id) {
+  tm_mqtt_session_t* sess;
+  
+  sess = tm_mqtt_session__create(client_id);
+  if (sess == NULL) {
+    return NULL;
+  }
+  
+  ts_mutex__lock(&(mgr->mu));
+  HASH_ADD_STR(mgr->sessions, client_id, sess);
+  ts_mutex__unlock(&(mgr->mu));
+  
+  return sess;
+}
+int tm_session_mgr__delete(tm_session_mgr_t* mgr, tm_mqtt_session_t* sess) {
+  ts_mutex__lock(&(mgr->mu));
+  HASH_DEL(mgr->sessions, sess);
+  ts_mutex__unlock(&(mgr->mu));
+  
+  tm_mqtt_session__destroy(sess);
+  return 0;
 }

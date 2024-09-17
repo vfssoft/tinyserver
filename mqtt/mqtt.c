@@ -85,6 +85,11 @@ tm_t* tm__create() {
     return NULL;
   }
   
+  s->sess_mgr = tm_session_mgr__create();
+  if (s->sess_mgr == NULL) {
+    return NULL;
+  }
+  
   s->topics = tm_topics__create();
   if (s->topics == NULL) {
     return NULL;
@@ -93,7 +98,6 @@ tm_t* tm__create() {
   tm__set_ts_server_cbs(s);
   
   ts_error__reset(&(s->err));
-  ts_mutex__init(&(s->sessions_mu));
   ts_mutex__init(&(s->messages_mu));
   return s;
 }
@@ -110,7 +114,11 @@ int tm_destroy(tm_t* mq) {
   }
   s->topics = NULL;
   
-  ts_mutex__destroy(&(s->sessions_mu));
+  if (s->sess_mgr) {
+    tm_session_mgr__destroy(s->sess_mgr);
+  }
+  s->sess_mgr = NULL;
+  
   ts_mutex__destroy(&(s->messages_mu));
 
   ts__free(s);
@@ -282,35 +290,13 @@ void tm__internal_unsubscribe_cb(tm_server_t* mq, ts_conn_t* conn, const char* t
 }
 
 tm_mqtt_session_t* tm__find_session(tm_server_t* s, const char* client_id) {
-  tm_mqtt_session_t* sess;
-  
-  ts_mutex__lock(&(s->sessions_mu));
-  HASH_FIND_STR(s->sessions, client_id, sess);
-  ts_mutex__unlock(&(s->sessions_mu));
-  
-  return sess;
+  return tm_session_mgr__find(s->sess_mgr, client_id);
 }
 tm_mqtt_session_t* tm__create_session(tm_server_t* s, const char* client_id) {
-  tm_mqtt_session_t* sess;
-  
-  sess = tm_mqtt_session__create(client_id);
-  if (sess == NULL) {
-    return NULL;
-  }
-  
-  ts_mutex__lock(&(s->sessions_mu));
-  HASH_ADD_STR(s->sessions, client_id, sess);
-  ts_mutex__unlock(&(s->sessions_mu));
-
-  return sess;
+  return tm_session_mgr__add(s->sess_mgr, client_id);
 }
 int tm__remove_session(tm_server_t* s, tm_mqtt_session_t* sess) {
-  ts_mutex__lock(&(s->sessions_mu));
-  HASH_DEL(s->sessions, sess);
-  ts_mutex__unlock(&(s->sessions_mu));
-  
-  tm_mqtt_session__destroy(sess);
-  return 0;
+  return tm_session_mgr__delete(s->sess_mgr, sess);
 }
 
 

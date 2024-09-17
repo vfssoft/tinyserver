@@ -18,12 +18,10 @@ struct tm_server_s {
     tm_callbacks_t callbacks;
     ts_error_t err;
 
-    ts_mutex_t sessions_mu;
-    tm_mqtt_session_t* sessions;
-
     ts_mutex_t messages_mu;
     tm_mqtt_msg_core_t* message_cores;
     
+    tm_session_mgr_t* sess_mgr;
     tm_topics_t* topics;
 };
 
