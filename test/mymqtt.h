@@ -28,6 +28,9 @@ int mymqtt__disconnect(mymqtt_t* c);
 int mymqtt__subscribe(mymqtt_t* c, const char* topic, int qos);
 int mymqtt__unsubscribe(mymqtt_t* c, const char* topic);
 
+int mymqtt__subscribe_many(mymqtt_t* c, const char** topics, int* qoss, int count);
+int mymqtt__unsubscribe_many(mymqtt_t* c, const char** topics, int count);
+
 int mymqtt__publish(mymqtt_t* c, const char* topic, const char* payload, int payload_len, int qos, int retained);
 
 

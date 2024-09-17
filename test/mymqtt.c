@@ -133,6 +133,27 @@ int mymqtt__unsubscribe(mymqtt_t* c, const char* topic) {
   return 0;
 }
 
+int mymqtt__subscribe_many(mymqtt_t* c, const char** topics, int* qoss, int count) {
+  int err;
+  
+  err = MQTTClient_subscribeMany(c->client, count, (char*const*)topics, qoss);
+  if (err != MQTTCLIENT_SUCCESS) {
+    return err;
+  }
+  
+  return 0;
+}
+int mymqtt__unsubscribe_many(mymqtt_t* c, const char** topics, int count) {
+  int err;
+  
+  err = MQTTClient_unsubscribeMany(c->client, count, (char*const*)topics);
+  if (err != MQTTCLIENT_SUCCESS) {
+    return err;
+  }
+  
+  return 0;
+}
+
 int mymqtt__publish(mymqtt_t* c, const char* topic, const char* payload, int payload_len, int qos, int retained) {
   int err;
   MQTTClient_deliveryToken token;
