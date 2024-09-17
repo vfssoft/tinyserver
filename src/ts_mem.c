@@ -85,6 +85,19 @@ void *ts__malloc(size_t size) {
   return mem;
 }
 
+void *ts__malloc_zeros(size_t size) {
+  void* ptr;
+  
+  ptr = ts__malloc(size);
+  if (ptr == NULL) {
+    return NULL;
+  }
+  
+  memset(ptr, 0, size);
+  
+  return ptr;
+}
+
 #ifdef WITH_MEMORY_TRACKING
 unsigned long ts__memory_used(void) {
 	return memcount;

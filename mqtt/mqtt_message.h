@@ -2,6 +2,7 @@
 #define TINYSERVER_MQTT_MESSAGE_H
 
 
+#include <internal/ts_mutex.h>
 #include <internal/ts_data_buf.h>
 #include <internal/utlist.h>
 
@@ -23,6 +24,7 @@
 
 typedef struct tm_mqtt_msg_core_s tm_mqtt_msg_core_t;
 typedef struct tm_mqtt_msg_s tm_mqtt_msg_t;
+typedef struct tm_msg_mgr_s tm_msg_mgr_t;
 
 
 struct tm_mqtt_msg_core_s {
@@ -45,11 +47,11 @@ struct tm_mqtt_msg_s {
   tm_mqtt_msg_t* next;
 };
 
-tm_mqtt_msg_core_t* tm_mqtt_msg_core__create(const char* topic, const char* payload, int payload_len);
-int tm_mqtt_msg_core__destroy(tm_mqtt_msg_core_t* msg_core);
-
-int tm_mqtt_msg_core__add_ref(tm_mqtt_msg_core_t* msg_core);
-int tm_mqtt_msg_core__dec_ref(tm_mqtt_msg_core_t* msg_core);
+struct tm_msg_mgr_s {
+    ts_mutex_t mu;
+    tm_mqtt_msg_core_t* message_cores;
+    tm_mqtt_msg_t* messages;
+};
 
 int tm_mqtt_msg__retain(tm_mqtt_msg_t* msg);
 void tm_mqtt_msg__set_retain(tm_mqtt_msg_t* msg, int retain);
@@ -60,5 +62,11 @@ void tm_mqtt_msg__set_dup(tm_mqtt_msg_t* msg, int dup);
 
 int tm_mqtt_msg__get_state(tm_mqtt_msg_t* msg);
 int tm_mqtt_msg__change_state(tm_mqtt_msg_t* msg, int new_state);
+
+
+tm_msg_mgr_t* tm_msg_mgr__create();
+int tm_msg_mgr__destroy(tm_msg_mgr_t* mgr);
+tm_mqtt_msg_t* tm_msg_mgr__add(tm_msg_mgr_t* mgr, const char* topic, const char* payload, int payload_len, int dup, int qos, int retain);
+int tm_msg_mgr__unuse(tm_msg_mgr_t* mgr, tm_mqtt_msg_t* msg);
 
 #endif //TINYSERVER_MQTT_MESSAGE_H

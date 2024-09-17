@@ -85,6 +85,11 @@ tm_t* tm__create() {
     return NULL;
   }
   
+  s->msg_mgr = tm_msg_mgr__create();
+  if (s->msg_mgr == NULL) {
+    return NULL;
+  }
+  
   s->sess_mgr = tm_session_mgr__create();
   if (s->sess_mgr == NULL) {
     return NULL;
@@ -98,7 +103,6 @@ tm_t* tm__create() {
   tm__set_ts_server_cbs(s);
   
   ts_error__reset(&(s->err));
-  ts_mutex__init(&(s->messages_mu));
   return s;
 }
 int tm_destroy(tm_t* mq) {
@@ -119,8 +123,11 @@ int tm_destroy(tm_t* mq) {
   }
   s->sess_mgr = NULL;
   
-  ts_mutex__destroy(&(s->messages_mu));
-
+  if (s->msg_mgr) {
+    tm_msg_mgr__destroy(s->msg_mgr);
+  }
+  s->msg_mgr = NULL;
+  
   ts__free(s);
   return 0;
 }
@@ -299,65 +306,12 @@ int tm__remove_session(tm_server_t* s, tm_mqtt_session_t* sess) {
   return tm_session_mgr__delete(s->sess_mgr, sess);
 }
 
-
-static tm_mqtt_msg_core_t* tm__create_message_core(tm_server_t* s, const char* topic, const char* payload, int payload_len) {
-  tm_mqtt_msg_core_t* msg_core;
-
-  msg_core = tm_mqtt_msg_core__create(topic, payload, payload_len);
-  if (msg_core == NULL) {
-    return NULL;
-  }
-
-  ts_mutex__lock(&(s->messages_mu));
-  DL_APPEND(s->message_cores, msg_core);
-  ts_mutex__unlock(&(s->messages_mu));
-
-  return msg_core;
-}
-static int tm__ref_message_core(tm_server_t* s, tm_mqtt_msg_core_t* msg_core) {
-  tm_mqtt_msg_core__add_ref(msg_core); // add ref
-  return 0;
-}
-static int tm__unref_message_core(tm_server_t* s, tm_mqtt_msg_core_t* msg_core) {
-  int msg_core_ref_cnt;
-
-  msg_core_ref_cnt = tm_mqtt_msg_core__dec_ref(msg_core);
-
-  if (msg_core_ref_cnt == 0) {
-    ts_mutex__lock(&(s->messages_mu));
-    DL_DELETE(s->message_cores, msg_core);
-    ts_mutex__unlock(&(s->messages_mu));
-
-    tm_mqtt_msg_core__destroy(msg_core);
-  }
-
-  return 0;
-}
 tm_mqtt_msg_t* tm__create_message(tm_server_t* s, const char* topic, const char* payload, int payload_len, int dup, int qos, int retain) {
-  tm_mqtt_msg_t* msg;
-  tm_mqtt_msg_core_t* msg_core;
-
-  msg = (tm_mqtt_msg_t*) ts__malloc(sizeof(tm_mqtt_msg_t));
-  if (msg == NULL) {
-    return NULL;
-  }
-  msg_core = tm__create_message_core(s, topic, payload, payload_len);
-  if (msg_core == NULL) {
-    return NULL;
-  }
-
-  tm__ref_message_core(s, msg_core);
-
-  msg->msg_core = msg_core;
-  msg->flags = (dup ? 4 : 0) | (qos << 1) | retain;
-  msg->state = MSG_STATE_INIT;
-
-  return msg;
+  return tm_msg_mgr__add(s->msg_mgr, topic, payload, payload_len, dup, qos, retain);
 }
 
 void tm__remove_message(tm_server_t* s, tm_mqtt_msg_t* msg) {
-  tm__unref_message_core(s, msg->msg_core);
-  ts__free(msg);
+  tm_msg_mgr__unuse(s->msg_mgr, msg);
 }
 
 int tm__on_subscription(tm_server_t* s, ts_conn_t* c, const char* topic, int granted_qos) {
