@@ -340,7 +340,7 @@ TEST_IMPL(mqtt_retain_msg_delete_test) {
   
   ts_ptr_arr_t* retained_msgs = ts_ptr_arr__create(1);
   err = tm_topics__get_retained_msgs(topics, "A/B/C", retained_msgs);
-  ASSERT_EQ(err, 0);
+  ASSERT_EQ(err, (int)TS_ERR_NOT_FOUND);
   ASSERT_EQ(0, ts_ptr_arr__get_count(retained_msgs));
   
   tm_topics__destroy(topics);
