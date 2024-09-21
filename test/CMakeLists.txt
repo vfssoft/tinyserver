@@ -23,6 +23,7 @@ add_executable(tests
         mqtt_basic_test.c
         mqtt_invalid_packet_test.c
         mqtt_sub_unsub_test.c
+        mqtt_publish_test.c
         mqtt_topic_test.c
         testutil.h
         testutil.c

@@ -109,16 +109,16 @@ static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* 
       return tm_mqtt_conn__process_publish(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_PUBACK:
-      break;
+      return tm_mqtt_conn__process_puback(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_PUBREC:
-      break;
+      return tm_mqtt_conn__process_pubrec(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_PUBREL:
-      break;
+      return tm_mqtt_conn__process_pubrel(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_PUBCOMP:
-      break;
+      return tm_mqtt_conn__process_pubcomp(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_SUBSCRIBE:
       return tm_mqtt_conn__process_subscribe(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);

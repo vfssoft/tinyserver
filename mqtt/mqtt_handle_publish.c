@@ -24,7 +24,7 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
   int tmp_len, pkt_id;
   char topic[65536];
   char first_byte = pkt_bytes[0];
-  int qos = pkt_bytes[0] & 0x06 >> 1;
+  int qos = (pkt_bytes[0] & 0x06) >> 1;
   tm_mqtt_msg_t* msg;
   const char* conn_id = ts_server__get_conn_remote_host(server, c);
 
@@ -95,7 +95,7 @@ done:
   return 0;
 }
 
-int tm_mqtt_conn__process_suback(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
+int tm_mqtt_conn__process_puback(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
   int err;
   tm_mqtt_conn_t* conn;
   tm_server_t* s;
@@ -130,7 +130,7 @@ int tm_mqtt_conn__process_suback(ts_t* server, ts_conn_t* c, const char* pkt_byt
 done:
   return 0;
 }
-int tm_mqtt_conn__process_subrec(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
+int tm_mqtt_conn__process_pubrec(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
   int err;
   tm_mqtt_conn_t* conn;
   tm_server_t* s;
@@ -165,7 +165,7 @@ int tm_mqtt_conn__process_subrec(ts_t* server, ts_conn_t* c, const char* pkt_byt
 done:
   return 0;
 }
-int tm_mqtt_conn__process_subrel(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
+int tm_mqtt_conn__process_pubrel(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
   int err;
   tm_mqtt_conn_t* conn;
   tm_server_t* s;
@@ -200,7 +200,7 @@ int tm_mqtt_conn__process_subrel(ts_t* server, ts_conn_t* c, const char* pkt_byt
 done:
   return 0;
 }
-int tm_mqtt_conn__process_subcomp(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
+int tm_mqtt_conn__process_pubcomp(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
   int err;
   tm_mqtt_conn_t* conn;
   tm_server_t* s;
