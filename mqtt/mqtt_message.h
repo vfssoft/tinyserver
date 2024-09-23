@@ -14,13 +14,13 @@
 #define MSG_STATE_SEND_PUBREL  4
 #define MSG_STATE_WAIT_PUBCOMP 5
 // Incoming
-#define MSG_STATE_SEND_PUBACK  6
-#define MSG_STATE_SEND_PUBREC  7
-#define MSG_STATE_WAIT_PUBREL  8
-#define MSG_STATE_SEND_PUBCOMP 9
+#define MSG_STATE_RECEIVE_PUB  6
+#define MSG_STATE_SEND_PUBACK  7
+#define MSG_STATE_SEND_PUBREC  8
+#define MSG_STATE_WAIT_PUBREL  9
+#define MSG_STATE_SEND_PUBCOMP 10
 
-#define MSG_STATE_DONE         10
-
+#define MSG_STATE_DONE         11
 
 typedef struct tm_mqtt_msg_core_s tm_mqtt_msg_core_t;
 typedef struct tm_mqtt_msg_s tm_mqtt_msg_t;
@@ -61,7 +61,9 @@ int tm_mqtt_msg__dup(tm_mqtt_msg_t* msg);
 void tm_mqtt_msg__set_dup(tm_mqtt_msg_t* msg, int dup);
 
 int tm_mqtt_msg__get_state(tm_mqtt_msg_t* msg);
+int tm_mqtt_msg__set_state(tm_mqtt_msg_t* msg, int state);
 int tm_mqtt_msg__change_state(tm_mqtt_msg_t* msg, int new_state);
+int tm_mqtt_msg__update_state(tm_mqtt_msg_t* msg);
 
 
 tm_msg_mgr_t* tm_msg_mgr__create();

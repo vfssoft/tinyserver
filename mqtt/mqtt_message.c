@@ -81,9 +81,87 @@ void tm_mqtt_msg__set_dup(tm_mqtt_msg_t* msg, int dup) {
 int tm_mqtt_msg__get_state(tm_mqtt_msg_t* msg) {
   return msg->state;
 }
+int tm_mqtt_msg__set_state(tm_mqtt_msg_t* msg, int state) {
+  msg->state = state;
+  return 0;
+}
 int tm_mqtt_msg__change_state(tm_mqtt_msg_t* msg, int new_state) {
   // TODO:
 
+  return 0;
+}
+int tm_mqtt_msg__update_state(tm_mqtt_msg_t* msg) {
+  int qos = tm_mqtt_msg__qos(msg);
+  
+  switch (msg->state) {
+    case MSG_STATE_INIT:
+      return -1;
+    
+    // Outgoing
+    case MSG_STATE_TO_PUBLISH: // start state for outgoing
+      if (qos == 0) {
+        msg->state = MSG_STATE_DONE;
+      } else if (qos == 1) {
+        msg->state = MSG_STATE_WAIT_PUBACK;
+      } else if (qos == 2) {
+        msg->state == MSG_STATE_WAIT_PUBREC;
+      } else {
+        assert(0);
+      }
+      break;
+    
+    case MSG_STATE_WAIT_PUBACK:
+      msg->state = MSG_STATE_DONE;
+      break;
+    
+    case MSG_STATE_WAIT_PUBREC:
+      msg->state = MSG_STATE_SEND_PUBREL;
+      break;
+    
+    case MSG_STATE_SEND_PUBREL:
+      msg->state = MSG_STATE_WAIT_PUBCOMP;
+      break;
+    
+    case MSG_STATE_WAIT_PUBCOMP:
+      msg->state = MSG_STATE_DONE;
+      break;
+    
+    // Incoming
+    case MSG_STATE_RECEIVE_PUB: // start state for incoming
+      if (qos == 0) {
+        msg->state = MSG_STATE_DONE;
+      } else if (qos == 1) {
+        msg->state = MSG_STATE_SEND_PUBACK;
+      } else if (qos == 2) {
+        msg->state == MSG_STATE_SEND_PUBREC;
+      } else {
+        assert(0);
+      }
+      break;
+    
+    case MSG_STATE_SEND_PUBACK:
+      msg->state = MSG_STATE_DONE;
+      break;
+    
+    case MSG_STATE_SEND_PUBREC:
+      msg->state = MSG_STATE_WAIT_PUBREL;
+      break;
+    
+    case MSG_STATE_WAIT_PUBREL:
+      msg->state = MSG_STATE_SEND_PUBCOMP;
+      break;
+    
+    case MSG_STATE_SEND_PUBCOMP:
+      msg->state = MSG_STATE_DONE;
+      break;
+    
+    case MSG_STATE_DONE:
+      return -1;
+    
+    default:
+      return -1; // invalid state
+  }
+  
   return 0;
 }
 
