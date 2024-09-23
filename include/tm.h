@@ -7,6 +7,7 @@
 #define TS_EXTERN /* nothing */
 
 typedef void tm_t;
+typedef void tm_msg_t;
 typedef struct tm_callbacks_s tm_callbacks_t;
 
 typedef void (*tm_log_cb)(void* ctx, tm_t* mq, const char* msg);
@@ -16,6 +17,8 @@ typedef void (*tm_disconnected_cb)(void* ctx, tm_t* mq, ts_conn_t* conn);
 typedef void (*tm_subscribe_cb)(void* ctx, tm_t* mqt, ts_conn_t* conn, const char* topic, int requested_qos, int* granted_qos);
 typedef void (*tm_unsubscribe_cb)(void* ctx, tm_t* mqt, ts_conn_t* conn, const char* topic);
 
+typedef void (*tm_msg_cb)(void* ctx, tm_t* mqt, ts_conn_t* conn, tm_msg_t* msg, int old_state, int new_state);
+
 struct tm_callbacks_s {
     void* cb_ctx;
     tm_log_cb log_cb;
@@ -24,6 +27,7 @@ struct tm_callbacks_s {
     tm_disconnected_cb disconnected_cb;
     tm_subscribe_cb subscriber_cb;
     tm_unsubscribe_cb unsubscribe_cb;
+    tm_msg_cb msg_cb;
 };
 
 TS_EXTERN tm_t* tm__create();

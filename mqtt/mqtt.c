@@ -295,6 +295,11 @@ void tm__internal_unsubscribe_cb(tm_server_t* mq, ts_conn_t* conn, const char* t
     mq->callbacks.unsubscribe_cb(mq->callbacks.cb_ctx, mq, conn, topic);
   }
 }
+void tm__internal_msg_cb(tm_server_t* mq, ts_conn_t* conn, tm_mqtt_msg_t* msg, int old_state, int new_state) {
+  if (mq->callbacks.msg_cb) {
+    mq->callbacks.msg_cb(mq->callbacks.cb_ctx, mq, conn, msg, old_state, new_state);
+  }
+}
 
 tm_mqtt_session_t* tm__find_session(tm_server_t* s, const char* client_id) {
   return tm_session_mgr__find(s->sess_mgr, client_id);
