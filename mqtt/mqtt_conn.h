@@ -59,4 +59,6 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
 
 void tm_mqtt_conn__timer_cb(ts_t* server, ts_conn_t* c);
 
+int tm_mqtt_conn__update_msg_state(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* msg);
+
 #endif //TINYSERVER_MQTT_CONN_H

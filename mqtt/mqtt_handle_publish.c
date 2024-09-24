@@ -71,11 +71,17 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
   }
 
   tm_mqtt_session__add_in_msg(conn->session, msg);
+  tm_mqtt_msg__set_state(msg, MSG_STATE_RECEIVE_PUB);
+  
+  err = tm_mqtt_conn__update_msg_state(server, c, msg);
+  if (err) {
+    tm_mqtt_conn__abort(server, c);
+    goto done;
+  }
 
   if (qos == 0){
-    tm_mqtt_msg__change_state(msg, MSG_STATE_DONE);
+    // nothing
   } else if (qos == 1) {
-    tm_mqtt_msg__change_state(msg, MSG_STATE_SEND_PUBACK);
     err = tm_mqtt_conn__send_puback(server, c, pkt_id, msg);
     if (err) {
       LOG_ERROR("[%s] Failed to send PUBACK", conn_id);
@@ -83,7 +89,6 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
       goto done;
     }
   } else if (qos == 2) {
-    tm_mqtt_msg__change_state(msg, MSG_STATE_SEND_PUBREC);
     err = tm_mqtt_conn__send_pubrec(server, c, pkt_id, msg);
     if (err) {
       LOG_ERROR("[%s] Failed to send PUBREC", conn_id);
@@ -124,7 +129,7 @@ int tm_mqtt_conn__process_puback(ts_t* server, ts_conn_t* c, const char* pkt_byt
     goto done;
   }
   
-  tm_mqtt_msg__change_state(msg, MSG_STATE_DONE);
+  tm_mqtt_conn__update_msg_state(server, c, msg);
   // TODO:
   
 done:
@@ -159,7 +164,7 @@ int tm_mqtt_conn__process_pubrec(ts_t* server, ts_conn_t* c, const char* pkt_byt
     goto done;
   }
   
-  tm_mqtt_msg__change_state(msg, MSG_STATE_SEND_PUBREL);
+  tm_mqtt_conn__update_msg_state(server, c, msg);
   // TODO:
   
 done:
@@ -194,7 +199,7 @@ int tm_mqtt_conn__process_pubrel(ts_t* server, ts_conn_t* c, const char* pkt_byt
     goto done;
   }
   
-  tm_mqtt_msg__change_state(msg, MSG_STATE_SEND_PUBCOMP);
+  tm_mqtt_conn__update_msg_state(server, c, msg);
   // TODO:
   
 done:
@@ -229,7 +234,7 @@ int tm_mqtt_conn__process_pubcomp(ts_t* server, ts_conn_t* c, const char* pkt_by
     goto done;
   }
   
-  tm_mqtt_msg__change_state(msg, MSG_STATE_SEND_PUBCOMP);
+  tm_mqtt_conn__update_msg_state(server, c, msg);
   // TODO:
   
 done:

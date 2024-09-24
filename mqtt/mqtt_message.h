@@ -62,7 +62,6 @@ void tm_mqtt_msg__set_dup(tm_mqtt_msg_t* msg, int dup);
 
 int tm_mqtt_msg__get_state(tm_mqtt_msg_t* msg);
 int tm_mqtt_msg__set_state(tm_mqtt_msg_t* msg, int state);
-int tm_mqtt_msg__change_state(tm_mqtt_msg_t* msg, int new_state);
 int tm_mqtt_msg__update_state(tm_mqtt_msg_t* msg);
 
 

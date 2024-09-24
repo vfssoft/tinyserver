@@ -85,11 +85,6 @@ int tm_mqtt_msg__set_state(tm_mqtt_msg_t* msg, int state) {
   msg->state = state;
   return 0;
 }
-int tm_mqtt_msg__change_state(tm_mqtt_msg_t* msg, int new_state) {
-  // TODO:
-
-  return 0;
-}
 int tm_mqtt_msg__update_state(tm_mqtt_msg_t* msg) {
   int qos = tm_mqtt_msg__qos(msg);
   
@@ -104,7 +99,7 @@ int tm_mqtt_msg__update_state(tm_mqtt_msg_t* msg) {
       } else if (qos == 1) {
         msg->state = MSG_STATE_WAIT_PUBACK;
       } else if (qos == 2) {
-        msg->state == MSG_STATE_WAIT_PUBREC;
+        msg->state = MSG_STATE_WAIT_PUBREC;
       } else {
         assert(0);
       }
@@ -133,7 +128,7 @@ int tm_mqtt_msg__update_state(tm_mqtt_msg_t* msg) {
       } else if (qos == 1) {
         msg->state = MSG_STATE_SEND_PUBACK;
       } else if (qos == 2) {
-        msg->state == MSG_STATE_SEND_PUBREC;
+        msg->state = MSG_STATE_SEND_PUBREC;
       } else {
         assert(0);
       }

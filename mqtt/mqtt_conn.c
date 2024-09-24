@@ -210,6 +210,7 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
   int err;
   tm_mqtt_conn_t* conn;
   tm_mqtt_conn_out_packet_t* pkt;
+  tm_mqtt_msg_t* msg;
   const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
@@ -219,7 +220,12 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
     // TODO: mark the fail state
     tm_mqtt_conn__abort(server, c);
   } else {
-    // TODO: mark the success state
+    pkt = conn->out_packets;
+    msg = conn->out_packets->msg;
+    DL_DELETE(conn->out_packets, conn->out_packets);
+    ts__free(pkt);
+    
+    tm_mqtt_conn__update_msg_state(server, c, msg);
   }
 }
 
@@ -237,4 +243,33 @@ void tm_mqtt_conn__timer_cb(ts_t* server, ts_conn_t* c) {
       tm_mqtt_conn__abort(server, c);
     }
   }
+}
+
+int tm_mqtt_conn__update_msg_state(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* msg) {
+  int err;
+  int old_state, new_state;
+  tm_mqtt_conn_t* conn;
+  const char* conn_id;
+  
+  conn_id = ts_server__get_conn_remote_host(server, c);
+  conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
+  
+  old_state = tm_mqtt_msg__get_state(msg);
+  err = tm_mqtt_msg__update_state(msg);
+  if (err) {
+    LOG_ERROR("[%s] Invalid message state: current state: %d", conn_id, old_state);
+    tm_mqtt_conn__abort(server, c);
+    return err;
+  }
+  new_state = tm_mqtt_msg__get_state(msg);
+  
+  tm__internal_msg_cb(conn->server, conn, msg, old_state, new_state);
+  
+  LOG_DEBUG_EX("[%s] Update message state: %d -> %d", old_state, new_state);
+  
+  if (new_state == MSG_STATE_DONE) {
+    // TODO:
+  }
+  
+  return 0;
 }
