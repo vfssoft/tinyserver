@@ -9,16 +9,7 @@
 
 #include <internal/ts_data_buf.h>
 
-typedef struct tm_mqtt_conn_out_packet_s tm_mqtt_conn_out_packet_t;
 typedef struct tm_mqtt_conn_s tm_mqtt_conn_t;
-
-struct tm_mqtt_conn_out_packet_s {
-  int pkt_id;
-  tm_mqtt_msg_t* msg;
-  
-  tm_mqtt_conn_out_packet_t* prev;
-  tm_mqtt_conn_out_packet_t* next;
-};
 
 struct tm_mqtt_conn_s {
   int keep_alive;
@@ -29,7 +20,6 @@ struct tm_mqtt_conn_s {
   tm_mqtt_session_t* session;
     
   tm_server_t* server;
-  tm_mqtt_conn_out_packet_t* out_packets;
   
   ts_buf_t* in_buf;
   tm_packet_decoder_t decoder;

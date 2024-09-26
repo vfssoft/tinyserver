@@ -63,20 +63,9 @@ void tm_mqtt_conn__abort(ts_t* server, ts_conn_t* c) {
 int tm_mqtt_conn__send_packet(ts_t* server, ts_conn_t* c, const char* data, int len, int pkt_id, tm_mqtt_msg_t* msg) {
   int err;
   tm_mqtt_conn_t* conn;
-  tm_mqtt_conn_out_packet_t* pkt;
   const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
-  
-  pkt = (tm_mqtt_conn_out_packet_t*) ts__malloc(sizeof(tm_mqtt_conn_out_packet_t));
-  if (pkt == NULL) {
-    LOG_ERROR("[%s] Out of memory", conn_id);
-    return TS_ERR_OUT_OF_MEMORY;
-  }
-  
-  pkt->pkt_id = pkt_id;
-  pkt->msg = msg;
-  DL_APPEND(conn->out_packets, pkt);
   
   return ts_server__write(server, c, data, len);
 }
@@ -209,7 +198,6 @@ done:
 void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_write_more) {
   int err;
   tm_mqtt_conn_t* conn;
-  tm_mqtt_conn_out_packet_t* pkt;
   tm_mqtt_msg_t* msg;
   const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
@@ -219,13 +207,6 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
     LOG_ERROR("[%s] Write failed: %d %s, abort the connection", conn_id, status, uv_strerror(status));
     // TODO: mark the fail state
     tm_mqtt_conn__abort(server, c);
-  } else {
-    pkt = conn->out_packets;
-    msg = conn->out_packets->msg;
-    DL_DELETE(conn->out_packets, conn->out_packets);
-    ts__free(pkt);
-    
-    tm_mqtt_conn__update_msg_state(server, c, msg);
   }
 }
 
