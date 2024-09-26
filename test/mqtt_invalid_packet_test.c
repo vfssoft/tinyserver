@@ -411,3 +411,86 @@ static int mqtt_no_pkt_after_connected_imp() {
 TEST_IMPL(mqtt_no_pkt_after_connected_test) {
   return mqtt_no_pkt_after_connected_imp();
 }
+
+
+typedef struct {
+    char connect_pkt[128];
+    int connect_pkt_len;
+    char second_pkt[128];
+    int second_pkt_len;
+    
+    int done;
+} test_invalid_second_pkt_info_t;
+
+static void mqtt_client_send_invalid_second_pkt_cb(void *arg) {
+  int err;
+  test_invalid_second_pkt_info_t* info = (test_invalid_second_pkt_info_t*)arg;
+  mytcp_t client;
+  char recv_buf[128];
+  mytcp__init_mutex();
+  mytcp__init(&client);
+  
+  err = mytcp__connect(&client, "127.0.0.1", MQTT_PLAIN_PORT);
+  ASSERT_EQ(err, 0);
+  
+  err = mytcp__write(&client, info->connect_pkt, info->connect_pkt_len);
+  ASSERT_EQ(err, info->connect_pkt_len);
+  
+  err = mytcp__read(&client, recv_buf, 128);
+  ASSERT_EQ(err, 4);
+  
+  err = mytcp__write(&client, info->second_pkt, info->second_pkt_len);
+  ASSERT_EQ(err, info->second_pkt_len);
+  
+  err = mytcp__read(&client, recv_buf, 128);
+  ASSERT_EQ(err, 0);
+  
+  info->done = 1;
+}
+static int mqtt_invalid_second_packet_imp(const char* pkt, int len) {
+  test_invalid_second_pkt_info_t info;
+  memset(&info, 0, sizeof(info));
+  
+  const char* connect_pkt_hex = "102400044d5154540402000a0018746573745f7075626c69736865725f636c69656e745f6964";
+  decode_hex(connect_pkt_hex, (unsigned char*)info.connect_pkt);
+  info.connect_pkt_len = strlen(connect_pkt_hex) / 2;
+  
+  memcpy(info.second_pkt, pkt, len);
+  info.second_pkt_len = len;
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  memset(&cbs, 0, sizeof(tm_callbacks_t));
+  cbs.auth_cb = mqtt_server_auth_cb;
+  
+  server = start_mqtt_server(TS_PROTO_TCP, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  uv_thread_t client_thread;
+  uv_thread_create(&client_thread, mqtt_client_send_invalid_second_pkt_cb, (void*)&info);
+  
+  while (info.done == 0) {
+    tm__run(server);
+  }
+  
+  tm__stop(server);
+  uv_thread_join(&client_thread);
+  
+  return 0;
+}
+
+TEST_IMPL(mqtt_empty_subscribe) {
+  char sub[] = { 0x82, 0x02, 0x00, 0x01 };
+  return mqtt_invalid_second_packet_imp(sub, 4);
+}
+TEST_IMPL(mqtt_subscribe_invalid_reserved) {
+  char sub[] = { 0x80, 0x02, 0x00, 0x01 };
+  return mqtt_invalid_second_packet_imp(sub, 4);
+}
+TEST_IMPL(mqtt_subscribe_invalid_qos) {
+  const char* hex = "820c00010007746f7069635f3111";
+  unsigned char sub[32];
+  decode_hex(hex, sub);
+  return mqtt_invalid_second_packet_imp(sub, strlen(hex)/2);
+}

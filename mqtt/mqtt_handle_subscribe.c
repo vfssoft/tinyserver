@@ -51,7 +51,7 @@ int tm_mqtt_conn__process_subscribe(ts_t* server, ts_conn_t* c, const char* pkt_
   
     err = tm_packet_decoder__read_byte(decoder, &granted_qos);
     if (err || !tm__is_valid_qos(granted_qos)) {
-      LOG_ERROR("[%s] Invalid Topic Filter", conn_id);
+      LOG_ERROR("[%s] Invalid QoS", conn_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
