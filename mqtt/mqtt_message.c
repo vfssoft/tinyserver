@@ -78,6 +78,10 @@ void tm_mqtt_msg__set_dup(tm_mqtt_msg_t* msg, int dup) {
   }
 }
 
+unsigned long long tm_mqtt_msg__id(tm_mqtt_msg_t* msg) {
+  return msg->id;
+}
+
 int tm_mqtt_msg__get_state(tm_mqtt_msg_t* msg) {
   return msg->state;
 }
@@ -170,6 +174,8 @@ tm_msg_mgr_t* tm_msg_mgr__create() {
   }
   memset(mgr, 0, sizeof(tm_msg_mgr_t));
   
+  mgr->next_msg_id = 1; // start from 1
+  
   ts_mutex__init(&(mgr->mu));
   
   return mgr;
@@ -203,6 +209,9 @@ tm_mqtt_msg_t* tm_msg_mgr__add(tm_msg_mgr_t* mgr, const char* topic, const char*
   msg->state = MSG_STATE_INIT;
   
   ts_mutex__lock(&(mgr->mu));
+  msg->id = mgr->next_msg_id;
+  mgr->next_msg_id++; // assume it won't overflow
+  
   DL_APPEND(mgr->message_cores, msg_core);
   DL_APPEND(mgr->messages, msg);
   ts_mutex__unlock(&(mgr->mu));
