@@ -56,7 +56,7 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
 
   if (qos != 0) {
     err = tm_packet_decoder__read_int16(decoder, &pkt_id);
-    if (err) {
+    if (err || pkt_id <= 0) {
       LOG_ERROR("[%s] Invalid Packet Id", conn_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
@@ -122,7 +122,7 @@ int tm_mqtt_conn__process_puback(ts_t* server, ts_conn_t* c, const char* pkt_byt
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
   
   err = tm_packet_decoder__read_int16(decoder, &pkt_id);
-  if (err) {
+  if (err || pkt_id <= 0) {
     LOG_ERROR("[%s] Invalid Packet id", conn_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
@@ -157,7 +157,7 @@ int tm_mqtt_conn__process_pubrec(ts_t* server, ts_conn_t* c, const char* pkt_byt
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
   
   err = tm_packet_decoder__read_int16(decoder, &pkt_id);
-  if (err) {
+  if (err || pkt_id <= 0) {
     LOG_ERROR("[%s] Invalid Packet id", conn_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
@@ -192,7 +192,7 @@ int tm_mqtt_conn__process_pubrel(ts_t* server, ts_conn_t* c, const char* pkt_byt
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
   
   err = tm_packet_decoder__read_int16(decoder, &pkt_id);
-  if (err) {
+  if (err || pkt_id <= 0) {
     LOG_ERROR("[%s] Invalid Packet id", conn_id);
     tm_mqtt_conn__abort(server, c);
     goto done;

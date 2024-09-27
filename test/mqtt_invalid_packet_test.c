@@ -515,3 +515,11 @@ TEST_IMPL(mqtt_unsubscribe_invalid_topic) {
   decode_hex(hex, unsub);
   return mqtt_invalid_second_packet_imp(unsub, strlen(hex)/2);
 }
+
+TEST_IMPL(mqtt_unsubscribe_zero_pkt_id) {
+  const char* hex = "a20b00000007746f7069635f20";
+  unsigned char unsub[32];
+  decode_hex(hex, unsub);
+  return mqtt_invalid_second_packet_imp(unsub, strlen(hex)/2);
+}
+

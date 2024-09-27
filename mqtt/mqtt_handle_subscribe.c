@@ -35,7 +35,7 @@ int tm_mqtt_conn__process_subscribe(ts_t* server, ts_conn_t* c, const char* pkt_
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
   
   err = tm_packet_decoder__read_int16(decoder, &pkt_id);
-  if (err) {
+  if (err || pkt_id <= 0) {
     LOG_ERROR("[%s] Invalid Packet Identifier", conn_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
