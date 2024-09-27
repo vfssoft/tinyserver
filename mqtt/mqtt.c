@@ -269,6 +269,10 @@ void tm__internal_log_cb(tm_server_t* mq, const char* msg) {
   if (mq->callbacks.log_cb) {
     mq->callbacks.log_cb(mq->callbacks.cb_ctx, mq, msg);
   }
+
+#if _DEBUG
+  printf("%s\n", msg);
+#endif
 }
 void tm__internal_auth_user_cb(tm_server_t* mq, const char* username, const char* password, int* ret_auth_ok) {
   if (mq->callbacks.auth_cb) {
