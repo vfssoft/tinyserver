@@ -53,12 +53,14 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   BOOL session_present = FALSE;
   BOOL clean_session;
   tm_packet_decoder_t* decoder;
+  ts_error_t errt;
   const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
   decoder = &conn->decoder;
   
+  ts_error__init(&errt);
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
   
   err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
@@ -147,6 +149,12 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
       LOG_ERROR("[%s] Invalid Will Topic", conn_id);
+      tm_mqtt_conn__abort(server, c);
+      goto done;
+    }
+    err = tm_topics__valid_topic_name(tmp_ptr, tmp_len, &errt);
+    if (err) {
+      LOG_ERROR("[%s] Invalid Will Topic: %s", conn_id, errt.msg);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }

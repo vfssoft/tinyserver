@@ -19,6 +19,7 @@ int tm_mqtt_conn__process_subscribe(ts_t* server, ts_conn_t* c, const char* pkt_
   tm_mqtt_conn_t* conn;
   tm_server_t* s;
   tm_packet_decoder_t* decoder;
+  ts_error_t errt;
   const char* tmp_ptr = "";
   int tmp_val, tmp_len, pkt_id, granted_qos;
   char topic[65536];
@@ -30,6 +31,7 @@ int tm_mqtt_conn__process_subscribe(ts_t* server, ts_conn_t* c, const char* pkt_
   s = conn->server;
   decoder = &conn->decoder;
   
+  ts_error__init(&errt);
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
   
   err = tm_packet_decoder__read_int16(decoder, &pkt_id);
@@ -41,11 +43,19 @@ int tm_mqtt_conn__process_subscribe(ts_t* server, ts_conn_t* c, const char* pkt_
   
   while (tm_packet_decoder__available(decoder) > 0) {
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
-    if (err || tmp_len == 0 || tmp_len >= 65536) {
+    if (err) {
       LOG_ERROR("[%s] Invalid Topic Filter", conn_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
+  
+    err = tm_topics__valid_topic_filter(tmp_ptr, tmp_len, &errt);
+    if (err) {
+      LOG_ERROR("[%s] Invalid Topic Filter: %s", conn_id, errt.msg);
+      tm_mqtt_conn__abort(server, c);
+      goto done;
+    }
+    
     memcpy(topic, tmp_ptr, tmp_len);
     topic[tmp_len] = 0;
   

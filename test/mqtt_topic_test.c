@@ -22,7 +22,7 @@ TEST_IMPL(mqtt_valid_topic_name_test) {
   ts_error__init(&err);
   
   for (int i = 0; i < ARRAY_SIZE(valid_topics); i++) {
-    tm_topics__valid_topic_name(valid_topics[i], &err);
+    tm_topics__valid_topic_name(valid_topics[i], strlen(valid_topics[i]), &err);
     ASSERT_EQ(err.err, 0);
   }
   return 0;
@@ -49,7 +49,7 @@ TEST_IMPL(mqtt_valid_topic_filter_test) {
   ts_error__init(&err);
   
   for (int i = 0; i < ARRAY_SIZE(valid_topics); i++) {
-    tm_topics__valid_topic_filter(valid_topics[i], &err);
+    tm_topics__valid_topic_filter(valid_topics[i], strlen(valid_topics[i]), &err);
     ASSERT_EQ(err.err, 0);
   }
   return 0;
@@ -66,7 +66,23 @@ TEST_IMPL(mqtt_invalid_topic_name_test) {
   ts_error__init(&err);
   
   for (int i = 0; i < ARRAY_SIZE(invalid_topics); i++) {
-    tm_topics__valid_topic_name(invalid_topics[i], &err);
+    tm_topics__valid_topic_name(invalid_topics[i], strlen(invalid_topics[i]), &err);
+    ASSERT_NE(err.err, 0);
+    ts_error__reset(&err);
+  }
+  return 0;
+}
+TEST_IMPL(mqtt_invalid_topic_name_null_test) {
+  char* invalid_topics[] = {
+      "\0",
+      "\0\0",
+  };
+  int lens[] = {1, 2};
+  ts_error_t err;
+  ts_error__init(&err);
+  
+  for (int i = 0; i < ARRAY_SIZE(invalid_topics); i++) {
+    tm_topics__valid_topic_name(invalid_topics[i], lens[i], &err);
     ASSERT_NE(err.err, 0);
     ts_error__reset(&err);
   }
@@ -84,7 +100,25 @@ TEST_IMPL(mqtt_invalid_topic_filter_test) {
   ts_error__init(&err);
   
   for (int i = 0; i < ARRAY_SIZE(invalid_topics); i++) {
-    tm_topics__valid_topic_filter(invalid_topics[i], &err);
+    tm_topics__valid_topic_filter(invalid_topics[i], strlen(invalid_topics[i]), &err);
+    ASSERT_NE(err.err, 0);
+    ts_error__reset(&err);
+  }
+  return 0;
+}
+TEST_IMPL(mqtt_invalid_topic_filter_null_test) {
+  char* invalid_topics[] = {
+      "\0",
+      "a/\0",
+      "\0/a"
+  };
+  int lens[] = { 1, 3, 3 };
+  
+  ts_error_t err;
+  ts_error__init(&err);
+  
+  for (int i = 0; i < ARRAY_SIZE(invalid_topics); i++) {
+    tm_topics__valid_topic_filter(invalid_topics[i], lens[i], &err);
     ASSERT_NE(err.err, 0);
     ts_error__reset(&err);
   }

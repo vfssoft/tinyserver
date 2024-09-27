@@ -26,7 +26,7 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
   tm_server_t* s;
   tm_packet_decoder_t* decoder;
   const char* tmp_ptr = "";
-  int tmp_len, pkt_id;
+  int tmp_len, pkt_id = 0;
   char topic[65536];
   char first_byte = pkt_bytes[0];
   int qos = (pkt_bytes[0] & 0x06) >> 1;

@@ -494,3 +494,9 @@ TEST_IMPL(mqtt_subscribe_invalid_qos) {
   decode_hex(hex, sub);
   return mqtt_invalid_second_packet_imp(sub, strlen(hex)/2);
 }
+TEST_IMPL(mqtt_subscribe_invalid_topic) {
+  const char* hex = "820c00010007746f7069635f0001"; // ends with 0 is invalid
+  unsigned char sub[32];
+  decode_hex(hex, sub);
+  return mqtt_invalid_second_packet_imp(sub, strlen(hex)/2);
+}
