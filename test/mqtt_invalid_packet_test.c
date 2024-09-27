@@ -500,3 +500,18 @@ TEST_IMPL(mqtt_subscribe_invalid_topic) {
   decode_hex(hex, sub);
   return mqtt_invalid_second_packet_imp(sub, strlen(hex)/2);
 }
+
+TEST_IMPL(mqtt_empty_unsubscribe) {
+  char unsub[] = { 0xA2, 0x02, 0x00, 0x02 };
+  return mqtt_invalid_second_packet_imp(unsub, 4);
+}
+TEST_IMPL(mqtt_unsubscribe_invalid_reserved) {
+  char unsub[] = { 0xA0, 0x02, 0x00, 0x02 };
+  return mqtt_invalid_second_packet_imp(unsub, 4);
+}
+TEST_IMPL(mqtt_unsubscribe_invalid_topic) {
+  const char* hex = "a20b00020007746f7069635f00"; // ends with 0 is invalid
+  unsigned char unsub[32];
+  decode_hex(hex, unsub);
+  return mqtt_invalid_second_packet_imp(unsub, strlen(hex)/2);
+}
