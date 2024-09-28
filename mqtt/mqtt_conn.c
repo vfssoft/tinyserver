@@ -86,7 +86,7 @@ static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* 
   switch (pkt_type) {
 
     case PKT_TYPE_CONNECT:
-      if (conn->session && conn->session->connected) {
+      if (conn->session && tm_mqtt_session__conn(conn->session) != NULL) {
         LOG_ERROR("[%s] Already connected but receive another CONNECT", ts_server__get_conn_remote_host(server, c));
         tm_mqtt_conn__abort(server, c);
         return 0;

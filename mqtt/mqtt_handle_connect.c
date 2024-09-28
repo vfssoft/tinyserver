@@ -258,7 +258,7 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
     goto done;
   }
   
-  conn->session->connected = TRUE;
+  tm_mqtt_session__attach(conn->session, c);
   
   tm__internal_connected_cb(s, c);
   

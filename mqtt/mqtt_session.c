@@ -11,7 +11,7 @@ static tm_mqtt_session_t* tm_mqtt_session__create(const char* client_id) {
     return NULL;
   }
   
-  sess->connected = 0;
+  sess->conn = NULL;
   sess->client_id = NULL;
   sess->clean_session = 1;
   sess->in_msgs = NULL;
@@ -35,8 +35,24 @@ static int tm_mqtt_session__destroy(tm_mqtt_session_t* sess) {
   return 0;
 }
 
+void* tm_mqtt_session__conn(tm_mqtt_session_t* sess) {
+  return sess->conn;
+}
+void tm_mqtt_session__attach(tm_mqtt_session_t* sess, void* conn) {
+  sess->conn = conn;
+}
+void* tm_mqtt_session__detach(tm_mqtt_session_t* sess) {
+  void* conn = sess->conn;
+  sess->conn = NULL;
+  return conn;
+}
+
 int tm_mqtt_session__add_in_msg(tm_mqtt_session_t* sess, tm_mqtt_msg_t* msg) {
   DL_APPEND(sess->in_msgs, msg); // no lock
+  return 0;
+}
+int tm_mqtt_session__remove_in_msg(tm_mqtt_session_t* sess, tm_mqtt_msg_t* msg) {
+  DL_DELETE(sess->in_msgs, msg); // no lock
   return 0;
 }
 tm_mqtt_msg_t* tm_mqtt_session__find_in_msg(tm_mqtt_session_t* sess, int pkt_id) {
