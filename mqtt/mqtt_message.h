@@ -61,6 +61,8 @@ int tm_mqtt_msg__qos(tm_mqtt_msg_t* msg);
 void tm_mqtt_msg__set_qos(tm_mqtt_msg_t* msg, int qos);
 int tm_mqtt_msg__dup(tm_mqtt_msg_t* msg);
 void tm_mqtt_msg__set_dup(tm_mqtt_msg_t* msg, int dup);
+const char* tm_mqtt_msg__topic(tm_mqtt_msg_t* msg);
+int tm_mqtt_msg__payload_len(tm_mqtt_msg_t* msg);
 
 unsigned long long tm_mqtt_msg__id(tm_mqtt_msg_t* msg);
 int tm_mqtt_msg__get_state(tm_mqtt_msg_t* msg);
@@ -71,6 +73,7 @@ int tm_mqtt_msg__update_state(tm_mqtt_msg_t* msg);
 tm_msg_mgr_t* tm_msg_mgr__create();
 int tm_msg_mgr__destroy(tm_msg_mgr_t* mgr);
 tm_mqtt_msg_t* tm_msg_mgr__add(tm_msg_mgr_t* mgr, const char* topic, const char* payload, int payload_len, int dup, int qos, int retain);
+tm_mqtt_msg_t* tm_msg_mgr__dup(tm_msg_mgr_t* mgr, tm_mqtt_msg_t* src_msg, int dup, int qos, int retain);
 int tm_msg_mgr__unuse(tm_msg_mgr_t* mgr, tm_mqtt_msg_t* msg);
 
 #endif //TINYSERVER_MQTT_MESSAGE_H

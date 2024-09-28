@@ -78,6 +78,13 @@ void tm_mqtt_msg__set_dup(tm_mqtt_msg_t* msg, int dup) {
   }
 }
 
+const char* tm_mqtt_msg__topic(tm_mqtt_msg_t* msg) {
+  return msg->msg_core->topic->buf;
+}
+int tm_mqtt_msg__payload_len(tm_mqtt_msg_t* msg) {
+  return msg->msg_core->payload->len;
+}
+
 unsigned long long tm_mqtt_msg__id(tm_mqtt_msg_t* msg) {
   return msg->id;
 }
@@ -213,6 +220,32 @@ tm_mqtt_msg_t* tm_msg_mgr__add(tm_msg_mgr_t* mgr, const char* topic, const char*
   mgr->next_msg_id++; // assume it won't overflow
   
   DL_APPEND(mgr->message_cores, msg_core);
+  DL_APPEND(mgr->messages, msg);
+  ts_mutex__unlock(&(mgr->mu));
+  
+  return msg;
+}
+tm_mqtt_msg_t* tm_msg_mgr__dup(tm_msg_mgr_t* mgr, tm_mqtt_msg_t* src_msg, int dup, int qos, int retain) {
+  tm_mqtt_msg_t* msg = NULL;
+  tm_mqtt_msg_core_t* msg_core = NULL;
+  
+  msg = (tm_mqtt_msg_t*) ts__malloc_zeros(sizeof(tm_mqtt_msg_t));
+  if (msg == NULL) {
+    return NULL;
+  }
+  
+  msg_core = src_msg->msg_core;
+  tm_mqtt_msg_core__add_ref(msg_core); // add ref
+  
+  msg->msg_core = msg_core;
+  msg->flags = (dup ? 4 : 0) | (qos << 1) | retain;
+  msg->state = MSG_STATE_INIT;
+  
+  ts_mutex__lock(&(mgr->mu));
+  msg->id = mgr->next_msg_id;
+  mgr->next_msg_id++; // assume it won't overflow
+  
+  //DL_APPEND(mgr->message_cores, msg_core); // msg_core is only a ref to the src msg.
   DL_APPEND(mgr->messages, msg);
   ts_mutex__unlock(&(mgr->mu));
   
