@@ -52,6 +52,7 @@ int tm_topics__destroy(tm_topics_t* t);
 int tm_topics__subscribe(tm_topics_t* t, const char* topic, char qos, void* subscriber);
 int tm_topics__unsubscribe(tm_topics_t* t, const char* topic, void* subscriber);
 int tm_topics__subscribers(tm_topics_t* t, const char* topic, char qos, tm_subscribers_t** subscribers);
+int tm_topics__subscribers_free(tm_subscribers_t* subscribers);
 
 int tm_topics__retain_msg(tm_topics_t* t, tm_mqtt_msg_t* msg);
 int tm_topics__get_retained_msgs(tm_topics_t* t, const char* topic, ts_ptr_arr_t* retained_msgs);

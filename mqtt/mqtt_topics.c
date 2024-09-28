@@ -14,6 +14,9 @@ static tm_subscribers_t* create_subscriber(int qos, void* subscriber) {
   
   return sub;
 }
+static void destroy_subscriber(tm_subscribers_t* sub) {
+  ts__free(sub);
+}
 
 static tm_topic_node_t* tm_topic_node__find_child_by_name(tm_topic_node_t* parent, const char* name, int name_len) {
   tm_topic_node_t* cur = NULL;
@@ -442,7 +445,14 @@ int tm_topics__subscribers(tm_topics_t* t, const char* topic, char qos, tm_subsc
   
   return err;
 }
-
+int tm_topics__subscribers_free(tm_subscribers_t* subscribers) {
+  tm_subscribers_t* tmp;
+  tm_subscribers_t* cur;
+  DL_FOREACH_SAFE(subscribers, cur, tmp) {
+    destroy_subscriber(cur);
+  }
+  return 0;
+}
 
 int tm_topics__retain_msg(tm_topics_t* t, tm_mqtt_msg_t* msg) {
   int err;
