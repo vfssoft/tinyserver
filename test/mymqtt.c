@@ -11,6 +11,24 @@ void conn_lost_cb(void *context, char *cause)
 }
 
 int msg_arrived_cb(void *context, char *topicName, int topicLen, MQTTClient_message *message) {
+  mymqtt_t* c = (mymqtt_t*)context;
+  mymqtt_msg_t* msg = (mymqtt_msg_t*) malloc(sizeof(mymqtt_msg_t));
+  
+  msg->topic = (char*) malloc(topicLen + 1);
+  strcpy(msg->topic, topicName);
+  msg->topic[topicLen] = 0;
+  
+  msg->payload = (char*) malloc(message->payloadlen);
+  memcpy(msg->payload, message->payload, message->payloadlen);
+  msg->payload_len = message->payloadlen;
+  
+  msg->qos = message->qos;
+  msg->dup = message->dup;
+  msg->retained = message->retained;
+  
+  memcpy(&(c->msgs[c->msgs_count]), msg, sizeof(mymqtt_msg_t));
+  c->msgs_count++;
+  
   return 1;
 }
 
@@ -78,6 +96,9 @@ int mymqtt__init(mymqtt_t* c, int proto, const char* client_id) {
   c->options.cleansession = 1;
   c->options.connectTimeout = 3;
   
+  memset(c->msgs, 0, sizeof(mymqtt_msg_t) * 32);
+  c->msgs_count = 0;
+  
   return 0;
 }
 void mymqtt__destroy(mymqtt_t* c) {
@@ -96,6 +117,13 @@ void mymqtt__set_keep_alive(mymqtt_t* c, int keep_alive) {
 
 int mymqtt__sp(mymqtt_t* c) {
   return c->options.returned.sessionPresent;
+}
+int mymqtt__recv_msg_count(mymqtt_t* c) {
+  return c->msgs_count;
+}
+int mymqtt__recv_msgs(mymqtt_t* c, mymqtt_msg_t* msgs) {
+  memcpy(msgs, c->msgs, sizeof(mymqtt_msg_t) * c->msgs_count);
+  return c->msgs_count;
 }
 
 int mymqtt__connect(mymqtt_t* c) {
