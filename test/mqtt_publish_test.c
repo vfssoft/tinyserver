@@ -17,8 +17,13 @@ typedef struct {
   char client_id[128];
   char topic[128];
   int qos;
-  int stop;
+  int timeoutms;
+  int exp_recv_count;
+  int subscribed;
   int done;
+    
+  mymqtt_msg_t msgs[32]; // msg received
+  int msgs_count;
 } test_client_subscriber_info_t;
 
 static void mqtt_client_subscriber_cb(void *arg) {
@@ -32,9 +37,26 @@ static void mqtt_client_subscriber_cb(void *arg) {
 
   err = mymqtt__subscribe(&client, info->topic, info->qos);
   ASSERT_EQ(err, 0);
-
-  while (!info->stop) {
-    Sleep(100);
+  
+  info->subscribed = 1;
+  
+  long long int start = get_current_time_millis();
+  while (1) {
+    Sleep(20);
+    
+    if (info->timeoutms > 0) {
+      long long int current = get_current_time_millis();
+      if (current - start >= info->timeoutms) {
+        break;
+      }
+    }
+    if (mymqtt__recv_msg_count(&client) >= info->exp_recv_count) {
+      break;
+    }
+  }
+  
+  if (mymqtt__recv_msg_count(&client) >= 0) {
+    info->msgs_count = mymqtt__recv_msgs(&client, info->msgs);
   }
 
   err = mymqtt__unsubscribe(&client, info->topic);
@@ -115,4 +137,96 @@ TEST_IMPL(mqtt_basic_pub_qos1_test) {
 }
 TEST_IMPL(mqtt_basic_pub_qos2_test) {
   return mqtt_basic_pub_impl(TS_PROTO_TCP, "a", 2, "hello", 5);
+}
+
+static int mqtt_publish_a_msg(tm_t* server, int proto, const char* topic, int qos, char* payload, int payload_len) {
+  test_client_publisher_info_t info;
+  RESET_STRUCT(info);
+  info.proto = proto;
+  strcpy(info.client_id, "test_publisher_client_id");
+  strcpy(info.topic, topic);
+  info.qos = qos;
+  info.payload_len = payload_len;
+  info.payload = payload;
+  
+  uv_thread_t publisher_thread;
+  uv_thread_create(&publisher_thread, mqtt_client_publisher_cb, (void*)&info);
+  while (info.done == 0) { tm__run(server); }
+  uv_thread_join(&publisher_thread);
+  return 0;
+}
+static test_client_subscriber_info_t* mqtt_subscriber_start(tm_t* server, uv_thread_t* thread, int proto, const char* topic, int qos, int timeoutms) {
+  test_client_subscriber_info_t* info = (test_client_subscriber_info_t*) malloc(sizeof(test_client_subscriber_info_t));
+  memset(info, 0, sizeof(test_client_subscriber_info_t));
+  info->proto = proto;
+  strcpy(info->client_id, "tet_subscriber_client_id");
+  strcpy(info->topic, topic);
+  info->qos = qos;
+  info->timeoutms = timeoutms;
+  info->exp_recv_count = 1;
+  
+  uv_thread_create(thread, mqtt_client_subscriber_cb, (void*)info);
+  while (info->subscribed == 0) { tm__run(server); }
+  return info;
+}
+static int mqtt_subscriber_stop(tm_t* server, uv_thread_t* thread,  test_client_subscriber_info_t* info) {
+  while (info->done == 0) { tm__run(server); }
+  uv_thread_join(thread);
+  return 0;
+}
+
+static int mqtt_basic_pub_recv_impl(
+    int proto,
+    const char* pub_topic, int pub_qos, char* payload, int payload_len,
+    const char* sub_topic, int sub_qos
+) {
+  test_client_subscriber_info_t* subscriber_info;
+  uv_thread_t subscriber_thread;
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, NULL);
+
+  server = start_mqtt_server(proto, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, sub_topic, sub_qos, 500);
+  
+  mqtt_publish_a_msg(server, proto, pub_topic, pub_qos, payload, payload_len);
+  
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+  
+  tm__stop(server);
+  
+  ASSERT_EQ(subscriber_info->msgs_count, 1);
+  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
+  ASSERT_STR_EQ(msg->topic, sub_topic);
+  ASSERT_EQ(msg->qos, (sub_qos > pub_qos ? pub_qos : sub_qos));
+  ASSERT_EQ(msg->payload_len, payload_len);
+  ASSERT_MEM_EQ(payload, (char*)msg->payload, payload_len);
+  
+  return 0;
+}
+
+TEST_IMPL(mqtt_basic_pub_recv_qos0_tcp) {
+  return mqtt_basic_pub_recv_impl(
+      TS_PROTO_TCP,
+      "topic", 0, "ABC", 3,
+      "topic", 0
+  );
+}
+TEST_IMPL(mqtt_basic_pub_recv_qos1_tcp) {
+  return mqtt_basic_pub_recv_impl(
+      TS_PROTO_TCP,
+      "topic", 1, "ABC", 3,
+      "topic", 1
+  );
+}
+TEST_IMPL(mqtt_basic_pub_recv_qos2_tcp) {
+  return mqtt_basic_pub_recv_impl(
+      TS_PROTO_TCP,
+      "topic", 2, "ABC", 3,
+      "topic", 2
+  );
 }

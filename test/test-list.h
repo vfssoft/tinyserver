@@ -146,6 +146,10 @@ TEST_DECLARE(mqtt_basic_pub_qos0_test)
 TEST_DECLARE(mqtt_basic_pub_qos1_test)
 TEST_DECLARE(mqtt_basic_pub_qos2_test)
 
+TEST_DECLARE(mqtt_basic_pub_recv_qos0_tcp)
+TEST_DECLARE(mqtt_basic_pub_recv_qos1_tcp)
+TEST_DECLARE(mqtt_basic_pub_recv_qos2_tcp)
+
 TEST_LIST_START
         TEST_ENTRY(invalid_local_host, "Error")
         TEST_ENTRY(invalid_local_host_2, "Error")
@@ -287,6 +291,9 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_basic_pub_qos0_test, "MQTT")
         TEST_ENTRY(mqtt_basic_pub_qos1_test, "MQTT")
         TEST_ENTRY(mqtt_basic_pub_qos2_test, "MQTT")
+        TEST_ENTRY(mqtt_basic_pub_recv_qos0_tcp, "MQTT")
+        TEST_ENTRY(mqtt_basic_pub_recv_qos1_tcp, "MQTT")
+        TEST_ENTRY(mqtt_basic_pub_recv_qos2_tcp, "MQTT")
 TEST_LIST_END
 
 #endif //TINYSERVER_TEST_LIST_H
