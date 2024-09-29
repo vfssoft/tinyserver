@@ -14,6 +14,7 @@ int msg_arrived_cb(void *context, char *topicName, int topicLen, MQTTClient_mess
   mymqtt_t* c = (mymqtt_t*)context;
   mymqtt_msg_t* msg = (mymqtt_msg_t*) malloc(sizeof(mymqtt_msg_t));
   
+  topicLen = strlen(topicName);
   msg->topic = (char*) malloc(topicLen + 1);
   strcpy(msg->topic, topicName);
   msg->topic[topicLen] = 0;
