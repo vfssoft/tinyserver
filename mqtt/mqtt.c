@@ -3,6 +3,7 @@
 #include "mqtt_conn.h"
 
 #include <assert.h>
+#include <inttypes.h>
 #include <internal/ts_mem.h>
 #include <internal/ts_log.h>
 
@@ -323,6 +324,88 @@ void tm__remove_message(tm_server_t* s, tm_mqtt_msg_t* msg) {
   tm_msg_mgr__unuse(s->msg_mgr, msg);
 }
 
+static int tm__dispatch_msg_to_subscriber(tm_server_t* s, ts_conn_t* c, tm_mqtt_msg_t* src_msg, tm_subscribers_t* subscriber) {
+  ts_t* server;
+  tm_mqtt_conn_t* conn;
+  tm_mqtt_session_t* sess;
+  tm_mqtt_msg_t* new_msg;
+  int new_qos;
+  
+  server = s->server;
+  sess = (tm_mqtt_session_t*) subscriber->subscriber;
+  
+  LOG_DEBUG_EX("[%s] Dispatch the message(%" PRIu64 ") to client", sess->client_id, tm_mqtt_msg__id(src_msg));
+  
+  new_qos = subscriber->qos < tm_mqtt_msg__qos(src_msg) ? subscriber->qos : tm_mqtt_msg__qos(src_msg);
+  
+  new_msg = tm_msg_mgr__dup(s->msg_mgr, src_msg, FALSE, new_qos, FALSE);
+  if (new_msg == NULL) {
+    LOG_ERROR("[%s] Out of memory", sess->client_id);
+    tm_mqtt_conn__abort(server, c);
+    return 0;
+  }
+  tm_mqtt_msg__set_state(new_msg, MSG_STATE_TO_PUBLISH);
+  
+  LOG_DEBUG_EX(
+      "[%s] Dup message for dispatching: src_id=%" PRIu64 ", new_id=%" PRIu64 ", qos=%d, retain=%d, dup=%d",
+      sess->client_id,
+      tm_mqtt_msg__id(src_msg),
+      tm_mqtt_msg__id(new_msg),
+      new_qos,
+      FALSE,
+      FALSE
+  );
+  
+  conn = (ts_conn_t*) tm_mqtt_session__conn(sess);
+  if (conn == NULL) {
+    LOG_DEBUG("[%s] Client is not connected, save to session", sess->client_id);
+    tm_mqtt_session__add_out_msg(sess, new_msg);
+  } else {
+    LOG_DEBUG("[%s] Client is connected, start sending", sess->client_id);
+    tm_mqtt_conn__on_subscribed_msg_in(s, conn, new_msg); // ignore error, the error should be processed in target conn.
+  }
+
+  return 0;
+}
+int tm__on_publish_received(tm_server_t* s, ts_conn_t* c, tm_mqtt_msg_t* msg) {
+  int err;
+  ts_t* server;
+  const char* conn_id;
+  const char* msg_topic;
+  int msg_qos;
+  tm_subscribers_t* subscribers = NULL;
+  tm_subscribers_t* cur_subscriber;
+  
+  server = s->server;
+  conn_id = ts_server__get_conn_remote_host(server, c);
+  
+  msg_topic = tm_mqtt_msg__topic(msg);
+  msg_qos = tm_mqtt_msg__qos(msg);
+  
+  LOG_VERB(
+      "[%s] received a message: id=%" PRIu64 "topic=%s, qos=%d, retain=%d, dup=%d payloadlen=%d",
+      conn_id,
+      tm_mqtt_msg__id(msg),
+      msg_topic,
+      msg_qos,
+      tm_mqtt_msg__retain(msg),
+      tm_mqtt_msg__dup(msg),
+      tm_mqtt_msg__payload_len(msg)
+  );
+  
+  err = tm_topics__subscribers(s->topics, msg_topic, (char)msg_qos, &subscribers);
+  if (err) {
+    LOG_ERROR("[%s] Failed to get subscribers for the topic(%s): %d", conn_id, msg_topic, err);
+    return err;
+  }
+  
+  DL_FOREACH(subscribers, cur_subscriber) {
+    tm__dispatch_msg_to_subscriber(s, c, msg, cur_subscriber);
+  }
+  tm_topics__subscribers_free(subscribers);
+  
+  return 0;
+}
 int tm__on_subscription(tm_server_t* s, ts_conn_t* c, const char* topic, int granted_qos) {
   int err;
   tm_mqtt_conn_t* conn = (tm_mqtt_conn_t*)ts_server__get_conn_user_data(s->server, c);

@@ -15,7 +15,7 @@ struct tm_mqtt_conn_s {
   int keep_alive;
   unsigned long long next_recv_time; // use 'next' on purpose, milliseconds
   
-  unsigned long long last_active_time;
+  unsigned long long next_pkt_id;
   tm_mqtt_msg_t* will;
   tm_mqtt_session_t* session;
     
@@ -50,5 +50,7 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
 void tm_mqtt_conn__timer_cb(ts_t* server, ts_conn_t* c);
 
 int tm_mqtt_conn__update_msg_state(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* msg);
+
+int tm_mqtt_conn__on_subscribed_msg_in(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* msg);
 
 #endif //TINYSERVER_MQTT_CONN_H

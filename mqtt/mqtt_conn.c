@@ -4,6 +4,7 @@
 
 #include <internal/ts_mem.h>
 #include <internal/ts_log.h>
+#include <internal/ts_miscellany.h>
 
 
 tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s, ts_conn_t* c) {
@@ -28,6 +29,8 @@ tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s, ts_conn_t* c) {
   conn->next_recv_time = ts_server__now(s->server) + 5000;
   ts_server__set_conn_user_data(s->server, c, conn);
   ts_server__conn_start_timer(s->server, c, 1000, 1000);
+  
+  conn->next_pkt_id = 1;
   
   return conn;
 }
@@ -191,8 +194,7 @@ void tm_mqtt_conn__data_in(ts_t* server, ts_conn_t* c, const char* data, int len
   }
 
 done:
-  conn->last_active_time = ts_server__now(server);
-
+  return;
 }
 
 void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_write_more) {
@@ -246,10 +248,112 @@ int tm_mqtt_conn__update_msg_state(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* ms
   
   tm__internal_msg_cb(conn->server, conn, msg, old_state, new_state);
   
-  LOG_DEBUG_EX("[%s] Update message state: %d -> %d", old_state, new_state);
+  LOG_DEBUG_EX("[%s] Update message state: %d -> %d", conn_id, old_state, new_state);
   
   if (new_state == MSG_STATE_DONE) {
-    // TODO:
+    tm_mqtt_session__remove_in_msg(conn->session, msg);
+    tm__on_publish_received(conn->server, c, msg);
+  }
+  
+  return 0;
+}
+
+static int tm_mqtt_conn__encode_remaining_length(int remaining_len, char* bytes) {
+  char b = 0;
+  int offset = 0;
+  
+  do {
+    b = remaining_len % 128;
+    remaining_len = remaining_len / 128;
+    
+    // if there are more data to encode, set the top bit of this byte
+    if (remaining_len > 0) { b |= 128; }
+    
+    bytes[offset] = b;
+    offset++;
+  } while (remaining_len > 0);
+
+  return offset;
+}
+static char* tm_mqtt_conn__encode_msg(tm_mqtt_msg_t* msg, int* len) {
+  int pkt_id;
+  int qos = tm_mqtt_msg__qos(msg);
+  const char* topic;
+  int topic_len;
+  const char* payload;
+  int payload_len;
+  
+  int remaining_len;
+  char* pkt_bytes;
+  int offset;
+  
+  pkt_id = msg->pkt_id;
+  topic = msg->msg_core->topic->buf;
+  topic_len = msg->msg_core->topic->len;
+  payload = msg->msg_core->payload->buf;
+  payload_len = msg->msg_core->payload->len;
+  
+  remaining_len = 2 + topic_len + payload_len;
+  if (qos != 0) {
+    remaining_len += 2;
+  }
+  
+  pkt_bytes = (char*) ts__malloc(remaining_len + 1 + 4); // 1 for first byte, 4 for bytes of remaining length
+  if (pkt_bytes == NULL) {
+    return NULL;
+  }
+  
+  pkt_bytes[0] = (0x03 << 4) | msg->flags;
+  offset = 1;
+  offset += tm_mqtt_conn__encode_remaining_length(remaining_len, pkt_bytes+1);
+  
+  uint162bytes_be(topic_len, pkt_bytes + offset);
+  offset += 2;
+  
+  memcpy(pkt_bytes+offset, topic, topic_len);
+  offset += topic_len;
+  
+  if (qos > 0) {
+    uint162bytes_be(pkt_id, pkt_bytes + offset);
+    offset += 2;
+  }
+  
+  memcpy(pkt_bytes + offset, payload, payload_len);
+  offset += payload_len;
+  
+  *len = offset;
+  return pkt_bytes;
+}
+
+int tm_mqtt_conn__on_subscribed_msg_in(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* msg) {
+  int err;
+  tm_server_t* s;
+  tm_mqtt_conn_t* conn;
+  char* pkt_bytes;
+  int pkt_bytes_len = 0;
+  const char* conn_id = ts_server__get_conn_remote_host(server, c);
+  conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
+  s = conn->server;
+  
+  tm_mqtt_session__add_out_msg(conn->session, msg);
+  
+  msg->pkt_id = conn->next_pkt_id;
+  conn->next_pkt_id++;
+  
+  pkt_bytes = tm_mqtt_conn__encode_msg(msg, &pkt_bytes_len);
+  if (pkt_bytes == NULL) {
+    LOG_ERROR("[%s] Out of memory", conn->session->client_id);
+    tm_mqtt_conn__abort(server, c);
+    return 0;
+  }
+  
+  err = tm_mqtt_conn__send_packet(server, c, pkt_bytes, pkt_bytes_len, msg->pkt_id, msg);
+  ts__free(pkt_bytes);
+  
+  if (err) {
+    LOG_ERROR("[%s] Failed to publish message to the client: %d", conn->session->client_id, err);
+    tm_mqtt_conn__abort(server, c);
+    return 0;
   }
   
   return 0;
