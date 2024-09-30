@@ -565,7 +565,7 @@ int ts_conn__start_timer(ts_tcp_conn_t* conn, int timeoutMS, int repeatMS) {
   return 0;
 }
 int ts_conn__stop_timer(ts_tcp_conn_t* conn) {
-  if (conn->timer && !uv_is_closing(conn->timer)) {
+  if (conn->timer && !uv_is_closing((uv_handle_t*)conn->timer)) {
     uv_timer_stop(conn->timer);
     uv_close((uv_handle_t*)conn->timer, uv_on_timer_close_cb);
   }
