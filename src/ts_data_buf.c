@@ -62,6 +62,19 @@ ts_buf_t* ts_buf__create(int cap) {
   
   return buf;
 }
+ts_buf_t* ts_buf__create_with_data(const char* data, int len) {
+  ts_buf_t* buf = ts_buf__create(len);
+  if (buf == NULL) {
+    return NULL;
+  }
+  
+  if (ts_buf__write(buf, data, len)) {
+    ts_buf__destroy(buf);
+    return NULL;
+  }
+  
+  return buf;
+}
 void ts_buf__destroy(ts_buf_t* buf) {
   if (buf) {
     if (buf->buf && buf->const_ref == 0) {

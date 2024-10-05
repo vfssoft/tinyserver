@@ -19,6 +19,7 @@ struct ts_ro_buf_s {
 };
 
 ts_buf_t* ts_buf__create(int cap);
+ts_buf_t* ts_buf__create_with_data(const char* data, int len);
 void ts_buf__destroy(ts_buf_t* buf);
 int ts_buf__set_length(ts_buf_t* buf, int len);
 int ts_buf__get_length(ts_buf_t* buf);
