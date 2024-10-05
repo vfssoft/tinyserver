@@ -125,29 +125,27 @@ static void uv_on_free_buffer(const uv_buf_t* buf) {
 static int ts_conn__send_tcp_data(ts_tcp_conn_t* conn, ts_buf_t* output) {
   int err = 0;
   ts_server_t* server = conn->listener->server;
+  
+  LOG_DEBUG("[%s] Send data: %d", conn->remote_addr, output->len);
 
-  if (output->len > 0) {
-    LOG_DEBUG("[%s] Send data: %d", conn->remote_addr, output->len);
+  ts_conn_write_req_t* write_req = ts_conn_write_req__create(conn, output->buf, output->len);
+  if (write_req == NULL) {
+    ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
+    goto done;
+  }
+  DL_APPEND(conn->write_reqs, write_req);
 
-    ts_conn_write_req_t* write_req = ts_conn_write_req__create(conn, output->buf, output->len);
-    if (write_req == NULL) {
-      ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
-      goto done;
-    }
-    DL_APPEND(conn->write_reqs, write_req);
+  err = uv_write((uv_write_t*)write_req, (uv_stream_t*)&conn->uvtcp, &write_req->buf, 1, uv_on_write);
+  if (err) {
+    ts_error__set_msg(&(conn->err), err, uv_strerror(err));
+    goto done;
+  }
 
-    err = uv_write((uv_write_t*)write_req, (uv_stream_t*)&conn->uvtcp, &write_req->buf, 1, uv_on_write);
-    if (err) {
-      ts_error__set_msg(&(conn->err), err, uv_strerror(err));
-      goto done;
-    }
+  ts_buf__set_length(output, 0); // reset the buf for reuse
 
-    ts_buf__set_length(output, 0); // reset the buf for reuse
-
-    done:
-    if (err) {
-      LOG_ERROR("[%s] Send data failed: %d %s", conn->remote_addr, conn->err.err, conn->err.msg);
-    }
+done:
+  if (err) {
+    LOG_ERROR("[%s] Send data failed: %d %s", conn->remote_addr, conn->err.err, conn->err.msg);
   }
 
   return err;
