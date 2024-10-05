@@ -4,16 +4,6 @@
 
 #include "ts_internal.h"
 
-struct ts_conn_write_req_s {
-    uv_write_t req;
-    uv_buf_t buf;
-    char* ptr;
-    
-    ts_tcp_conn_t* conn;
-    
-    ts_conn_write_req_t* prev;
-    ts_conn_write_req_t* next;
-};
 
 struct ts_tcp_conn_s {
     uv_tcp_t uvtcp;

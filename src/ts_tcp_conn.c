@@ -99,31 +99,13 @@ int ts_conn__destroy(ts_server_listener_t* listener, ts_tcp_conn_t* conn) {
   return 0;
 }
 
-static int ts_conn__init_write_req(ts_conn_write_req_t* req, ts_tcp_conn_t* conn, char* data, int len) {
-  req->ptr = (char*) ts__malloc(len);
-  if (req->ptr == NULL) {
-    return TS_ERR_OUT_OF_MEMORY;
-  }
-  memcpy(req->ptr, data, len);
-  
-  req->conn = conn;
-  req->buf = uv_buf_init(req->ptr, len);
-  DL_APPEND(conn->write_reqs, req);
-  
-  return 0;
-}
-static void ts_conn__destroy_write_req(ts_tcp_conn_t* conn, ts_conn_write_req_t* req) {
-  DL_DELETE(conn->write_reqs, req);
-  
-  ts__free(req->buf.base);
-  ts__free(req);
-}
-
 static void uv_on_write(uv_write_t *req, int status) {
   ts_conn_write_req_t* wr = (ts_conn_write_req_t*) req;
   ts_tcp_conn_t* conn = wr->conn;
   ts_server_t* server = conn->listener->server;
-  ts_conn__destroy_write_req(conn, wr);
+  
+  DL_DELETE(conn->write_reqs, wr);
+  ts_conn_write_req__destroy(wr);
   
   int has_pending_write_reqs = ts_conn__has_pending_write_reqs(conn);
   ts_server__internal_write_cb(server, conn, status, !has_pending_write_reqs);
@@ -147,16 +129,12 @@ static int ts_conn__send_tcp_data(ts_tcp_conn_t* conn, ts_buf_t* output) {
   if (output->len > 0) {
     LOG_DEBUG("[%s] Send data: %d", conn->remote_addr, output->len);
 
-    ts_conn_write_req_t* write_req = (ts_conn_write_req_t*) ts__malloc(sizeof(ts_conn_write_req_t));
+    ts_conn_write_req_t* write_req = ts_conn_write_req__create(conn, output->buf, output->len);
     if (write_req == NULL) {
       ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
       goto done;
     }
-
-    err = ts_conn__init_write_req(write_req, conn, output->buf, output->len);
-    if (err) {
-      goto done;
-    }
+    DL_APPEND(conn->write_reqs, write_req);
 
     err = uv_write((uv_write_t*)write_req, (uv_stream_t*)&conn->uvtcp, &write_req->buf, 1, uv_on_write);
     if (err) {
