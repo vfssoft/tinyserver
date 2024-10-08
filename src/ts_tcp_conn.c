@@ -118,13 +118,16 @@ static void ts_conn__write_req_destroy(ts_conn_write_req_t* req) {
 static void uv_on_write(uv_write_t *req, int status) {
   ts_conn_write_req_t* wr = (ts_conn_write_req_t*) req;
   void* write_ctx = wr->write_ctx;
+  BOOL internal_write_req = wr->internal;
   ts_tcp_conn_t* conn = wr->conn;
   ts_server_t* server = conn->listener->server;
   
   ts_conn__write_req_destroy(wr);
   
-  int has_pending_write_reqs = ts_conn__has_pending_write_reqs(conn);
-  ts_server__internal_write_cb(server, conn, status, !has_pending_write_reqs, write_ctx);
+  if (!internal_write_req) {
+    int has_pending_write_reqs = ts_conn__has_pending_write_reqs(conn);
+    ts_server__internal_write_cb(server, conn, status, !has_pending_write_reqs, write_ctx);
+  }
 }
 static void uv_on_alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
   // TODO: add mem pool

@@ -310,3 +310,110 @@ TEST_IMPL(ws_echo_10m_data) {
 TEST_IMPL(wss_echo_10m_data) {
   return tcp_server__echo_large_data_impl(TS_PROTO_WSS, 10 * 1024 * 1024);
 }
+
+typedef struct test_write_event_s {
+    int proto;
+    int data_block_size;
+    int block_count;
+    int client_done;
+    
+    int write_fired;
+} test_write_event_t;
+
+static void client_write_event_cb(void *arg) {
+  int err;
+  test_write_event_t* info = (test_write_event_t*)arg;
+  mytcp_t client;
+  mytcp__init_mutex();
+  mytcp__init(&client);
+  client.use_ssl = ts_use_ssl(info->proto);
+  client.use_ws = ts_use_websocket(info->proto);
+  err = mytcp__connect(&client, "127.0.0.1", 12345);
+  ASSERT_EQ(err, 0);
+  
+  int recv_count = 0;
+  int data_len = info->block_count * info->data_block_size;
+  char* recvbuf = (char*) malloc(data_len);
+  while (recv_count < data_len) {
+    err = mytcp__read(&client, recvbuf, data_len);
+    if (err <= 0) {
+      break;
+    } else {
+      recv_count += err;
+    }
+  }
+  ASSERT_EQ(recv_count, data_len);
+  
+  err = mytcp__disconnect(&client);
+  ASSERT_EQ(err, 0);
+  
+  info->client_done = 1;
+  free(recvbuf);
+}
+void server__write_event__connected_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status) {
+  test_write_event_t* info = (test_write_event_t*)ctx;
+  char* data = malloc(info->data_block_size);
+  for (int i = 0; i < info->block_count; i++) {
+    ts_server__write(server, conn, data, info->data_block_size, NULL);
+  }
+  free(data);
+}
+void server__write_event__write_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status, int can_write_more, void* write_ctx) {
+  test_write_event_t* info = (test_write_event_t*)ctx;
+  info->write_fired++;
+}
+static int server__write_event_impl(int proto, int data_block_size, int block_count) {
+  test_write_event_t info;
+  RESET_STRUCT(info);
+  info.proto = proto;
+  info.data_block_size = data_block_size;
+  info.block_count = block_count;
+  
+  ts_t* server = start_server(proto);
+  ts_callbacks_t cbs;
+  RESET_STRUCT(cbs);
+  cbs.connected_cb = server__write_event__connected_cb;
+  cbs.write_cb = server__write_event__write_cb;
+  cbs.ctx = &info;
+  ts_server__set_callbacks(server, &cbs);
+  
+  uv_thread_t client_thread;
+  uv_thread_create(&client_thread, client_write_event_cb, &info);
+  
+  int r = ts_server__start(server);
+  ASSERT_EQ(r, 0);
+  
+  while (info.client_done == 0) {
+    ts_server__run(server);
+  }
+  ASSERT_EQ(info.write_fired, block_count);
+  
+  ts_server__stop(server);
+  return 0;
+}
+
+TEST_IMPL(write_event_tcp_1b) {
+  return server__write_event_impl(TS_PROTO_TCP, 1, 1);
+}
+TEST_IMPL(write_event_tls_1b) {
+  return server__write_event_impl(TS_PROTO_TLS, 1, 1);
+}
+TEST_IMPL(write_event_ws_1b) {
+  return server__write_event_impl(TS_PROTO_WS, 1, 1);
+}
+TEST_IMPL(write_event_wss_1b) {
+  return server__write_event_impl(TS_PROTO_WSS, 1, 1);
+}
+
+TEST_IMPL(write_event_tcp_1b_10) {
+  return server__write_event_impl(TS_PROTO_TCP, 1, 10);
+}
+TEST_IMPL(write_event_tls_1b_10) {
+  return server__write_event_impl(TS_PROTO_TLS, 1, 10);
+}
+TEST_IMPL(write_event_ws_1b_10) {
+  return server__write_event_impl(TS_PROTO_WS, 1, 10);
+}
+TEST_IMPL(write_event_wss_1b_10) {
+  return server__write_event_impl(TS_PROTO_WSS, 1, 10);
+}
