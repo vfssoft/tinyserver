@@ -180,12 +180,7 @@ done:
 int ts_server__write(ts_t* s, ts_conn_t* conn, const char* data, int len) {
   int err;
   ts_server_t* server = (ts_server_t*) s;
-  ts_buf_t* buf = ts_buf__create(0);
-  ts_buf__set(buf, data, len); // PERFORMANCE: improve it, copying data each time is BAD.
-
-  err = ts_conn__send_data(conn, buf);
-
-  ts_buf__destroy(buf);
+  err = ts_conn__send_data(conn, data, len);
   return err;
 }
 int ts_server__disconnect(ts_t* s, ts_conn_t* c) {

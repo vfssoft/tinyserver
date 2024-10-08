@@ -500,7 +500,7 @@ int ts_conn__tcp_connected(ts_tcp_conn_t* conn) {
   
   return 0;
 }
-int ts_conn__send_data(ts_tcp_conn_t* conn, ts_buf_t* input) {
+int ts_conn__send_data(ts_tcp_conn_t* conn, const char* data, int data_len) {
   int err = 0;
   ts_server_listener_t* listener = conn->listener;
   ts_server_t* server = listener->server;
@@ -513,7 +513,7 @@ int ts_conn__send_data(ts_tcp_conn_t* conn, ts_buf_t* input) {
     goto done;
   }
   used_buf = ts_conn_write_req__used_buf(write_req);
-  err = ts_buf__set(used_buf, input->buf, input->len);
+  err = ts_buf__set(used_buf, data, data_len);
   if (err) {
     ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
     goto done;
@@ -528,9 +528,6 @@ int ts_conn__send_data(ts_tcp_conn_t* conn, ts_buf_t* input) {
   }
 
 done:
-  if (err == 0) {
-    ts_buf__set_length(input, 0);
-  }
   if (err) {
     ts_conn__write_req_destroy(write_req);
   }
