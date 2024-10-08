@@ -10,6 +10,16 @@
 #include <internal/ts_data_buf.h>
 
 typedef struct tm_mqtt_conn_s tm_mqtt_conn_t;
+typedef struct tm_inflight_packet_s tm_inflight_packet_t;
+
+struct tm_inflight_packet_s {
+  int pkt_id;
+  tm_mqtt_msg_t* msg;
+  int pkt_type;
+  
+  tm_inflight_packet_t* prev;
+  tm_inflight_packet_t* next;
+};
 
 struct tm_mqtt_conn_s {
   int keep_alive;
@@ -20,6 +30,7 @@ struct tm_mqtt_conn_s {
   tm_mqtt_session_t* session;
     
   tm_server_t* server;
+  tm_inflight_packet_t* inflight_pkts;
   
   ts_buf_t* in_buf;
   tm_packet_decoder_t decoder;
@@ -45,7 +56,7 @@ int tm_mqtt_conn__process_pingreq(ts_t* server, ts_conn_t* c);
 int tm_mqtt_conn__process_disconnect(ts_t* server, ts_conn_t* c);
 int tm_mqtt_conn__process_tcp_disconnect(ts_t* server, ts_conn_t* c);
 
-void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_write_more);
+void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_write_more, void* write_ctx);
 
 void tm_mqtt_conn__timer_cb(ts_t* server, ts_conn_t* c);
 

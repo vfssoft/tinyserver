@@ -13,7 +13,7 @@ int tm_mqtt_conn__process_pingreq(ts_t* server, ts_conn_t* c) {
   
   char pingresp[] = { 0xD0, 0 };
   
-  err = ts_server__write(server, c, pingresp, 2, NULL); // No need to call tm_mqtt_conn__send_packet()
+  err = tm_mqtt_conn__send_packet(server, c, pingresp, 2, -1, NULL);
   if (err) {
     LOG_ERROR("[%s] Send PINGRESP failed: %d", conn_id, err);
     tm_mqtt_conn__abort(server, c);

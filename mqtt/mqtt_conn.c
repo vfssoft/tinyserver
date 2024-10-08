@@ -25,6 +25,7 @@ tm_mqtt_conn_t* tm_mqtt_conn__create(tm_server_t* s, ts_conn_t* c) {
   ts_error__init(&(s->err));
 
   conn->server = s;
+  conn->inflight_pkts = NULL;
   
   conn->next_recv_time = ts_server__now(s->server) + 5000;
   ts_server__set_conn_user_data(s->server, c, conn);
@@ -63,14 +64,43 @@ int tm_mqtt_conn__destroy(ts_t* server, ts_conn_t* c) {
 void tm_mqtt_conn__abort(ts_t* server, ts_conn_t* c) {
   ts_server__disconnect(server, c);
 }
+
+static tm_inflight_packet_t* tm_mqtt_conn__inflight_packet_create(tm_mqtt_conn_t* conn, int pkt_id, tm_mqtt_msg_t* msg, int pkt_type) {
+  tm_inflight_packet_t* pkt;
+  
+  pkt = (tm_inflight_packet_t*) ts__malloc(sizeof(tm_inflight_packet_t));
+  if (pkt == NULL) {
+    return NULL;
+  }
+  pkt->pkt_id = pkt_id;
+  pkt->msg = msg;
+  pkt->pkt_type = pkt_type;
+  
+  DL_APPEND(conn->inflight_pkts, pkt);
+  return pkt;
+}
+static void tm_mqtt_conn__inflight_packet_destroy(tm_mqtt_conn_t* conn, tm_inflight_packet_t* pkt) {
+  DL_DELETE(conn->inflight_pkts, pkt);
+  ts__free(pkt);
+}
 int tm_mqtt_conn__send_packet(ts_t* server, ts_conn_t* c, const char* data, int len, int pkt_id, tm_mqtt_msg_t* msg) {
   int err;
+  tm_inflight_packet_t* inflight_pkt;
   tm_mqtt_conn_t* conn;
-  const char* conn_id = ts_server__get_conn_remote_host(server, c);
+  //const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   
-  return ts_server__write(server, c, data, len, NULL);
+  if (pkt_id > 0 && msg != NULL) {
+    inflight_pkt = tm_mqtt_conn__inflight_packet_create(conn, pkt_id, msg, (data[0] >> 4));
+    if (inflight_pkt == NULL) {
+      return TS_ERR_OUT_OF_MEMORY;
+    }
+  } else {
+    inflight_pkt = NULL;
+  }
+  
+  return ts_server__write(server, c, data, len, inflight_pkt);
 }
 
 
@@ -197,19 +227,23 @@ done:
   return;
 }
 
-void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_write_more) {
+void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_write_more, void* write_ctx) {
   int err;
   tm_mqtt_conn_t* conn;
   tm_mqtt_msg_t* msg;
+  tm_inflight_packet_t* inflight_pkt;
   const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
+  inflight_pkt = (tm_inflight_packet_t*) write_ctx;
   
   if (status != 0) {
     LOG_ERROR("[%s] Write failed: %d %s, abort the connection", conn_id, status, uv_strerror(status));
     // TODO: mark the fail state
     tm_mqtt_conn__abort(server, c);
   }
+
+  tm_mqtt_conn__inflight_packet_destroy(conn, inflight_pkt);
 }
 
 void tm_mqtt_conn__timer_cb(ts_t* server, ts_conn_t* c) {
