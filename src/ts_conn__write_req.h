@@ -8,6 +8,7 @@
 struct ts_conn_write_req_s {
     uv_write_t req;
     uv_buf_t uvbuf;
+    void* write_ctx;
     
     ts_buf_t*            inter_bufs[2];
     int                  internal;
@@ -16,7 +17,7 @@ struct ts_conn_write_req_s {
     ts_conn_write_req_t* next;
 };
 
-ts_conn_write_req_t* ts_conn_write_req__create(ts_tcp_conn_t* conn, BOOL internal);
+ts_conn_write_req_t* ts_conn_write_req__create(ts_tcp_conn_t* conn, BOOL internal, void* write_ctx);
 int ts_conn_write_req__destroy(ts_conn_write_req_t* req);
 
 void ts_conn_write_req__switch_buf(ts_conn_write_req_t* req);

@@ -51,7 +51,7 @@ struct ts_server_s {
 void ts_server__internal_connected_cb(ts_server_t* server, ts_conn_t* conn, int status);
 void ts_server__internal_disconnected_cb(ts_server_t* server, ts_conn_t* conn, int status);
 void ts_server__internal_read_cb(ts_server_t* server, ts_conn_t* conn, const char* data, int len);
-void ts_server__internal_write_cb(ts_server_t* server, ts_conn_t* conn, int status, int can_write_more);
+void ts_server__internal_write_cb(ts_server_t* server, ts_conn_t* conn, int status, int can_write_more, void* write_ctx);
 void ts_server__internal_idle_cb(ts_server_t* server);
 void ts_server__internal_timer_cb(ts_server_t* server, ts_conn_t* conn);
 void ts_server__internal_log_cb(ts_server_t* server, const char* msg);

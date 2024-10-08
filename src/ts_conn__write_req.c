@@ -1,6 +1,6 @@
 #include "ts_conn__write_req.h"
 
-ts_conn_write_req_t* ts_conn_write_req__create(ts_tcp_conn_t* conn, BOOL internal) {
+ts_conn_write_req_t* ts_conn_write_req__create(ts_tcp_conn_t* conn, BOOL internal, void* write_ctx) {
   ts_conn_write_req_t* req;
   
   req = (ts_conn_write_req_t*) ts__malloc(sizeof(ts_conn_write_req_t));
@@ -16,6 +16,7 @@ ts_conn_write_req_t* ts_conn_write_req__create(ts_tcp_conn_t* conn, BOOL interna
   
   req->conn = conn;
   req->internal = internal;
+  req->write_ctx = write_ctx;
   
   return req;
 }

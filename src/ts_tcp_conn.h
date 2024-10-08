@@ -30,7 +30,7 @@ struct ts_tcp_conn_s {
 int ts_conn__init(ts_server_listener_t* listener, ts_tcp_conn_t* conn);
 int ts_conn__destroy(ts_server_listener_t* listener, ts_tcp_conn_t* conn);
 int ts_conn__tcp_connected(ts_tcp_conn_t* conn);
-int ts_conn__send_data(ts_tcp_conn_t* conn, const char* data, int data_len);
+int ts_conn__send_data(ts_tcp_conn_t* conn, const char* data, int data_len, void* write_ctx);
 int ts_conn__close(ts_tcp_conn_t* conn, uv_close_cb cb);
 
 int ts_conn__has_pending_write_reqs(ts_tcp_conn_t* conn);

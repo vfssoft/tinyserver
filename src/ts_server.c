@@ -177,10 +177,10 @@ done:
 
   return err;
 }
-int ts_server__write(ts_t* s, ts_conn_t* conn, const char* data, int len) {
+int ts_server__write(ts_t* s, ts_conn_t* conn, const char* data, int len, void* write_ctx) {
   int err;
-  ts_server_t* server = (ts_server_t*) s;
-  err = ts_conn__send_data(conn, data, len);
+  //ts_server_t* server = (ts_server_t*) s;
+  err = ts_conn__send_data(conn, data, len, write_ctx);
   return err;
 }
 int ts_server__disconnect(ts_t* s, ts_conn_t* c) {
@@ -266,9 +266,9 @@ void ts_server__internal_read_cb(ts_server_t* server, ts_conn_t* conn, const cha
     server->callbacks.read_cb(server->callbacks.ctx, server, conn, data, len);
   }
 }
-void ts_server__internal_write_cb(ts_server_t* server, ts_conn_t* conn, int status, int can_write_more) {
+void ts_server__internal_write_cb(ts_server_t* server, ts_conn_t* conn, int status, int can_write_more, void* write_ctx) {
   if (server->callbacks.write_cb) {
-    server->callbacks.write_cb(server->callbacks.ctx, server, conn, status, can_write_more);
+    server->callbacks.write_cb(server->callbacks.ctx, server, conn, status, can_write_more, write_ctx);
   }
 }
 void ts_server__internal_idle_cb(ts_server_t* server) {

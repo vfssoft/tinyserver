@@ -45,9 +45,9 @@ static void read_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, const char*
   info->read_fired++;
   memcpy(info->databuf, data, len);
 
-  ts_server__write(server, conn, data, len);
+  ts_server__write(server, conn, data, len, NULL);
 }
-static void write_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status, int write_more) {
+static void write_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status, int write_more, void* write_ctx) {
   test_conn_info_t* info = (test_conn_info_t*)ctx;
   info->write_fired++;
 }
@@ -225,7 +225,7 @@ static int echo_read_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, const c
   info->recv_buf_off += len;
 
   if (info->recv_buf_off >= info->to_recv) {
-    ts_server__write(server, conn, info->recv_buf, info->recv_buf_off);
+    ts_server__write(server, conn, info->recv_buf, info->recv_buf_off, NULL);
   }
 
   return 0;
