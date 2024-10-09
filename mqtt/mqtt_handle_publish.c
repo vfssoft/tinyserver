@@ -14,6 +14,11 @@ static int tm_mqtt_conn__send_pubrec(ts_t* server, ts_conn_t* c, int pkt_id, tm_
   uint162bytes_be(pkt_id, pubrec+2);
   return tm_mqtt_conn__send_packet(server, c, pubrec, 4, pkt_id, msg);
 }
+static int tm_mqtt_conn__send_pubrel(ts_t* server, ts_conn_t* c, int pkt_id, tm_mqtt_msg_t* msg) {
+  char pubrel[4] = { 0x62, 0x02, 0x00, 0x00 };
+  uint162bytes_be(pkt_id, pubrel+2);
+  return tm_mqtt_conn__send_packet(server, c, pubrel, 4, pkt_id, msg);
+}
 static int tm_mqtt_conn__send_pubcomp(ts_t* server, ts_conn_t* c, int pkt_id, tm_mqtt_msg_t* msg) {
   char pubcomp[4] = { 0x70, 0x02, 0x00, 0x00 };
   uint162bytes_be(pkt_id, pubcomp+2);
@@ -171,7 +176,12 @@ int tm_mqtt_conn__process_pubrec(ts_t* server, ts_conn_t* c, const char* pkt_byt
   }
   
   tm_mqtt_conn__update_msg_state(server, c, msg);
-  // TODO:
+  err = tm_mqtt_conn__send_pubrel(server, c, pkt_id, msg);
+  if (err) {
+    LOG_ERROR("[%s] Failed to send PUBREL", conn_id);
+    tm_mqtt_conn__abort(server, c);
+    goto done;
+  }
   
 done:
   return 0;
@@ -239,7 +249,7 @@ int tm_mqtt_conn__process_pubcomp(ts_t* server, ts_conn_t* c, const char* pkt_by
   }
   
   msg = tm_mqtt_session__find_out_msg(conn->session, pkt_id);
-  if (msg == NULL || tm_mqtt_msg__qos(msg) != 2 || tm_mqtt_msg__get_state(msg) != MSG_STATE_WAIT_PUBREC) {
+  if (msg == NULL || tm_mqtt_msg__qos(msg) != 2 || tm_mqtt_msg__get_state(msg) != MSG_STATE_WAIT_PUBCOMP) {
     LOG_ERROR("[%s] Invalid Packet id", conn_id);
     tm_mqtt_conn__abort(server, c);
     goto done;

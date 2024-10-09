@@ -383,7 +383,7 @@ int tm__on_publish_received(tm_server_t* s, ts_conn_t* c, tm_mqtt_msg_t* msg) {
   msg_qos = tm_mqtt_msg__qos(msg);
   
   LOG_VERB(
-      "[%s] received a message: id=%" PRIu64 "topic=%s, qos=%d, retain=%d, dup=%d payloadlen=%d",
+      "[%s] received a message: id=%" PRIu64 ", topic=%s, qos=%d, retain=%d, dup=%d payloadlen=%d",
       conn_id,
       tm_mqtt_msg__id(msg),
       msg_topic,

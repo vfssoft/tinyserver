@@ -234,6 +234,10 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
   tm_inflight_packet_t* inflight_pkt;
   const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
+  if (write_ctx == NULL) {
+    return;
+  }
+  
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   inflight_pkt = (tm_inflight_packet_t*) write_ctx;
   
@@ -241,6 +245,28 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
     LOG_ERROR("[%s] Write failed: %d %s, abort the connection", conn_id, status, uv_strerror(status));
     // TODO: mark the fail state
     tm_mqtt_conn__abort(server, c);
+  } else {
+    switch (inflight_pkt->pkt_type) {
+      case PKT_TYPE_PUBLISH:
+        tm_mqtt_conn__update_msg_state(server, c, inflight_pkt->msg);
+        break;
+        
+      case PKT_TYPE_PUBACK:
+        tm_mqtt_conn__update_msg_state(server, c, inflight_pkt->msg);
+        break;
+  
+      case PKT_TYPE_PUBREC:
+        tm_mqtt_conn__update_msg_state(server, c, inflight_pkt->msg);
+        break;
+  
+      case PKT_TYPE_PUBREL:
+        tm_mqtt_conn__update_msg_state(server, c, inflight_pkt->msg);
+        break;
+  
+      case PKT_TYPE_PUBCOMP:
+        tm_mqtt_conn__update_msg_state(server, c, inflight_pkt->msg);
+        break;
+    }
   }
 
   tm_mqtt_conn__inflight_packet_destroy(conn, inflight_pkt);
@@ -285,8 +311,14 @@ int tm_mqtt_conn__update_msg_state(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* ms
   LOG_DEBUG_EX("[%s] Update message state: %d -> %d", conn_id, old_state, new_state);
   
   if (new_state == MSG_STATE_DONE) {
-    tm_mqtt_session__remove_in_msg(conn->session, msg);
-    tm__on_publish_received(conn->server, c, msg);
+    if (old_state == MSG_STATE_TO_PUBLISH/*qos=0*/ || old_state == MSG_STATE_WAIT_PUBACK || old_state == MSG_STATE_WAIT_PUBCOMP) {
+      tm_mqtt_session__remove_out_msg(conn->session, msg);
+    } else if (old_state == MSG_STATE_RECEIVE_PUB/*qos=0*/ || old_state == MSG_STATE_SEND_PUBACK || old_state == MSG_STATE_SEND_PUBCOMP) {
+      tm_mqtt_session__remove_in_msg(conn->session, msg);
+      tm__on_publish_received(conn->server, c, msg);
+    } else {
+      assert(0);
+    }
   }
   
   return 0;
