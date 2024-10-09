@@ -103,7 +103,7 @@ int mymqtt__init(mymqtt_t* c, int proto, const char* client_id) {
   return 0;
 }
 void mymqtt__destroy(mymqtt_t* c) {
-  MQTTClient_destroy(c->client);
+  MQTTClient_destroy(&c->client);
 }
 
 void mymqtt__set_user(mymqtt_t* c, const char* user) {
@@ -114,6 +114,19 @@ void mymqtt__set_password(mymqtt_t* c, const char* password) {
 }
 void mymqtt__set_keep_alive(mymqtt_t* c, int keep_alive) {
   c->options.keepAliveInterval = keep_alive;
+}
+void mymqtt__set_will(mymqtt_t* c, const char* topic, int qos, const char* payload, int payload_len, int retain) {
+  MQTTClient_willOptions willOptions = MQTTClient_willOptions_initializer;
+  willOptions.topicName = strdup(topic);
+  willOptions.message = NULL;
+  willOptions.qos = qos;
+  willOptions.retained = retain;
+  willOptions.payload.data = malloc(payload_len);
+  memcpy(willOptions.payload.data, payload, payload_len);
+  willOptions.payload.len = payload_len;
+  
+  c->options.will = malloc(sizeof(MQTTClient_willOptions));
+  memcpy(c->options.will, &willOptions, sizeof(MQTTClient_willOptions));
 }
 
 int mymqtt__sp(mymqtt_t* c) {

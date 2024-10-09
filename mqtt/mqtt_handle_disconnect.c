@@ -38,7 +38,7 @@ int tm_mqtt_conn__process_tcp_disconnect(ts_t* server, ts_conn_t* c) {
   
   if (conn->will) {
     LOG_VERB("[%s] Client is disconnected abnormally, publish the Will message silently", conn_id);
-    // TODO: publish Will message
+    tm__on_publish_received(conn->server, c, conn->will);
     tm__remove_message(s, conn->will);
     conn->will = NULL;
   }

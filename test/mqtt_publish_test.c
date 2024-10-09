@@ -230,3 +230,96 @@ TEST_IMPL(mqtt_basic_pub_recv_qos2_tcp) {
       "topic", 2
   );
 }
+
+typedef struct {
+    int proto;
+    char client_id[128];
+    char topic[128];
+    int qos;
+    char* payload;
+    int payload_len;
+    int retain;
+    int disconnect_abnormal;
+    int done;
+} test_client_will_info_t;
+static void mqtt_client_with_will_cb(void *arg) {
+  int err;
+  test_client_will_info_t* info = (test_client_will_info_t*) arg;
+  mymqtt_t client;
+  mymqtt__init(&client, info->proto, info->client_id);
+  
+  mymqtt__set_keep_alive(&client, 1);
+  mymqtt__set_will(&client, info->topic, info->qos, info->payload, info->payload_len, info->retain);
+  
+  err = mymqtt__connect(&client);
+  ASSERT_EQ(err, 0);
+  
+  if (info->disconnect_abnormal) {
+    // invalid topic will cause the server disconnect us
+    mymqtt__subscribe(&client, "###", 1);
+  } else {
+    err = mymqtt__disconnect(&client);
+    ASSERT_EQ(err, 0);
+  }
+  
+  info->done = 1;
+}
+static int mqtt_connect_with_will_msg(tm_t* server, int proto, const char* topic, int qos, char* payload, int payload_len, int retain, int disconnect_abnormal) {
+  test_client_will_info_t info;
+  RESET_STRUCT(info);
+  info.proto = proto;
+  strcpy(info.client_id, "test_will_client_id");
+  strcpy(info.topic, topic);
+  info.qos = qos;
+  info.payload_len = payload_len;
+  info.payload = payload;
+  info.retain = retain;
+  info.disconnect_abnormal = disconnect_abnormal;
+  
+  uv_thread_t publisher_thread;
+  uv_thread_create(&publisher_thread, mqtt_client_with_will_cb, (void*)&info);
+  while (info.done == 0) { tm__run(server); }
+  uv_thread_join(&publisher_thread);
+  return 0;
+}
+static int mqtt_basic_will_msg_impl(int proto, int disconnect_abnormal) {
+  test_client_subscriber_info_t* subscriber_info;
+  uv_thread_t subscriber_thread;
+  
+  const char* will_topic = "will_topic";
+  const char* payload = "hello will";
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, NULL);
+  
+  server = start_mqtt_server(proto, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, will_topic, 1, 10000);
+  
+  mqtt_connect_with_will_msg(server, proto, will_topic, 1, payload, strlen(payload), 0, disconnect_abnormal);
+  
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+  
+  tm__stop(server);
+  
+  if (disconnect_abnormal) {
+    ASSERT_EQ(subscriber_info->msgs_count, 1);
+    mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
+    ASSERT_STR_EQ(msg->topic, will_topic);
+    ASSERT_EQ(msg->qos, 1);
+    ASSERT_STR_EQ(payload, (char*)msg->payload);
+  } else {
+    ASSERT_EQ(subscriber_info->msgs_count, 0);
+  }
+  
+  return 0;
+}
+TEST_IMPL(mqtt_not_pub_will_if_client_disconnect_normally) {
+  return mqtt_basic_will_msg_impl(TS_PROTO_TCP, 0);
+}
+TEST_IMPL(mqtt_pub_will_if_client_disconnect_abnormally) {
+  return mqtt_basic_will_msg_impl(TS_PROTO_TCP, 1);
+}

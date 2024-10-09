@@ -31,6 +31,7 @@ void mymqtt__destroy(mymqtt_t* c);
 void mymqtt__set_user(mymqtt_t* c, const char* user);
 void mymqtt__set_password(mymqtt_t* c, const char* password);
 void mymqtt__set_keep_alive(mymqtt_t* c, int keep_alive);
+void mymqtt__set_will(mymqtt_t* c, const char* topic, int qos, const char* payload, int payload_len, int retain);
 
 int mymqtt__sp(mymqtt_t* c);
 int mymqtt__recv_msg_count(mymqtt_t* c);

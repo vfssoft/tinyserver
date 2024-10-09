@@ -159,6 +159,9 @@ TEST_DECLARE(mqtt_basic_pub_recv_qos0_tcp)
 TEST_DECLARE(mqtt_basic_pub_recv_qos1_tcp)
 TEST_DECLARE(mqtt_basic_pub_recv_qos2_tcp)
 
+TEST_DECLARE(mqtt_not_pub_will_if_client_disconnect_normally)
+TEST_DECLARE(mqtt_pub_will_if_client_disconnect_abnormally)
+
 TEST_LIST_START
         TEST_ENTRY(invalid_local_host, "Error")
         TEST_ENTRY(invalid_local_host_2, "Error")
@@ -311,6 +314,9 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_basic_pub_recv_qos0_tcp, "MQTT")
         TEST_ENTRY(mqtt_basic_pub_recv_qos1_tcp, "MQTT")
         TEST_ENTRY(mqtt_basic_pub_recv_qos2_tcp, "MQTT")
+
+        TEST_ENTRY(mqtt_not_pub_will_if_client_disconnect_normally, "MQTT")
+        TEST_ENTRY(mqtt_pub_will_if_client_disconnect_abnormally, "MQTT")
 TEST_LIST_END
 
 #endif //TINYSERVER_TEST_LIST_H

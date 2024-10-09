@@ -262,6 +262,10 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   
   tm__internal_connected_cb(s, c);
   
+  if (conn->will) {
+    tm__internal_msg_cb(conn->server, conn, conn->will, MSG_STATE_RECEIVE_PUB, MSG_STATE_DONE);
+  }
+  
 done:
   
   if (username) {
