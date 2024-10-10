@@ -310,7 +310,8 @@ static int mqtt_basic_will_msg_impl(int proto, int disconnect_abnormal) {
     mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
     ASSERT_STR_EQ(msg->topic, will_topic);
     ASSERT_EQ(msg->qos, 1);
-    ASSERT_STR_EQ(payload, (char*)msg->payload);
+    ASSERT_MEM_EQ(payload, (char*)msg->payload, msg->payload_len);
+    ASSERT_EQ(msg->retained, 0);
   } else {
     ASSERT_EQ(subscriber_info->msgs_count, 0);
   }
