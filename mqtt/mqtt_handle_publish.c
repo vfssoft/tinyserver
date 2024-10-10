@@ -34,6 +34,7 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
   int tmp_len, pkt_id = 0;
   char topic[65536];
   char first_byte = pkt_bytes[0];
+  int dup = (pkt_bytes[0] & 0x08) == 0x08;
   int qos = (pkt_bytes[0] & 0x06) >> 1;
   tm_mqtt_msg_t* msg;
   const char* conn_id = ts_server__get_conn_remote_host(server, c);
@@ -46,6 +47,11 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
 
   if (!tm__is_valid_qos(qos)) {
     LOG_ERROR("[%s] Invalid QoS", conn_id);
+    tm_mqtt_conn__abort(server, c);
+    goto done;
+  }
+  if (qos == 0 && dup) {
+    LOG_ERROR("[%s] Invalid DUP flag with the QoS is 0", conn_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
@@ -72,7 +78,7 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
       s,
       topic,
       tm_packet_decoder__ptr(decoder), tm_packet_decoder__available(decoder),
-      (first_byte & 0x08) == 0x08, qos, (first_byte & 0x01) == 0x01
+      dup, qos, (first_byte & 0x01) == 0x01
   );
   if (msg == NULL) {
     LOG_ERROR("[%s] Out of memory", conn_id);

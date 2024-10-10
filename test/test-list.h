@@ -109,6 +109,8 @@ TEST_DECLARE(mqtt_empty_unsubscribe)
 TEST_DECLARE(mqtt_unsubscribe_invalid_reserved)
 TEST_DECLARE(mqtt_unsubscribe_invalid_topic)
 TEST_DECLARE(mqtt_unsubscribe_zero_pkt_id)
+TEST_DECLARE(mqtt_publish_qos3)
+TEST_DECLARE(mqtt_publish_qos0_with_dup)
 
 TEST_DECLARE(mqtt_conn_ack_sp_false_test)
 TEST_DECLARE(mqtt_conn_ack_sp_true_test)
@@ -266,6 +268,8 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_unsubscribe_invalid_reserved, "MQTT")
         TEST_ENTRY(mqtt_unsubscribe_invalid_topic, "MQTT")
         TEST_ENTRY(mqtt_unsubscribe_zero_pkt_id, "MQTT")
+        TEST_ENTRY(mqtt_publish_qos3, "MQTT")
+        TEST_ENTRY(mqtt_publish_qos0_with_dup, "MQTT")
         
         TEST_ENTRY(mqtt_conn_ack_sp_false_test, "MQTT")
         TEST_ENTRY(mqtt_conn_ack_sp_true_test, "MQTT")

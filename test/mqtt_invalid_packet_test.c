@@ -523,3 +523,19 @@ TEST_IMPL(mqtt_unsubscribe_zero_pkt_id) {
   return mqtt_invalid_second_packet_imp(unsub, strlen(hex)/2);
 }
 
+TEST_IMPL(mqtt_publish_qos3) {
+  const char* hex = "3618000a77696c6c5f746f706963000168656c6c6f2077696c6c";
+  unsigned char pub[32];
+  decode_hex(hex, pub);
+  return mqtt_invalid_second_packet_imp(pub, strlen(hex)/2);
+}
+
+TEST_IMPL(mqtt_publish_qos0_with_dup) {
+  const char* hex = "380800016168656c6c6f";
+  unsigned char pub[32];
+  decode_hex(hex, pub);
+  return mqtt_invalid_second_packet_imp(pub, strlen(hex)/2);
+}
+
+
+
