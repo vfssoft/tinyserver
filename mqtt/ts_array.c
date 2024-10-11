@@ -36,11 +36,13 @@ int ts_ptr_arr__get_count(ts_ptr_arr_t* arr) {
 }
 
 void* ts_ptr_arr__at(ts_ptr_arr_t* arr, int idx) {
-  return (void*)(arr->ptrs + (idx * SIZE_OF_PTR));
+  void* ptr;
+  memcpy(&ptr, (void*)(arr->ptrs + (idx * SIZE_OF_PTR)), SIZE_OF_PTR);
+  return ptr;
 }
 void ts_ptr_arr__set(ts_ptr_arr_t* arr, int idx, void* ptr) {
   void* p = (void*)(arr->ptrs + (idx * SIZE_OF_PTR));
-  memcpy(p, ptr, SIZE_OF_PTR);
+  memcpy(p, &ptr, SIZE_OF_PTR);
 }
 
 int ts_ptr_arr__append(ts_ptr_arr_t* arr, void* ptr) {
