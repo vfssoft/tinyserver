@@ -300,7 +300,7 @@ static int tm_topic_node__get_retained_msgs(tm_topic_node_t* n, BOOL include_chi
   
   return 0;
 }
-static int tm_topic_node__insert_retain_msg(tm_topic_node_t* n, const char* topic, tm_mqtt_msg_t* msg) {
+static int tm_topic_node__insert_retain_msg(tm_topic_node_t* n, const char* topic, tm_mqtt_msg_t* msg, tm_mqtt_msg_t** removed_retained_msg) {
   int err;
   tm_topic_node_t* child = NULL;
   
@@ -308,10 +308,12 @@ static int tm_topic_node__insert_retain_msg(tm_topic_node_t* n, const char* topi
   if (err) {
     return err;
   }
+
+  if (removed_retained_msg) *removed_retained_msg = child->retained_msg;
   child->retained_msg = msg;
   return 0;
 }
-static int tm_topic_node__remove_retain_msg(tm_topic_node_t* n, const char* topic) {
+static int tm_topic_node__remove_retain_msg(tm_topic_node_t* n, const char* topic, tm_mqtt_msg_t** removed_retained_msg) {
   int err;
   tm_topic_node_t* child = NULL;
   
@@ -321,8 +323,8 @@ static int tm_topic_node__remove_retain_msg(tm_topic_node_t* n, const char* topi
   }
   n = child;
 
+  if (removed_retained_msg) *removed_retained_msg = n->retained_msg;
   if (n->retained_msg) {
-    // TODO: free the message if no reference to it
     n->retained_msg = NULL;
   } else {
     return TS_ERR_NOT_FOUND; // no topic found
@@ -454,14 +456,14 @@ int tm_topics__subscribers_free(tm_subscribers_t* subscribers) {
   return 0;
 }
 
-int tm_topics__retain_msg(tm_topics_t* t, tm_mqtt_msg_t* msg) {
+int tm_topics__retain_msg(tm_topics_t* t, tm_mqtt_msg_t* msg, tm_mqtt_msg_t** removed_retained_msg) {
   int err;
   ts_mutex__lock(&(t->mu));
   
   if (msg->msg_core->payload->len == 0) { // remove retained message
-    err = tm_topic_node__remove_retain_msg(&(t->root), msg->msg_core->topic->buf);
+    err = tm_topic_node__remove_retain_msg(&(t->root), msg->msg_core->topic->buf, removed_retained_msg);
   } else {
-    err = tm_topic_node__insert_retain_msg(&(t->root), msg->msg_core->topic->buf, msg);
+    err = tm_topic_node__insert_retain_msg(&(t->root), msg->msg_core->topic->buf, msg, removed_retained_msg);
   }
   
   if (err) {

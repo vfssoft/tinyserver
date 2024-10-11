@@ -54,12 +54,10 @@ int tm_topics__unsubscribe(tm_topics_t* t, const char* topic, void* subscriber);
 int tm_topics__subscribers(tm_topics_t* t, const char* topic, char qos, tm_subscribers_t** subscribers);
 int tm_topics__subscribers_free(tm_subscribers_t* subscribers);
 
-int tm_topics__retain_msg(tm_topics_t* t, tm_mqtt_msg_t* msg);
+int tm_topics__retain_msg(tm_topics_t* t, tm_mqtt_msg_t* msg, tm_mqtt_msg_t** removed_retained_msg);
 int tm_topics__get_retained_msgs(tm_topics_t* t, const char* topic, ts_ptr_arr_t* retained_msgs);
 
 int tm_topics__valid_topic_filter(const char* topic, int topic_len, ts_error_t* err);
 int tm_topics__valid_topic_name(const char* topic, int topic_len, ts_error_t* err);
-
-//TODO: Retain messages
 
 #endif //TINYSERVER_MQTT_TOPICS_H

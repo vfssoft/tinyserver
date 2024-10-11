@@ -324,9 +324,11 @@ TEST_IMPL(mqtt_retain_msg_test) {
   int err;
   tm_topics_t* topics = tm_topics__create();
   tm_mqtt_msg_t* msg = create_retain_msg("A/B/C");
+  tm_mqtt_msg_t* removed_msg = NULL;
   
-  err = tm_topics__retain_msg(topics, msg);
+  err = tm_topics__retain_msg(topics, msg, &removed_msg);
   ASSERT_EQ(err, 0);
+  ASSERT_NULL(removed_msg);
   
   ts_ptr_arr_t* retained_msgs = ts_ptr_arr__create(1);
   err = tm_topics__get_retained_msgs(topics, "A/B/C", retained_msgs);
@@ -342,12 +344,17 @@ TEST_IMPL(mqtt_retain_msg_update_test) {
   tm_mqtt_msg_t* old_msg = create_retain_msg("A/B/C");
   tm_mqtt_msg_t* new_msg = create_retain_msg("A/B/C");
   ts_buf__set_str(new_msg->msg_core->payload, "B", 1);
+  tm_mqtt_msg_t* removed_msg = NULL;
   
-  err = tm_topics__retain_msg(topics, old_msg);
+  err = tm_topics__retain_msg(topics, old_msg, &removed_msg);
   ASSERT_EQ(err, 0);
+  ASSERT_NULL(removed_msg);
   
-  err = tm_topics__retain_msg(topics, new_msg);
+  err = tm_topics__retain_msg(topics, new_msg, &removed_msg);
   ASSERT_EQ(err, 0);
+  ASSERT_NOT_NULL(removed_msg);
+  ASSERT_PTR_EQ(removed_msg, old_msg);
+  ASSERT_PTR_NE(removed_msg, new_msg);
   
   ts_ptr_arr_t* retained_msgs = ts_ptr_arr__create(1);
   err = tm_topics__get_retained_msgs(topics, "A/B/C", retained_msgs);
@@ -364,13 +371,17 @@ TEST_IMPL(mqtt_retain_msg_delete_test) {
   int err;
   tm_topics_t* topics = tm_topics__create();
   tm_mqtt_msg_t* msg = create_retain_msg("A/B/C");
+  tm_mqtt_msg_t* removed_msg = NULL;
   
-  err = tm_topics__retain_msg(topics, msg);
+  err = tm_topics__retain_msg(topics, msg, &removed_msg);
   ASSERT_EQ(err, 0);
+  ASSERT_NULL(removed_msg);
   
   ts_buf__set_str(msg->msg_core->payload, "", 0);
-  err = tm_topics__retain_msg(topics, msg);
+  err = tm_topics__retain_msg(topics, msg, &removed_msg);
   ASSERT_EQ(err, 0);
+  ASSERT_NOT_NULL(removed_msg);
+  ASSERT_PTR_EQ(removed_msg, msg);
   
   ts_ptr_arr_t* retained_msgs = ts_ptr_arr__create(1);
   err = tm_topics__get_retained_msgs(topics, "A/B/C", retained_msgs);
