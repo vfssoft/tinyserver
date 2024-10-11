@@ -232,6 +232,49 @@ TEST_IMPL(mqtt_basic_pub_recv_qos2_tcp) {
   );
 }
 
+TEST_IMPL(mqtt_pub_qos_0_sub_qos_1_tcp) {
+  return mqtt_basic_pub_recv_impl(
+      TS_PROTO_TCP,
+      "topic", 0, "ABC", 3,
+      "topic", 1
+  );
+}
+TEST_IMPL(mqtt_pub_qos_0_sub_qos_2_tcp) {
+  return mqtt_basic_pub_recv_impl(
+      TS_PROTO_TCP,
+      "topic", 0, "ABC", 3,
+      "topic", 2
+  );
+}
+TEST_IMPL(mqtt_pub_qos_1_sub_qos_0_tcp) {
+  return mqtt_basic_pub_recv_impl(
+      TS_PROTO_TCP,
+      "topic", 1, "ABC", 3,
+      "topic", 0
+  );
+}
+TEST_IMPL(mqtt_pub_qos_1_sub_qos_2_tcp) {
+  return mqtt_basic_pub_recv_impl(
+      TS_PROTO_TCP,
+      "topic", 1, "ABC", 3,
+      "topic", 2
+  );
+}
+TEST_IMPL(mqtt_pub_qos_2_sub_qos_0_tcp) {
+  return mqtt_basic_pub_recv_impl(
+      TS_PROTO_TCP,
+      "topic", 2, "ABC", 3,
+      "topic", 0
+  );
+}
+TEST_IMPL(mqtt_pub_qos_2_sub_qos_1_tcp) {
+  return mqtt_basic_pub_recv_impl(
+      TS_PROTO_TCP,
+      "topic", 2, "ABC", 3,
+      "topic", 1
+  );
+}
+
 typedef struct {
     int proto;
     char client_id[128];
