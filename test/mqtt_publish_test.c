@@ -403,3 +403,164 @@ TEST_IMPL(mqtt_retain_msg_new_subscription) {
   
   return 0;
 }
+TEST_IMPL(mqtt_retain_msg_zero_byte) {
+  test_client_subscriber_info_t* subscriber_info;
+  uv_thread_t subscriber_thread;
+  
+  int proto = TS_PROTO_TCP;
+  const char* topic = "retain_message_zero_byte_payload";
+  int qos = 1;
+  char* payload = "";
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, NULL);
+  
+  server = start_mqtt_server(proto, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  mqtt_publish_a_msg(server, proto, topic, qos, payload, strlen(payload), TRUE);
+  
+  subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 1000);
+  
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+  
+  tm__stop(server);
+  
+  ASSERT_EQ(subscriber_info->msgs_count, 0);
+  
+  return 0;
+}
+TEST_IMPL(mqtt_retain_msg_zero_byte_1) {
+  test_client_subscriber_info_t* subscriber_info;
+  uv_thread_t subscriber_thread;
+  
+  int proto = TS_PROTO_TCP;
+  const char* topic = "retain_message_zero_byte_payload";
+  int qos = 1;
+  char* payload = "";
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, NULL);
+  
+  server = start_mqtt_server(proto, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 500);
+  
+  mqtt_publish_a_msg(server, proto, topic, qos, payload, 0, TRUE);
+  
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+  
+  tm__stop(server);
+  
+  ASSERT_EQ(subscriber_info->msgs_count, 1);
+  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
+  ASSERT_STR_EQ(msg->topic, topic);
+  ASSERT_EQ(msg->qos, qos);
+  ASSERT_EQ(msg->payload_len, 0);
+  ASSERT_EQ(msg->retained, FALSE);
+  
+  return 0;
+}
+TEST_IMPL(mqtt_retain_msg_zero_byte_2) {
+  test_client_subscriber_info_t* subscriber_info;
+  uv_thread_t subscriber_thread;
+  
+  int proto = TS_PROTO_TCP;
+  const char* topic = "retain_message_zero_byte_payload";
+  int qos = 1;
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, NULL);
+  
+  server = start_mqtt_server(proto, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  mqtt_publish_a_msg(server, proto, topic, qos, "A", 1, TRUE); // create a retained message
+  mqtt_publish_a_msg(server, proto, topic, qos, "", 0, TRUE); // remove the retained message
+  
+  subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 1000);
+  
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+  
+  tm__stop(server);
+  
+  ASSERT_EQ(subscriber_info->msgs_count, 0);
+  
+  return 0;
+}
+TEST_IMPL(mqtt_retain_msg_zero_byte_3) {
+  test_client_subscriber_info_t* subscriber_info;
+  uv_thread_t subscriber_thread;
+  
+  int proto = TS_PROTO_TCP;
+  const char* topic = "retain_message_zero_byte_payload";
+  int qos = 1;
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, NULL);
+  
+  server = start_mqtt_server(proto, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  mqtt_publish_a_msg(server, proto, topic, qos, "A", 1, TRUE); // create a retained message
+  mqtt_publish_a_msg(server, proto, topic, qos, "", 0, FALSE); // public a message with the same topic but not retained
+  
+  subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 500);
+  
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+  
+  tm__stop(server);
+  
+  ASSERT_EQ(subscriber_info->msgs_count, 1);
+  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
+  ASSERT_STR_EQ(msg->topic, topic);
+  ASSERT_EQ(msg->qos, qos);
+  ASSERT_EQ(msg->payload_len, 1);
+  ASSERT_EQ(msg->retained, TRUE);
+  
+  return 0;
+}
+TEST_IMPL(mqtt_retain_msg_update_exist) {
+  test_client_subscriber_info_t* subscriber_info;
+  uv_thread_t subscriber_thread;
+  
+  int proto = TS_PROTO_TCP;
+  const char* topic = "retain_message_topic";
+  int qos = 1;
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, NULL);
+  
+  server = start_mqtt_server(proto, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  mqtt_publish_a_msg(server, proto, topic, qos, "A", 1, TRUE); // create a retained message
+  mqtt_publish_a_msg(server, proto, topic, qos, "B", 1, TRUE); // update the retained message
+  
+  subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 500);
+  
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+  
+  tm__stop(server);
+  
+  ASSERT_EQ(subscriber_info->msgs_count, 1);
+  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
+  ASSERT_STR_EQ(msg->topic, topic);
+  ASSERT_EQ(msg->qos, qos);
+  ASSERT_EQ(msg->payload_len, 1);
+  ASSERT_MEM_EQ(msg->payload, "B", 1);
+  ASSERT_EQ(msg->retained, TRUE);
+  
+  return 0;
+}
