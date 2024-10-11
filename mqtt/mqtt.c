@@ -324,21 +324,19 @@ void tm__remove_message(tm_server_t* s, tm_mqtt_msg_t* msg) {
   tm_msg_mgr__unuse(s->msg_mgr, msg);
 }
 
-static int tm__dispatch_msg_to_subscriber(tm_server_t* s, ts_conn_t* c, tm_mqtt_msg_t* src_msg, tm_subscribers_t* subscriber) {
+static int tm__dispatch_msg_to_subscriber(tm_server_t* s, ts_conn_t* c, tm_mqtt_msg_t* src_msg, tm_mqtt_session_t* sess, int sub_qos, BOOL retain) {
   ts_t* server;
   tm_mqtt_conn_t* conn;
-  tm_mqtt_session_t* sess;
   tm_mqtt_msg_t* new_msg;
   int new_qos;
   
   server = s->server;
-  sess = (tm_mqtt_session_t*) subscriber->subscriber;
   
   LOG_DEBUG_EX("[%s] Dispatch the message(%" PRIu64 ") to client", sess->client_id, tm_mqtt_msg__id(src_msg));
   
-  new_qos = subscriber->qos < tm_mqtt_msg__qos(src_msg) ? subscriber->qos : tm_mqtt_msg__qos(src_msg);
+  new_qos = sub_qos < tm_mqtt_msg__qos(src_msg) ? sub_qos : tm_mqtt_msg__qos(src_msg);
   
-  new_msg = tm_msg_mgr__dup(s->msg_mgr, src_msg, FALSE, new_qos, FALSE);
+  new_msg = tm_msg_mgr__dup(s->msg_mgr, src_msg, FALSE, new_qos, retain);
   if (new_msg == NULL) {
     LOG_ERROR("[%s] Out of memory", sess->client_id);
     tm_mqtt_conn__abort(server, c);
@@ -366,6 +364,22 @@ static int tm__dispatch_msg_to_subscriber(tm_server_t* s, ts_conn_t* c, tm_mqtt_
   }
 
   return 0;
+}
+int tm__on_retain_message(tm_server_t* s, ts_conn_t* c, tm_mqtt_msg_t* msg) {
+  int err;
+  tm_mqtt_msg_t* new_retain_msg;
+  tm_mqtt_msg_t* removed_retain_msg = NULL;
+  
+  new_retain_msg = tm_msg_mgr__dup(s->msg_mgr, msg, FALSE, tm_mqtt_msg__qos(msg), TRUE);
+  err = tm_topics__retain_msg(s->topics, new_retain_msg, &removed_retain_msg);
+  if (err) {
+    return err; // fatal error
+  }
+  if (removed_retain_msg != NULL) {
+    tm_msg_mgr__unuse(s->msg_mgr, removed_retain_msg);
+  }
+  
+  return err;
 }
 int tm__on_publish_received(tm_server_t* s, ts_conn_t* c, tm_mqtt_msg_t* msg) {
   int err;
@@ -400,7 +414,7 @@ int tm__on_publish_received(tm_server_t* s, ts_conn_t* c, tm_mqtt_msg_t* msg) {
   }
   
   DL_FOREACH(subscribers, cur_subscriber) {
-    tm__dispatch_msg_to_subscriber(s, c, msg, cur_subscriber);
+    tm__dispatch_msg_to_subscriber(s, c, msg, cur_subscriber->subscriber, cur_subscriber->qos, FALSE);
   }
   tm_topics__subscribers_free(subscribers);
   
@@ -408,9 +422,30 @@ int tm__on_publish_received(tm_server_t* s, ts_conn_t* c, tm_mqtt_msg_t* msg) {
 }
 int tm__on_subscription(tm_server_t* s, ts_conn_t* c, const char* topic, int granted_qos) {
   int err;
+  ts_ptr_arr_t* retain_msgs;
+  tm_mqtt_msg_t* retain_msg;
   tm_mqtt_conn_t* conn = (tm_mqtt_conn_t*)ts_server__get_conn_user_data(s->server, c);
+  
   err = tm_topics__subscribe(s->topics, topic, (char)granted_qos, conn->session);
-  return err;
+  if (err) {
+    return err;
+  }
+  
+  retain_msgs = ts_ptr_arr__create(1);
+  err = tm_topics__get_retained_msgs(s->topics, topic, retain_msgs);
+  if (err == TS_ERR_NOT_FOUND) {
+    // no retain messages matched the specified topic
+    err = 0;
+  } else if (err) {
+    return err; // retained_msgs is not free!, it's a fatal error
+  }
+  for (int i = 0; i < ts_ptr_arr__get_count(retain_msgs); i++) {
+    retain_msg = ts_ptr_arr__at(retain_msgs, i);
+    tm__dispatch_msg_to_subscriber(s, c, retain_msg, conn->session, granted_qos, TRUE);
+  }
+  ts_ptr_arr__destroy(retain_msgs);
+  
+  return 0;
 }
 int tm__on_unsubscription(tm_server_t* s, ts_conn_t* c, const char* topic) {
   int err;

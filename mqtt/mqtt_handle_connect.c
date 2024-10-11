@@ -263,6 +263,9 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   tm__internal_connected_cb(s, c);
   
   if (conn->will) {
+    if (tm_mqtt_msg__retain(conn->will)) {
+      tm__on_retain_message(conn->server, c, conn->will);
+    }
     tm__internal_msg_cb(conn->server, conn, conn->will, MSG_STATE_RECEIVE_PUB, MSG_STATE_DONE);
   }
   

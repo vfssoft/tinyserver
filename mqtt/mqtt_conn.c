@@ -314,6 +314,9 @@ int tm_mqtt_conn__update_msg_state(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* ms
     if (old_state == MSG_STATE_TO_PUBLISH/*qos=0*/ || old_state == MSG_STATE_WAIT_PUBACK || old_state == MSG_STATE_WAIT_PUBCOMP) {
       tm_mqtt_session__remove_out_msg(conn->session, msg);
     } else if (old_state == MSG_STATE_RECEIVE_PUB/*qos=0*/ || old_state == MSG_STATE_SEND_PUBACK || old_state == MSG_STATE_SEND_PUBCOMP) {
+      if (tm_mqtt_msg__retain(msg)) {
+        tm__on_retain_message(conn->server, c, msg);
+      }
       tm_mqtt_session__remove_in_msg(conn->session, msg);
       tm__on_publish_received(conn->server, c, msg);
     } else {

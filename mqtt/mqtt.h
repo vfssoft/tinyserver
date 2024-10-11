@@ -41,6 +41,7 @@ int tm__remove_session(tm_server_t* s, tm_mqtt_session_t* sess);
 tm_mqtt_msg_t* tm__create_message(tm_server_t* s, const char* topic, const char* payload, int payload_len, int dup, int qos, int retain);
 void tm__remove_message(tm_server_t* s, tm_mqtt_msg_t* msg);
 
+int tm__on_retain_message(tm_server_t* s, ts_conn_t* c, tm_mqtt_msg_t* msg);
 int tm__on_publish_received(tm_server_t* s, ts_conn_t* c, tm_mqtt_msg_t* msg);
 
 // subscription

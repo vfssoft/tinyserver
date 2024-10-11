@@ -139,7 +139,7 @@ TEST_IMPL(mqtt_basic_pub_qos2_test) {
   return mqtt_basic_pub_impl(TS_PROTO_TCP, "a", 2, "hello", 5);
 }
 
-static int mqtt_publish_a_msg(tm_t* server, int proto, const char* topic, int qos, char* payload, int payload_len) {
+static int mqtt_publish_a_msg(tm_t* server, int proto, const char* topic, int qos, char* payload, int payload_len, BOOL retain) {
   test_client_publisher_info_t info;
   RESET_STRUCT(info);
   info.proto = proto;
@@ -148,6 +148,7 @@ static int mqtt_publish_a_msg(tm_t* server, int proto, const char* topic, int qo
   info.qos = qos;
   info.payload_len = payload_len;
   info.payload = payload;
+  info.retain = retain;
   
   uv_thread_t publisher_thread;
   uv_thread_create(&publisher_thread, mqtt_client_publisher_cb, (void*)&info);
@@ -193,7 +194,7 @@ static int mqtt_basic_pub_recv_impl(
   
   subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, sub_topic, sub_qos, 500);
   
-  mqtt_publish_a_msg(server, proto, pub_topic, pub_qos, payload, payload_len);
+  mqtt_publish_a_msg(server, proto, pub_topic, pub_qos, payload, payload_len, FALSE);
   
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
   
@@ -264,7 +265,7 @@ static void mqtt_client_with_will_cb(void *arg) {
   
   info->done = 1;
 }
-static int mqtt_connect_with_will_msg(tm_t* server, int proto, const char* topic, int qos, char* payload, int payload_len, int retain, int disconnect_abnormal) {
+static int mqtt_connect_with_will_msg(tm_t* server, int proto, const char* topic, int qos, char* payload, int payload_len, BOOL retain, int disconnect_abnormal) {
   test_client_will_info_t info;
   RESET_STRUCT(info);
   info.proto = proto;
@@ -282,12 +283,12 @@ static int mqtt_connect_with_will_msg(tm_t* server, int proto, const char* topic
   uv_thread_join(&publisher_thread);
   return 0;
 }
-static int mqtt_basic_will_msg_impl(int proto, int disconnect_abnormal) {
+static int mqtt_basic_will_msg_impl(int proto, int disconnect_abnormal, int retain) {
   test_client_subscriber_info_t* subscriber_info;
   uv_thread_t subscriber_thread;
   
   const char* will_topic = "will_topic";
-  const char* payload = "hello will";
+  char* payload = "hello will";
   
   tm_t* server;
   tm_callbacks_t cbs;
@@ -299,7 +300,7 @@ static int mqtt_basic_will_msg_impl(int proto, int disconnect_abnormal) {
   
   subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, will_topic, 1, 10000);
   
-  mqtt_connect_with_will_msg(server, proto, will_topic, 1, payload, strlen(payload), 0, disconnect_abnormal);
+  mqtt_connect_with_will_msg(server, proto, will_topic, 1, payload, strlen(payload), retain, disconnect_abnormal);
   
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
   
@@ -319,8 +320,86 @@ static int mqtt_basic_will_msg_impl(int proto, int disconnect_abnormal) {
   return 0;
 }
 TEST_IMPL(mqtt_not_pub_will_if_client_disconnect_normally) {
-  return mqtt_basic_will_msg_impl(TS_PROTO_TCP, 0);
+  return mqtt_basic_will_msg_impl(TS_PROTO_TCP, 0, FALSE);
 }
 TEST_IMPL(mqtt_pub_will_if_client_disconnect_abnormally) {
-  return mqtt_basic_will_msg_impl(TS_PROTO_TCP, 1);
+  return mqtt_basic_will_msg_impl(TS_PROTO_TCP, 1, FALSE);
+}
+TEST_IMPL(mqtt_pub_will_if_client_disconnect_abnormally_retain) {
+  return mqtt_basic_will_msg_impl(TS_PROTO_TCP, 1, TRUE);
+}
+
+
+TEST_IMPL(mqtt_retain_msg_current_subscription) {
+  test_client_subscriber_info_t* subscriber_info;
+  uv_thread_t subscriber_thread;
+  
+  int proto = TS_PROTO_TCP;
+  const char* topic = "retain_topic";
+  int qos = 1;
+  char* payload = "hello retain message";
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, NULL);
+  
+  server = start_mqtt_server(proto, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 500);
+  
+  mqtt_publish_a_msg(server, proto, topic, qos, payload, strlen(payload), TRUE);
+  
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+  
+  tm__stop(server);
+  
+  ASSERT_EQ(subscriber_info->msgs_count, 1);
+  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
+  ASSERT_STR_EQ(msg->topic, topic);
+  ASSERT_EQ(msg->qos, qos);
+  ASSERT_EQ(msg->payload_len, strlen(payload));
+  ASSERT_MEM_EQ(payload, (char*)msg->payload, msg->payload_len);
+  
+  ASSERT_EQ(msg->retained, FALSE);
+  
+  return 0;
+}
+
+TEST_IMPL(mqtt_retain_msg_new_subscription) {
+  test_client_subscriber_info_t* subscriber_info;
+  uv_thread_t subscriber_thread;
+  
+  int proto = TS_PROTO_TCP;
+  const char* topic = "retain_topic";
+  int qos = 1;
+  char* payload = "hello retain message";
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, NULL);
+  
+  server = start_mqtt_server(proto, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  mqtt_publish_a_msg(server, proto, topic, qos, payload, strlen(payload), TRUE);
+  
+  subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 500);
+  
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+  
+  tm__stop(server);
+  
+  ASSERT_EQ(subscriber_info->msgs_count, 1);
+  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
+  ASSERT_STR_EQ(msg->topic, topic);
+  ASSERT_EQ(msg->qos, qos);
+  ASSERT_EQ(msg->payload_len, strlen(payload));
+  ASSERT_MEM_EQ(payload, (char*)msg->payload, msg->payload_len);
+  
+  ASSERT_EQ(msg->retained, TRUE);
+  
+  return 0;
 }
