@@ -17,11 +17,11 @@ static tm_mqtt_msg_core_t* tm_mqtt_msg_core__create(const char* topic, const cha
   }
   ts_buf__set_str(msg_core->topic, topic, strlen(topic));
 
+  msg_core->payload = ts_buf__create(0);
+  if (msg_core->payload == NULL) {
+    return NULL;
+  }
   if (payload_len) {
-    msg_core->payload = ts_buf__create(0);
-    if (msg_core->payload == NULL) {
-      return NULL;
-    }
     ts_buf__set(msg_core->payload, payload, payload_len);
   }
 
