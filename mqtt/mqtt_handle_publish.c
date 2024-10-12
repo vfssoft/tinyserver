@@ -132,7 +132,6 @@ int tm_mqtt_conn__process_puback(ts_t* server, ts_conn_t* c, const char* pkt_byt
   tm_packet_decoder_t* decoder;
   int pkt_id;
   tm_mqtt_msg_t* msg;
-  const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
@@ -142,20 +141,24 @@ int tm_mqtt_conn__process_puback(ts_t* server, ts_conn_t* c, const char* pkt_byt
   
   err = tm_packet_decoder__read_int16(decoder, &pkt_id);
   if (err || pkt_id <= 0) {
-    LOG_ERROR("[%s] Invalid Packet id", conn_id);
+    LOG_ERROR("[%s] Invalid Packet id", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
   
   msg = tm_mqtt_session__find_out_msg(conn->session, pkt_id);
-  if (msg == NULL || tm_mqtt_msg__qos(msg) != 1 || tm_mqtt_msg__get_state(msg) != MSG_STATE_WAIT_PUBACK) {
-    LOG_ERROR("[%s] Invalid Packet id", conn_id);
+  if (msg == NULL) {
+    LOG_ERROR("[%s] Invalid Packet id", conn->session->client_id);
+    tm_mqtt_conn__abort(server, c);
+    goto done;
+  }
+  if (tm_mqtt_msg__qos(msg) != 1 || tm_mqtt_msg__get_state(msg) != MSG_STATE_WAIT_PUBACK) {
+    LOG_ERROR("[%s] Invalid Message state", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
   
   tm_mqtt_conn__update_msg_state(server, c, msg);
-  // TODO:
   
 done:
   return 0;
@@ -167,7 +170,6 @@ int tm_mqtt_conn__process_pubrec(ts_t* server, ts_conn_t* c, const char* pkt_byt
   tm_packet_decoder_t* decoder;
   int pkt_id;
   tm_mqtt_msg_t* msg;
-  const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
@@ -177,14 +179,19 @@ int tm_mqtt_conn__process_pubrec(ts_t* server, ts_conn_t* c, const char* pkt_byt
   
   err = tm_packet_decoder__read_int16(decoder, &pkt_id);
   if (err || pkt_id <= 0) {
-    LOG_ERROR("[%s] Invalid Packet id", conn_id);
+    LOG_ERROR("[%s] Invalid Packet id", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
   
   msg = tm_mqtt_session__find_out_msg(conn->session, pkt_id);
-  if (msg == NULL || tm_mqtt_msg__qos(msg) != 2 || tm_mqtt_msg__get_state(msg) != MSG_STATE_WAIT_PUBREC) {
-    LOG_ERROR("[%s] Invalid Packet id", conn_id);
+  if (msg == NULL) {
+    LOG_ERROR("[%s] Invalid Packet id", conn->session->client_id);
+    tm_mqtt_conn__abort(server, c);
+    goto done;
+  }
+  if (tm_mqtt_msg__qos(msg) != 2 || tm_mqtt_msg__get_state(msg) != MSG_STATE_WAIT_PUBREC) {
+    LOG_ERROR("[%s] Invalid Message state", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
@@ -192,7 +199,7 @@ int tm_mqtt_conn__process_pubrec(ts_t* server, ts_conn_t* c, const char* pkt_byt
   tm_mqtt_conn__update_msg_state(server, c, msg);
   err = tm_mqtt_conn__send_pubrel(server, c, pkt_id, msg);
   if (err) {
-    LOG_ERROR("[%s] Failed to send PUBREL", conn_id);
+    LOG_ERROR("[%s] Failed to send PUBREL", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
@@ -207,7 +214,6 @@ int tm_mqtt_conn__process_pubrel(ts_t* server, ts_conn_t* c, const char* pkt_byt
   tm_packet_decoder_t* decoder;
   int pkt_id;
   tm_mqtt_msg_t* msg;
-  const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
@@ -217,14 +223,14 @@ int tm_mqtt_conn__process_pubrel(ts_t* server, ts_conn_t* c, const char* pkt_byt
   
   err = tm_packet_decoder__read_int16(decoder, &pkt_id);
   if (err || pkt_id <= 0) {
-    LOG_ERROR("[%s] Invalid Packet id", conn_id);
+    LOG_ERROR("[%s] Invalid Packet id", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
   
   msg = tm_mqtt_session__find_in_msg(conn->session, pkt_id);
   if (msg == NULL || tm_mqtt_msg__qos(msg) != 2) {
-    LOG_ERROR("[%s] Invalid Packet id", conn_id);
+    LOG_ERROR("[%s] Invalid Packet id", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
@@ -232,7 +238,7 @@ int tm_mqtt_conn__process_pubrel(ts_t* server, ts_conn_t* c, const char* pkt_byt
   tm_mqtt_conn__update_msg_state(server, c, msg);
   err = tm_mqtt_conn__send_pubcomp(server, c, pkt_id, msg);
   if (err) {
-    LOG_ERROR("[%s] Failed to send PUBCOMP", conn_id);
+    LOG_ERROR("[%s] Failed to send PUBCOMP", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
@@ -247,7 +253,6 @@ int tm_mqtt_conn__process_pubcomp(ts_t* server, ts_conn_t* c, const char* pkt_by
   tm_packet_decoder_t* decoder;
   int pkt_id;
   tm_mqtt_msg_t* msg;
-  const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
@@ -257,20 +262,24 @@ int tm_mqtt_conn__process_pubcomp(ts_t* server, ts_conn_t* c, const char* pkt_by
   
   err = tm_packet_decoder__read_int16(decoder, &pkt_id);
   if (err) {
-    LOG_ERROR("[%s] Invalid Packet id", conn_id);
+    LOG_ERROR("[%s] Invalid Packet id", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
   
   msg = tm_mqtt_session__find_out_msg(conn->session, pkt_id);
-  if (msg == NULL || tm_mqtt_msg__qos(msg) != 2 || tm_mqtt_msg__get_state(msg) != MSG_STATE_WAIT_PUBCOMP) {
-    LOG_ERROR("[%s] Invalid Packet id", conn_id);
+  if (msg == NULL) {
+    LOG_ERROR("[%s] Invalid Packet id", conn->session->client_id);
+    tm_mqtt_conn__abort(server, c);
+    goto done;
+  }
+  if (tm_mqtt_msg__qos(msg) != 2 || tm_mqtt_msg__get_state(msg) != MSG_STATE_WAIT_PUBCOMP) {
+    LOG_ERROR("[%s] Invalid Message state", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
   
   tm_mqtt_conn__update_msg_state(server, c, msg);
-  // TODO:
   
 done:
   return 0;

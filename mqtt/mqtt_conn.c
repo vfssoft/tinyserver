@@ -240,10 +240,7 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
   } else {
     switch (inflight_pkt->pkt_type) {
       case PKT_TYPE_PUBLISH:
-        // For QoS 0 message, it's already in DONE state, no need to update the state.
-        if (tm_mqtt_msg__qos(inflight_pkt->msg) > 0) {
-          tm_mqtt_conn__update_msg_state(server, c, inflight_pkt->msg);
-        }
+        tm_mqtt_conn__update_msg_state(server, c, inflight_pkt->msg);
         break;
         
       case PKT_TYPE_PUBACK:
@@ -422,7 +419,8 @@ int tm_mqtt_conn__on_subscribed_msg_in(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t
     return 0;
   }
 
-  tm_mqtt_conn__update_msg_state(server, c, msg);
+  // Don't update message state here, update state when the data is written successfully
+  // tm_mqtt_conn__update_msg_state(server, c, msg);
 
   err = tm_mqtt_conn__send_packet(server, c, pkt_bytes, pkt_bytes_len, msg->pkt_id, msg);
   ts__free(pkt_bytes);
