@@ -353,11 +353,12 @@ static int tm__dispatch_msg_to_subscriber(tm_server_t* s, ts_conn_t* c, tm_mqtt_
       FALSE,
       FALSE
   );
-  
+
+  tm_mqtt_session__add_out_msg(sess, new_msg);
+
   conn = (ts_conn_t*) tm_mqtt_session__conn(sess);
   if (conn == NULL) {
     LOG_DEBUG("[%s] Client is not connected, save to session", sess->client_id);
-    tm_mqtt_session__add_out_msg(sess, new_msg);
   } else {
     LOG_DEBUG("[%s] Client is connected, start sending", sess->client_id);
     tm_mqtt_conn__on_subscribed_msg_in(s, conn, new_msg); // ignore error, the error should be processed in target conn.

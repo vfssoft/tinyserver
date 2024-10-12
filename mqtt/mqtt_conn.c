@@ -403,8 +403,9 @@ int tm_mqtt_conn__on_subscribed_msg_in(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t
   const char* conn_id = ts_server__get_conn_remote_host(server, c);
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
-  
-  tm_mqtt_session__add_out_msg(conn->session, msg);
+
+  // msg should already be in the conn.session
+  // tm_mqtt_session__add_out_msg(conn->session, msg);
   
   msg->pkt_id = conn->next_pkt_id;
   conn->next_pkt_id++;
