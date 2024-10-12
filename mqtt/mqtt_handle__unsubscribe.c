@@ -21,7 +21,6 @@ int tm_mqtt_conn__process_unsubscribe(ts_t* server, ts_conn_t* c, const char* pk
   int tmp_val, tmp_len, pkt_id;
   char topic[65536];
   ts_error_t errt;
-  const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
@@ -32,13 +31,13 @@ int tm_mqtt_conn__process_unsubscribe(ts_t* server, ts_conn_t* c, const char* pk
   
   err = tm_packet_decoder__read_int16(decoder, &pkt_id);
   if (err || pkt_id <= 0) {
-    LOG_ERROR("[%s] Invalid Packet Identifier", conn_id);
+    LOG_ERROR("[%s] Invalid Packet Identifier", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
   
   if (tm_packet_decoder__available(decoder) == 0) {
-    LOG_ERROR("[%s] No Topic filter in the UNSUBSCRIBE packet", conn_id);
+    LOG_ERROR("[%s] No Topic filter in the UNSUBSCRIBE packet", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
@@ -46,13 +45,13 @@ int tm_mqtt_conn__process_unsubscribe(ts_t* server, ts_conn_t* c, const char* pk
   while (tm_packet_decoder__available(decoder) > 0) {
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
-      LOG_ERROR("[%s] Invalid Topic Filter", conn_id);
+      LOG_ERROR("[%s] Invalid Topic Filter", conn->session->client_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
     err = tm_topics__valid_topic_filter(tmp_ptr, tmp_len, &errt);
     if (err) {
-      LOG_ERROR("[%s] Invalid Topic Filter: %s", conn_id, errt.msg);
+      LOG_ERROR("[%s] Invalid Topic Filter: %s", conn->session->client_id, errt.msg);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
@@ -61,11 +60,12 @@ int tm_mqtt_conn__process_unsubscribe(ts_t* server, ts_conn_t* c, const char* pk
     topic[tmp_len] = 0;
     
     tm__internal_unsubscribe_cb(s, c, topic);
+    LOG_VERB("[%s] Unsubscribe: '%s'", conn->session->client_id, topic);
     
     err = tm__on_unsubscription(s, c, topic);
     if (err == TS_ERR_NOT_FOUND) {
       // permit it
-      LOG_VERB("%s Try to unsubscribe a topic that is not subscribed: %s", conn_id, topic);
+      LOG_VERB("%s Try to unsubscribe a topic that is not subscribed: %s", conn->session->client_id, topic);
     } else if (err) {
       tm_mqtt_conn__abort(s, c);
       goto done;
@@ -75,7 +75,7 @@ int tm_mqtt_conn__process_unsubscribe(ts_t* server, ts_conn_t* c, const char* pk
   
   err = tm_mqtt_conn__send_unsuback(server, c, pkt_id);
   if (err) {
-    LOG_ERROR("[%s] Fail to send UNSUBACK", conn_id);
+    LOG_ERROR("[%s] Fail to send UNSUBACK", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }

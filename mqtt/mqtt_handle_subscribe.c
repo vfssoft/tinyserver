@@ -21,11 +21,10 @@ int tm_mqtt_conn__process_subscribe(ts_t* server, ts_conn_t* c, const char* pkt_
   tm_packet_decoder_t* decoder;
   ts_error_t errt;
   const char* tmp_ptr = "";
-  int tmp_val, tmp_len, pkt_id, granted_qos;
+  int tmp_val, tmp_len, pkt_id, granted_qos, request_qos;
   char topic[65536];
   char return_codes[32]; // at most 32
   int return_codes_count = 0;
-  const char* conn_id = ts_server__get_conn_remote_host(server, c);
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
@@ -36,7 +35,7 @@ int tm_mqtt_conn__process_subscribe(ts_t* server, ts_conn_t* c, const char* pkt_
   
   err = tm_packet_decoder__read_int16(decoder, &pkt_id);
   if (err || pkt_id <= 0) {
-    LOG_ERROR("[%s] Invalid Packet Identifier", conn_id);
+    LOG_ERROR("[%s] Invalid Packet Identifier", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
@@ -44,14 +43,14 @@ int tm_mqtt_conn__process_subscribe(ts_t* server, ts_conn_t* c, const char* pkt_
   while (tm_packet_decoder__available(decoder) > 0) {
     err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
     if (err) {
-      LOG_ERROR("[%s] Invalid Topic Filter", conn_id);
+      LOG_ERROR("[%s] Invalid Topic Filter", conn->session->client_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
   
     err = tm_topics__valid_topic_filter(tmp_ptr, tmp_len, &errt);
     if (err) {
-      LOG_ERROR("[%s] Invalid Topic Filter: %s", conn_id, errt.msg);
+      LOG_ERROR("[%s] Invalid Topic Filter: %s", conn->session->client_id, errt.msg);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
@@ -59,15 +58,23 @@ int tm_mqtt_conn__process_subscribe(ts_t* server, ts_conn_t* c, const char* pkt_
     memcpy(topic, tmp_ptr, tmp_len);
     topic[tmp_len] = 0;
   
-    err = tm_packet_decoder__read_byte(decoder, &granted_qos);
-    if (err || !tm__is_valid_qos(granted_qos)) {
-      LOG_ERROR("[%s] Invalid QoS", conn_id);
+    err = tm_packet_decoder__read_byte(decoder, &request_qos);
+    if (err || !tm__is_valid_qos(request_qos)) {
+      LOG_ERROR("[%s] Invalid QoS", conn->session->client_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
-  
-    tm__internal_subscribe_cb(s, c, topic, granted_qos, &granted_qos);
+    
+    granted_qos = request_qos;
+    tm__internal_subscribe_cb(s, c, topic, request_qos, &granted_qos);
     return_codes[return_codes_count++] = (char)granted_qos;
+    LOG_VERB(
+        "[%s] Subscribe: Topic='%s', RequestQoS=%d, GrantedQoS=%d",
+        conn->session->client_id,
+        topic,
+        request_qos,
+        granted_qos
+    );
     
     if (tm__is_valid_qos(granted_qos)) {
       err = tm__on_subscription(s, c, topic, granted_qos);
@@ -80,14 +87,14 @@ int tm_mqtt_conn__process_subscribe(ts_t* server, ts_conn_t* c, const char* pkt_
   }
   
   if (return_codes_count == 0) {
-    LOG_ERROR("[%s] No Topic filter/Request QoS in the Subscribe packet", conn_id);
+    LOG_ERROR("[%s] No Topic filter/Request QoS in the Subscribe packet", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
   
   err = tm_mqtt_conn__send_suback(server, c, pkt_id, return_codes, return_codes_count);
   if (err) {
-    LOG_ERROR("[%s] Fail to send SUBACK", conn_id);
+    LOG_ERROR("[%s] Fail to send SUBACK", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }

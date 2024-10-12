@@ -37,7 +37,6 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
   int dup = (pkt_bytes[0] & 0x08) == 0x08;
   int qos = (pkt_bytes[0] & 0x06) >> 1;
   tm_mqtt_msg_t* msg;
-  const char* conn_id = ts_server__get_conn_remote_host(server, c);
 
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
@@ -46,19 +45,19 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
 
   if (!tm__is_valid_qos(qos)) {
-    LOG_ERROR("[%s] Invalid QoS", conn_id);
+    LOG_ERROR("[%s] Invalid QoS", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
   if (qos == 0 && dup) {
-    LOG_ERROR("[%s] Invalid DUP flag with the QoS is 0", conn_id);
+    LOG_ERROR("[%s] Invalid DUP flag with the QoS is 0", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
 
   err = tm_packet_decoder__read_int16_string(decoder, &tmp_len, &tmp_ptr);
   if (err || tmp_len == 0) {
-    LOG_ERROR("[%s] Invalid Topic Name", conn_id);
+    LOG_ERROR("[%s] Invalid Topic Name", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
@@ -68,7 +67,7 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
   if (qos != 0) {
     err = tm_packet_decoder__read_int16(decoder, &pkt_id);
     if (err || pkt_id <= 0) {
-      LOG_ERROR("[%s] Invalid Packet Id", conn_id);
+      LOG_ERROR("[%s] Invalid Packet Id", conn->session->client_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
@@ -81,11 +80,20 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
       dup, qos, (first_byte & 0x01) == 0x01
   );
   if (msg == NULL) {
-    LOG_ERROR("[%s] Out of memory", conn_id);
+    LOG_ERROR("[%s] Out of memory", conn->session->client_id);
     tm_mqtt_conn__abort(server, c);
     goto done;
   }
   msg->pkt_id = pkt_id;
+  
+  LOG_VERB(
+      "[%s] Received a message: MID=%" PRIu64 ", Topic='%s', Qos=%d, Retain=%d",
+      conn->session->client_id,
+      msg->id,
+      topic,
+      qos,
+      dup
+  );
 
   tm_mqtt_session__add_in_msg(conn->session, msg);
   tm_mqtt_msg__set_state(msg, MSG_STATE_RECEIVE_PUB);
@@ -101,14 +109,14 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
   } else if (qos == 1) {
     err = tm_mqtt_conn__send_puback(server, c, pkt_id, msg);
     if (err) {
-      LOG_ERROR("[%s] Failed to send PUBACK", conn_id);
+      LOG_ERROR("[%s] Failed to send PUBACK", conn->session->client_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
   } else if (qos == 2) {
     err = tm_mqtt_conn__send_pubrec(server, c, pkt_id, msg);
     if (err) {
-      LOG_ERROR("[%s] Failed to send PUBREC", conn_id);
+      LOG_ERROR("[%s] Failed to send PUBREC", conn->session->client_id);
       tm_mqtt_conn__abort(server, c);
       goto done;
     }

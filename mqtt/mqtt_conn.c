@@ -240,7 +240,10 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
   } else {
     switch (inflight_pkt->pkt_type) {
       case PKT_TYPE_PUBLISH:
-        tm_mqtt_conn__update_msg_state(server, c, inflight_pkt->msg);
+        // For QoS 0 message, it's already in DONE state, no need to update the state.
+        if (tm_mqtt_msg__qos(inflight_pkt->msg) > 0) {
+          tm_mqtt_conn__update_msg_state(server, c, inflight_pkt->msg);
+        }
         break;
         
       case PKT_TYPE_PUBACK:
@@ -301,7 +304,7 @@ int tm_mqtt_conn__update_msg_state(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* ms
   old_state = tm_mqtt_msg__get_state(msg);
   err = tm_mqtt_msg__update_state(msg);
   if (err) {
-    LOG_ERROR("[%s] Invalid message state: current state: %d", conn_id, old_state);
+    LOG_ERROR("[%s] Invalid message state: current state: %d", conn->session->client_id, old_state);
     tm_mqtt_conn__abort(server, c);
     return err;
   }
@@ -309,12 +312,13 @@ int tm_mqtt_conn__update_msg_state(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* ms
   
   tm__internal_msg_cb(conn->server, conn, msg, old_state, new_state);
   
-  LOG_DEBUG_EX("[%s] Update message state: %d -> %d", conn_id, old_state, new_state);
+  LOG_DEBUG_EX("[%s] Update message state: %d -> %d", conn->session->client_id, old_state, new_state);
   
   if (new_state == MSG_STATE_DONE) {
     if (old_state == MSG_STATE_TO_PUBLISH/*qos=0*/ || old_state == MSG_STATE_WAIT_PUBACK || old_state == MSG_STATE_WAIT_PUBCOMP) {
       tm_mqtt_session__remove_out_msg(conn->session, msg);
     } else if (old_state == MSG_STATE_RECEIVE_PUB/*qos=0*/ || old_state == MSG_STATE_SEND_PUBACK || old_state == MSG_STATE_SEND_PUBCOMP) {
+      LOG_VERB("[%s] Message received successfully(MID=%" PRIu64 ")", conn->session->client_id, msg->id);
       if (tm_mqtt_msg__retain(msg)) {
         tm__on_retain_message(conn->server, c, msg);
       }

@@ -122,12 +122,12 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   session_present = !clean_session && conn->session != NULL;
   
   if (clean_session && conn->session) {
-    LOG_DEBUG("[%s] Clear the previous session state", conn_id);
+    LOG_DEBUG("[%s] Clear the previous session state", client_id);
     tm__remove_session(s, conn->session);
     conn->session = NULL;
   }
   if (conn->session == NULL) {
-    LOG_DEBUG("[%s] Create new session for the current client: %s", conn_id, client_id);
+    LOG_DEBUG("[%s] Create new session for the current client", client_id);
     conn->session = tm__create_session(s, client_id);
     if (conn->session == NULL) {
       LOG_ERROR("[%s] Out of memory", conn_id);
@@ -185,8 +185,6 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
       tm_mqtt_conn__abort(server, c);
       goto done;
     }
-    
-    // TODO: if is retain, add it to retain topic
     
   } else {
     if (will_qos != 0 || will_retain == 1) {
@@ -247,7 +245,7 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
       &auth_ok
   );
   if (!auth_ok) {
-    LOG_ERROR("[%s] Authorized failed", conn_id);
+    LOG_ERROR("[%s] Authorized failed", client_id);
     tm_mqtt_conn__send_connack_abort(server, c, RETURN_CODE_BAD_USER_OR_PASSWORD);
     goto done;
   }
@@ -268,6 +266,7 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
     }
     tm__internal_msg_cb(conn->server, conn, conn->will, MSG_STATE_RECEIVE_PUB, MSG_STATE_DONE);
   }
+  LOG_INFO("[%s] Connected", conn->session->client_id);
   
 done:
   

@@ -332,7 +332,7 @@ static int tm__dispatch_msg_to_subscriber(tm_server_t* s, ts_conn_t* c, tm_mqtt_
   
   server = s->server;
   
-  LOG_DEBUG_EX("[%s] Dispatch the message(%" PRIu64 ") to client", sess->client_id, tm_mqtt_msg__id(src_msg));
+  LOG_DEBUG("[%s] Dispatch the message(MID=%" PRIu64 ") to client", sess->client_id, tm_mqtt_msg__id(src_msg));
   
   new_qos = sub_qos < tm_mqtt_msg__qos(src_msg) ? sub_qos : tm_mqtt_msg__qos(src_msg);
   
@@ -396,17 +396,6 @@ int tm__on_publish_received(tm_server_t* s, ts_conn_t* c, tm_mqtt_msg_t* msg) {
   
   msg_topic = tm_mqtt_msg__topic(msg);
   msg_qos = tm_mqtt_msg__qos(msg);
-  
-  LOG_VERB(
-      "[%s] received a message: id=%" PRIu64 ", topic=%s, qos=%d, retain=%d, dup=%d payloadlen=%d",
-      conn_id,
-      tm_mqtt_msg__id(msg),
-      msg_topic,
-      msg_qos,
-      tm_mqtt_msg__retain(msg),
-      tm_mqtt_msg__dup(msg),
-      tm_mqtt_msg__payload_len(msg)
-  );
   
   err = tm_topics__subscribers(s->topics, msg_topic, (char)msg_qos, &subscribers);
   if (err) {
