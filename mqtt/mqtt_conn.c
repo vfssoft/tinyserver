@@ -263,7 +263,7 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
 
   tm_mqtt_conn__inflight_packet_destroy(conn, inflight_pkt);
 
-  if (conn->inflight_pkts == NULL) {
+  if (conn->session != NULL && conn->inflight_pkts == NULL) {
     // no inflight packets, try to send a pending outgoing messages
     msg = tm_mqtt_session__get_next_msg_to_send(conn->session);
     if (msg != NULL) {
