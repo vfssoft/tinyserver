@@ -5,6 +5,8 @@
 #include "ts_mutex.h"
 #include "ts.h"
 
+#include <inttypes.h>
+
 typedef struct ts_log_s ts_log_t;
 
 struct ts_log_s {
