@@ -82,6 +82,15 @@ tm_mqtt_msg_t* tm_mqtt_session__find_out_msg(tm_mqtt_session_t* sess, int pkt_id
   }
   return NULL;
 }
+tm_mqtt_msg_t* tm_mqtt_session__get_next_msg_to_send(tm_mqtt_session_t* sess) {
+  tm_mqtt_msg_t* cur;
+  DL_FOREACH(sess->out_msgs, cur) {
+    if (tm_mqtt_msg__get_state(cur) == MSG_STATE_TO_PUBLISH) {
+      return cur;
+    }
+  }
+  return NULL;
+}
 
 
 

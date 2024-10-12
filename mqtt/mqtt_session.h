@@ -48,5 +48,6 @@ tm_mqtt_msg_t* tm_mqtt_session__find_in_msg(tm_mqtt_session_t* sess, int pkt_id)
 int tm_mqtt_session__add_out_msg(tm_mqtt_session_t* sess, tm_mqtt_msg_t* msg);
 int tm_mqtt_session__remove_out_msg(tm_mqtt_session_t* sess, tm_mqtt_msg_t* msg);
 tm_mqtt_msg_t* tm_mqtt_session__find_out_msg(tm_mqtt_session_t* sess, int pkt_id);
+tm_mqtt_msg_t* tm_mqtt_session__get_next_msg_to_send(tm_mqtt_session_t* sess);
 
 #endif //TINYSERVER_MQTT_SESSION_H

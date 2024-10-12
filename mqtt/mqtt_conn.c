@@ -262,6 +262,15 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
   }
 
   tm_mqtt_conn__inflight_packet_destroy(conn, inflight_pkt);
+
+  if (conn->inflight_pkts == NULL) {
+    // no inflight packets, try to send a pending outgoing messages
+    msg = tm_mqtt_session__get_next_msg_to_send(conn->session);
+    if (msg != NULL) {
+      tm_mqtt_conn__on_subscribed_msg_in(server, c, msg);
+    }
+  }
+
 }
 
 void tm_mqtt_conn__timer_cb(ts_t* server, ts_conn_t* c) {
@@ -408,7 +417,9 @@ int tm_mqtt_conn__on_subscribed_msg_in(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t
     tm_mqtt_conn__abort(server, c);
     return 0;
   }
-  
+
+  tm_mqtt_conn__update_msg_state(server, c, msg);
+
   err = tm_mqtt_conn__send_packet(server, c, pkt_bytes, pkt_bytes_len, msg->pkt_id, msg);
   ts__free(pkt_bytes);
   

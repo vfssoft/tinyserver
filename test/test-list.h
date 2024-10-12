@@ -167,6 +167,8 @@ TEST_DECLARE(mqtt_pub_qos_1_sub_qos_2_tcp)
 TEST_DECLARE(mqtt_pub_qos_2_sub_qos_0_tcp)
 TEST_DECLARE(mqtt_pub_qos_2_sub_qos_1_tcp)
 
+TEST_DECLARE(mqtt_recv_offline_msgs_after_reconnect)
+
 TEST_DECLARE(mqtt_not_pub_will_if_client_disconnect_normally)
 TEST_DECLARE(mqtt_pub_will_if_client_disconnect_abnormally)
 TEST_DECLARE(mqtt_pub_will_if_client_disconnect_abnormally_retain)
@@ -339,6 +341,8 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_pub_qos_1_sub_qos_2_tcp, "MQTT")
         TEST_ENTRY(mqtt_pub_qos_2_sub_qos_0_tcp, "MQTT")
         TEST_ENTRY(mqtt_pub_qos_2_sub_qos_1_tcp, "MQTT")
+
+        TEST_ENTRY(mqtt_recv_offline_msgs_after_reconnect, "MQTT")
 
         TEST_ENTRY(mqtt_not_pub_will_if_client_disconnect_normally, "MQTT")
         TEST_ENTRY(mqtt_pub_will_if_client_disconnect_abnormally, "MQTT")
