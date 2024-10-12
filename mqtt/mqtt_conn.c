@@ -91,13 +91,9 @@ int tm_mqtt_conn__send_packet(ts_t* server, ts_conn_t* c, const char* data, int 
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   
-  if (pkt_id > 0 && msg != NULL) {
-    inflight_pkt = tm_mqtt_conn__inflight_packet_create(conn, pkt_id, msg, (data[0] >> 4));
-    if (inflight_pkt == NULL) {
-      return TS_ERR_OUT_OF_MEMORY;
-    }
-  } else {
-    inflight_pkt = NULL;
+  inflight_pkt = tm_mqtt_conn__inflight_packet_create(conn, pkt_id, msg, (data[0] >> 4));
+  if (inflight_pkt == NULL) {
+    return TS_ERR_OUT_OF_MEMORY;
   }
   
   return ts_server__write(server, c, data, len, inflight_pkt);
@@ -233,10 +229,6 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
   tm_mqtt_msg_t* msg;
   tm_inflight_packet_t* inflight_pkt;
   const char* conn_id = ts_server__get_conn_remote_host(server, c);
-  
-  if (write_ctx == NULL) {
-    return;
-  }
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   inflight_pkt = (tm_inflight_packet_t*) write_ctx;
