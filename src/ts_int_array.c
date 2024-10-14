@@ -4,6 +4,8 @@
 ts_int_arr_t* ts_int_arr__create(int initial_count) {
   ts_int_arr_t* arr;
   
+  if (initial_count == 0) initial_count = 8;
+  
   arr = (ts_int_arr_t*) ts__malloc(sizeof(ts_int_arr_t));
   if (arr == NULL) {
     return NULL;
@@ -36,11 +38,11 @@ int ts_int_arr__get_count(ts_int_arr_t* arr) {
 
 long long ts_int_arr__at(ts_int_arr_t* arr, int idx) {
   long long val;
-  memcpy(&val, (void*)(arr->ptrs + (idx * 8)), 8);
+  memcpy(&val, (void*)(arr->ptrs->buf + (idx * 8)), 8);
   return val;
 }
 void ts_int_arr__set(ts_int_arr_t* arr, int idx, long long ptr) {
-  void* p = (void*)(arr->ptrs + (idx * 8));
+  void* p = (void*)(arr->ptrs->buf + (idx * 8));
   memcpy(p, &ptr, 8);
 }
 
