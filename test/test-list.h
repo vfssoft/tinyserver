@@ -156,6 +156,7 @@ TEST_DECLARE(mqtt_unsub_non_exist_test_3)
 TEST_DECLARE(mqtt_sub_unsub_many_test1)
 TEST_DECLARE(mqtt_sub_unsub_many_test2)
 TEST_DECLARE(mqtt_sub_unsub_many_test3)
+TEST_DECLARE(mqtt_max_qos_of_all_subscriptions)
 
 TEST_DECLARE(mqtt_basic_pub_qos0_test)
 TEST_DECLARE(mqtt_basic_pub_qos1_test)
@@ -338,6 +339,7 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_sub_unsub_many_test1, "MQTT")
         TEST_ENTRY(mqtt_sub_unsub_many_test2, "MQTT")
         TEST_ENTRY(mqtt_sub_unsub_many_test3, "MQTT")
+        TEST_ENTRY(mqtt_max_qos_of_all_subscriptions, "MQTT")
 
         TEST_ENTRY(mqtt_basic_pub_qos0_test, "MQTT")
         TEST_ENTRY(mqtt_basic_pub_qos1_test, "MQTT")

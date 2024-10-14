@@ -4,6 +4,8 @@
 #include <internal/ts_mutex.h>
 #include <internal/ts_error.h>
 #include <internal/ts_array.h>
+#include <internal/ts_int_array.h>
+#include <internal/uthash.h>
 
 #include "mqtt_message.h"
 
@@ -15,6 +17,18 @@
 typedef struct tm_topics_s tm_topics_t;
 typedef struct tm_topic_node_s tm_topic_node_t;
 typedef struct tm_subscribers_s tm_subscribers_t;
+typedef struct tm_matched_subscriber_s tm_matched_subscriber_t;
+
+struct tm_matched_subscriber_s {
+    void* subscriber;
+    ts_int_arr_t* qoss;
+    
+    UT_hash_handle hh; // make this struct hashable
+};
+
+// 'subscribers', 's' is meant here.
+void tm_matched_subscribers__destroy(tm_matched_subscriber_t* subscribers);
+int tm_matched_subscribers__count(tm_matched_subscriber_t* subscribers);
 
 struct tm_subscribers_s {
     void* subscriber;
@@ -51,7 +65,7 @@ int tm_topics__destroy(tm_topics_t* t);
 
 int tm_topics__subscribe(tm_topics_t* t, const char* topic, char qos, void* subscriber);
 int tm_topics__unsubscribe(tm_topics_t* t, const char* topic, void* subscriber);
-int tm_topics__subscribers(tm_topics_t* t, const char* topic, char qos, tm_subscribers_t** subscribers);
+int tm_topics__subscribers(tm_topics_t* t, const char* topic, char qos, tm_matched_subscriber_t** subscribers);
 int tm_topics__subscribers_free(tm_subscribers_t* subscribers);
 
 int tm_topics__retain_msg(tm_topics_t* t, tm_mqtt_msg_t* msg, tm_mqtt_msg_t** removed_retained_msg);

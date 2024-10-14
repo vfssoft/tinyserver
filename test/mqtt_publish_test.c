@@ -715,7 +715,7 @@ TEST_IMPL(mqtt_recv_offline_msgs_after_reconnect) {
   const char* client_id = "subscriber_with_clean_session";
   const char* topic = "topic";
   int qos = 1;
-  const char* payload = "hello offline message";
+  char* payload = "hello offline message";
 
   tm_t* server;
   tm_callbacks_t cbs;
@@ -753,7 +753,7 @@ TEST_IMPL(mqtt_no_offline_msgs_after_reconnect_with_clean_session) {
   const char* client_id = "subscriber_with_clean_session";
   const char* topic = "topic";
   int qos = 1;
-  const char* payload = "hello offline message";
+  char* payload = "hello offline message";
 
   tm_t* server;
   tm_callbacks_t cbs;
@@ -774,5 +774,43 @@ TEST_IMPL(mqtt_no_offline_msgs_after_reconnect_with_clean_session) {
 
   ASSERT_EQ(subscriber_info->msgs_count, 0);
 
+  return 0;
+}
+
+TEST_IMPL(mqtt_max_qos_of_all_subscriptions) {
+  test_client_subscriber_info_t* subscriber_info;
+  uv_thread_t subscriber_thread;
+  
+  int proto = TS_PROTO_TCP;
+  const char* client_id = "subscriber_with_multiple_subscriptions";
+  const char* topic = "/test/a/topic";
+  int qos = 1;
+  char* payload = "hello message";
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, NULL);
+  
+  server = start_mqtt_server(proto, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  mqtt_connect_and_sub(server, proto, FALSE, client_id, "/test/a/+", 1);
+  mqtt_connect_and_sub(server, proto, FALSE, client_id, "/test/+", 0);
+  
+  mqtt_publish_a_msg(server, proto, topic, 2, payload, strlen(payload), FALSE);
+  
+  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, qos, 500, client_id, FALSE, TRUE);
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+  
+  tm__stop(server);
+  
+  ASSERT_EQ(subscriber_info->msgs_count, 1);
+  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
+  ASSERT_STR_EQ(msg->topic, topic);
+  ASSERT_EQ(msg->qos, 1);
+  ASSERT_EQ(msg->payload_len, strlen(payload));
+  ASSERT_MEM_EQ(payload, (char*)msg->payload, msg->payload_len);
+  
   return 0;
 }

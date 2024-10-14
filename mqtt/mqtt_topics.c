@@ -3,6 +3,48 @@
 #include <internal/ts_mem.h>
 #include <internal/utlist.h>
 
+void tm_matched_subscribers__destroy(tm_matched_subscriber_t* subscribers) {
+  tm_matched_subscriber_t* elem;
+  tm_matched_subscriber_t* tmp;
+  
+  HASH_ITER(hh, subscribers, elem, tmp) {
+    HASH_DEL(subscribers, elem);
+  
+    assert(elem->qoss);
+    ts_int_arr__destroy(elem->qoss);
+    ts__free(elem);
+  
+  }
+}
+int tm_matched_subscribers__count(tm_matched_subscriber_t* subscribers) {
+  return HASH_COUNT(subscribers);
+}
+static int tm_matched_subscribers__add(tm_matched_subscriber_t** subscribers, void* subscriber, int qos) {
+  tm_matched_subscriber_t* val = NULL;
+  
+  HASH_FIND_PTR(*subscribers, &subscriber, val);
+  
+  if (val == NULL) {
+    val = (tm_matched_subscriber_t*) ts__malloc(sizeof(tm_matched_subscriber_t));
+    if (val == NULL) {
+      return TS_ERR_OUT_OF_MEMORY;
+    }
+    
+    val->subscriber = subscriber;
+    val->qoss = ts_int_arr__create(0);
+    if (val->qoss == NULL) {
+      return TS_ERR_OUT_OF_MEMORY;
+    }
+    
+    HASH_ADD_PTR(*subscribers, subscriber, val);
+  }
+  
+  ts_int_arr__append(val->qoss, qos);
+  
+  return 0;
+}
+
+
 static tm_subscribers_t* create_subscriber(int qos, void* subscriber) {
   tm_subscribers_t* sub = (tm_subscribers_t*) ts__malloc(sizeof(tm_subscribers_t));
   if (sub == NULL) {
@@ -79,7 +121,7 @@ static void tm_topic_node__remove_subscriber(tm_topic_node_t* n, tm_subscribers_
   DL_DELETE(n->subscribers, sub);
   ts__free(sub);
 }
-static int tm_topic_node__get_subscribers(tm_topic_node_t* n, BOOL include_children, tm_subscribers_t** subscribers) {
+static int tm_topic_node__get_subscribers(tm_topic_node_t* n, BOOL include_children, tm_matched_subscriber_t** subscribers) {
   int err = 0;
   tm_subscribers_t* sub = NULL;
   tm_subscribers_t* sub_copy = NULL;
@@ -91,11 +133,10 @@ static int tm_topic_node__get_subscribers(tm_topic_node_t* n, BOOL include_child
   //   If we do that, we need to ensure the memory is safely locked
   
   DL_FOREACH(n->subscribers, sub) {
-    sub_copy = create_subscriber(sub->qos, sub->subscriber);
-    if (sub == NULL) {
-      return TS_ERR_OUT_OF_MEMORY;
+    err = tm_matched_subscribers__add(subscribers, sub->subscriber, sub->qos);
+    if (err) {
+      return err;
     }
-    DL_APPEND(*subscribers, sub_copy);
   }
   
   if (include_children) {
@@ -223,7 +264,7 @@ static int tm_topic_node__remove(tm_topic_node_t* n, const char* topic, void* su
   
   return tm_topic_node__free_empty_nodes(n);
 }
-static int tm_topic_node__match(tm_topic_node_t* n, const char* topic, tm_subscribers_t** subscribers) {
+static int tm_topic_node__match(tm_topic_node_t* n, const char* topic, tm_matched_subscriber_t** subscribers) {
   int err = 0;
   const char* level = topic;
   int level_len = 0;
@@ -433,7 +474,7 @@ int tm_topics__unsubscribe(tm_topics_t* t, const char* topic, void* subscriber) 
   
   return err;
 }
-int tm_topics__subscribers(tm_topics_t* t, const char* topic, char qos, tm_subscribers_t** subscribers) {
+int tm_topics__subscribers(tm_topics_t* t, const char* topic, char qos, tm_matched_subscriber_t** subscribers) {
   int err;
   ts_mutex__lock(&(t->mu));
   

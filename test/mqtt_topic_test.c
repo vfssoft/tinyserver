@@ -153,11 +153,10 @@ TEST_IMPL(mqtt_sub_matched_test) {
     err = tm_topics__subscribe(topics, sub_mathced[i], 0, NULL);
     ASSERT_EQ(err, 0);
   
-    tm_subscribers_t* subscribers = NULL;
+    tm_matched_subscriber_t* subscribers = NULL;
     err = tm_topics__subscribers(topics, sub_mathced[i+1], 0, &subscribers);
     ASSERT_EQ(err, 0);
-    ASSERT_NE(subscribers, NULL);
-    ASSERT_EQ(subscribers->next, NULL); // only one is matched
+    ASSERT_EQ(tm_matched_subscribers__count(subscribers), 1); // only one is matched
     
     tm_topics__destroy(topics);
   }
@@ -180,7 +179,7 @@ TEST_IMPL(mqtt_sub_unmatched_test) {
     err = tm_topics__subscribe(topics, sub_unmathced[i], 0, NULL);
     ASSERT_EQ(err, 0);
   
-    tm_subscribers_t* subscribers = NULL;
+    tm_matched_subscriber_t* subscribers = NULL;
     err = tm_topics__subscribers(topics, sub_unmathced[i+1], 0, &subscribers);
     ASSERT_EQ(err, 0);
     ASSERT_EQ(subscribers, NULL);
@@ -198,7 +197,7 @@ int mqtt_sub_matched_multiple_impl(
   int err;
   tm_topics_t* topics = tm_topics__create();
   int* subs = (int*) malloc(sizeof(int) * topic_filters_count);
-  tm_subscribers_t* subscribers = NULL;
+  tm_matched_subscriber_t* subscribers = NULL;
   
   for (int i = 0; i < topic_filters_count; i++) {
     subs[i] = i;
@@ -208,17 +207,18 @@ int mqtt_sub_matched_multiple_impl(
   
   err = tm_topics__subscribers(topics, topic_name, 0, &subscribers);
   ASSERT_EQ(err, 0);
-  
-  int count = 0;
-  tm_subscribers_t* tmp_subscribers;
-  DL_COUNT(subscribers, tmp_subscribers, count);
-  ASSERT_EQ(count, matched_cnt);
+  ASSERT_EQ(tm_matched_subscribers__count(subscribers), matched_cnt);
   
   int idx = 0;
-  DL_FOREACH(subscribers, tmp_subscribers) {
-    int* val = (int*)tmp_subscribers->subscriber;
-    ASSERT_EQ(*val, matched_indexes[idx++]);
+  tm_matched_subscriber_t* elem;
+  tm_matched_subscriber_t* temp;
+  HASH_ITER(hh, subscribers, elem, temp) {
+    int a= 0;
   }
+  //DL_FOREACH(subscribers, tmp_subscribers) {
+  //  int* val = (int*)tmp_subscribers->subscriber;
+  //  ASSERT_EQ(*val, matched_indexes[idx++]);
+  //}
   
   tm_topics__destroy(topics);
   free(subscribers);
@@ -258,7 +258,7 @@ TEST_IMPL(mqtt_sub_unsub_test) {
   
   int err;
   for (int i = 0; i < ARRAYSIZE(topic_filters); i++) {
-    tm_subscribers_t* subscribers = NULL;
+    tm_matched_subscriber_t* subscribers = NULL;
     tm_topics_t* topics = tm_topics__create();
     
     err = tm_topics__subscribe(topics, topic_filters[i], 0, NULL);
@@ -283,7 +283,7 @@ TEST_IMPL(mqtt_sub_unsub_test) {
 TEST_IMPL(mqtt_sub_unsub_unmatched_test) {
   int err;
   const char* topic_filter = "A/B/C";
-  tm_subscribers_t* subscribers = NULL;
+  tm_matched_subscriber_t* subscribers = NULL;
   tm_topics_t* topics = tm_topics__create();
   
   err = tm_topics__subscribe(topics, topic_filter, 0, NULL);

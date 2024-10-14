@@ -388,8 +388,10 @@ int tm__on_publish_received(tm_server_t* s, ts_conn_t* c, tm_mqtt_msg_t* msg) {
   const char* conn_id;
   const char* msg_topic;
   int msg_qos;
-  tm_subscribers_t* subscribers = NULL;
-  tm_subscribers_t* cur_subscriber;
+  tm_matched_subscriber_t* subscribers = NULL;
+  tm_matched_subscriber_t* cur_subscriber;
+  tm_matched_subscriber_t* tmp_subscriber;
+  int max_qos = 0;
   
   server = s->server;
   conn_id = ts_server__get_conn_remote_host(server, c);
@@ -403,10 +405,16 @@ int tm__on_publish_received(tm_server_t* s, ts_conn_t* c, tm_mqtt_msg_t* msg) {
     return err;
   }
   
-  DL_FOREACH(subscribers, cur_subscriber) {
-    tm__dispatch_msg_to_subscriber(s, c, msg, cur_subscriber->subscriber, cur_subscriber->qos, FALSE);
+  HASH_ITER(hh, subscribers, cur_subscriber, tmp_subscriber) {
+    for (int i = 0; i < ts_int_arr__get_count(cur_subscriber->qoss); i++) {
+      if (ts_int_arr__at(cur_subscriber->qoss, i) > max_qos) {
+        max_qos = (int) ts_int_arr__at(cur_subscriber->qoss, i);
+        if (max_qos == 2) break;
+      }
+    }
+    tm__dispatch_msg_to_subscriber(s, c, msg, cur_subscriber->subscriber, max_qos, FALSE);
   }
-  tm_topics__subscribers_free(subscribers);
+  tm_matched_subscribers__destroy(subscribers);
   
   return 0;
 }
