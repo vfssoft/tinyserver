@@ -77,6 +77,10 @@ TEST_DECLARE(mqtt_connect_wss)
 
 TEST_DECLARE(mqtt_auth_user)
 TEST_DECLARE(mqtt_auth_user_fail)
+TEST_DECLARE(mqtt_two_clients_with_same_clientid_tcp)
+TEST_DECLARE(mqtt_two_clients_with_same_clientid_tls)
+TEST_DECLARE(mqtt_two_clients_with_same_clientid_ws)
+TEST_DECLARE(mqtt_two_clients_with_same_clientid_wss)
 
 TEST_DECLARE(mqtt_invalid_protocol_tcp_tls_test)
 TEST_DECLARE(mqtt_invalid_protocol_tcp_ws_test)
@@ -255,6 +259,10 @@ TEST_LIST_START
         
         TEST_ENTRY(mqtt_auth_user, "MQTT")
         TEST_ENTRY(mqtt_auth_user_fail, "MQTT")
+        TEST_ENTRY(mqtt_two_clients_with_same_clientid_tcp, "TCP,MQTT")
+        TEST_ENTRY(mqtt_two_clients_with_same_clientid_tls, "TLS,MQTT")
+        TEST_ENTRY(mqtt_two_clients_with_same_clientid_ws, "Websocket,MQTT")
+        TEST_ENTRY(mqtt_two_clients_with_same_clientid_wss, "Websocket,TLS,MQTT")
 
         TEST_ENTRY(mqtt_invalid_protocol_tcp_tls_test, "MQTT")
         TEST_ENTRY(mqtt_invalid_protocol_tcp_ws_test, "MQTT")

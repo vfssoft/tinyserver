@@ -19,7 +19,8 @@ struct mymqtt_msg_s {
 struct mymqtt_s {
   MQTTClient client;
   MQTTClient_connectOptions options;
-  
+
+  int  is_conn_lost;
   char* conn_lost_reason;
   mymqtt_msg_t msgs[32];
   int msgs_count;
@@ -36,6 +37,7 @@ void mymqtt__set_will(mymqtt_t* c, const char* topic, int qos, const char* paylo
 int mymqtt__sp(mymqtt_t* c);
 int mymqtt__recv_msg_count(mymqtt_t* c);
 int mymqtt__recv_msgs(mymqtt_t* c, mymqtt_msg_t* msgs);
+int mymqtt__is_conn_lost(mymqtt_t* c);
 
 int mymqtt__connect(mymqtt_t* c);
 int mymqtt__disconnect(mymqtt_t* c);

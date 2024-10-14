@@ -39,6 +39,7 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   int err;
   tm_mqtt_conn_t* conn;
   tm_server_t* s;
+  ts_conn_t* prev_conn;
   int tmp_len;
   const char* tmp_ptr = "";
   int tmp_val;
@@ -121,6 +122,17 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   conn->session = tm__find_session(s, client_id);
   session_present = !clean_session && conn->session != NULL;
   
+  if (conn->session && tm_mqtt_session__conn(conn->session)) {
+    LOG_VERB("[%s] The current session is attached to a another client with the same client id, disconnect the previous client", client_id);
+    prev_conn = tm_mqtt_session__conn(conn->session);
+    tm_mqtt_conn__abort(server, prev_conn);
+    tm_mqtt_session__detach(conn->session);
+
+    // Always process this case as the session not founded
+    // But there will be two session instances with the same client id, it may cause bugs...
+    conn->session = NULL;
+  }
+
   if (clean_session && conn->session) {
     LOG_DEBUG("[%s] Clear the previous session state", client_id);
     tm__remove_session(s, conn->session);

@@ -180,6 +180,81 @@ TEST_IMPL(mqtt_auth_user_fail) {
   return mqtt_auth_user_impl(1);
 }
 
+typedef struct {
+    int proto;
+    int done;
+} test_two_client_same_clientid_info_t;
+
+static void mqtt_two_client_with_same_clientid_cb(void *arg) {
+  int err;
+  test_two_client_same_clientid_info_t* info = (test_two_client_same_clientid_info_t*) arg;
+  mymqtt_t client1;
+  mymqtt_t client2;
+  mymqtt__init(&client1, info->proto, "test_client_id");
+  mymqtt__init(&client2, info->proto, "test_client_id");
+
+  err = mymqtt__connect(&client1);
+  ASSERT_EQ(err, 0);
+
+  err = mymqtt__connect(&client2);
+  ASSERT_EQ(err, 0);
+
+
+  long long endtime = get_current_time_millis() + 1000;
+  while (get_current_time_millis() < endtime) {
+    if (mymqtt__is_conn_lost(&client1)) {
+      break;
+    }
+
+    wait(100);
+  }
+  ASSERT_EQ(mymqtt__is_conn_lost(&client1), 1);
+  ASSERT_EQ(mymqtt__is_conn_lost(&client2), 0);
+
+  err = mymqtt__disconnect(&client2);
+  ASSERT_EQ(err, 0);
+
+  info->done = 1;
+}
+static int mqtt_two_clients_with_same_clientid_impl(int proto) {
+  test_conn_info_t conn_info;
+  memset(&conn_info, 0, sizeof(conn_info));
+
+  test_two_client_same_clientid_info_t info;
+  RESET_STRUCT(info);
+  info.proto = proto;
+
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, &conn_info);
+
+  server = start_mqtt_server(proto, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+
+  uv_thread_t client_thread;
+  uv_thread_create(&client_thread, mqtt_two_client_with_same_clientid_cb, (void*)&info);
+
+  while (info.done == 0) { tm__run(server); }
+
+  tm__stop(server);
+  uv_thread_join(&client_thread);
+
+  return 0;
+}
+TEST_IMPL(mqtt_two_clients_with_same_clientid_tcp) {
+  return mqtt_two_clients_with_same_clientid_impl(TS_PROTO_TCP);
+}
+TEST_IMPL(mqtt_two_clients_with_same_clientid_tls) {
+  return mqtt_two_clients_with_same_clientid_impl(TS_PROTO_TLS);
+}
+TEST_IMPL(mqtt_two_clients_with_same_clientid_ws) {
+  return mqtt_two_clients_with_same_clientid_impl(TS_PROTO_WS);
+}
+TEST_IMPL(mqtt_two_clients_with_same_clientid_wss) {
+  return mqtt_two_clients_with_same_clientid_impl(TS_PROTO_WSS);
+}
+
 static void mqtt_client_connect_with_invalid_protocol_cb(void *arg) {
   test_conn_info_t* info = (test_conn_info_t*)arg;
   mymqtt_t client;

@@ -7,6 +7,7 @@
 void conn_lost_cb(void *context, char *cause)
 {
   mymqtt_t* c = (mymqtt_t*)context;
+  c->is_conn_lost = TRUE;
   c->conn_lost_reason = strdup(cause);
 }
 
@@ -99,11 +100,19 @@ int mymqtt__init(mymqtt_t* c, int proto, const char* client_id) {
   
   memset(c->msgs, 0, sizeof(mymqtt_msg_t) * 32);
   c->msgs_count = 0;
+
+  c->is_conn_lost = FALSE;
+  c->conn_lost_reason = NULL;
   
   return 0;
 }
 void mymqtt__destroy(mymqtt_t* c) {
   MQTTClient_destroy(&c->client);
+
+  if (c->conn_lost_reason) {
+    free(c->conn_lost_reason);
+    c->conn_lost_reason = NULL;
+  }
 }
 
 void mymqtt__set_user(mymqtt_t* c, const char* user) {
@@ -138,6 +147,9 @@ int mymqtt__recv_msg_count(mymqtt_t* c) {
 int mymqtt__recv_msgs(mymqtt_t* c, mymqtt_msg_t* msgs) {
   memcpy(msgs, c->msgs, sizeof(mymqtt_msg_t) * c->msgs_count);
   return c->msgs_count;
+}
+int mymqtt__is_conn_lost(mymqtt_t* c) {
+  return c->is_conn_lost;
 }
 
 int mymqtt__connect(mymqtt_t* c) {
