@@ -39,7 +39,8 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   int err;
   tm_mqtt_conn_t* conn;
   tm_server_t* s;
-  ts_conn_t* prev_conn;
+  ts_conn_t* prev_c;
+  tm_mqtt_conn_t* prev_conn;
   int tmp_len;
   const char* tmp_ptr = "";
   int tmp_val;
@@ -106,7 +107,9 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   }
   memcpy(client_id, tmp_ptr, tmp_len);
   client_id[tmp_len] = 0;
-  
+
+  LOG_VERB("[%s][%s] New MQTT client is coming", conn_id, client_id);
+
   if (tmp_len == 0) {
     // empty client id
     if (!clean_session) {
@@ -124,13 +127,12 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   
   if (conn->session && tm_mqtt_session__conn(conn->session)) {
     LOG_VERB("[%s] The current session is attached to a another client with the same client id, disconnect the previous client", client_id);
-    prev_conn = tm_mqtt_session__conn(conn->session);
-    tm_mqtt_conn__abort(server, prev_conn);
-    tm_mqtt_session__detach(conn->session);
+    prev_c = tm_mqtt_session__conn(conn->session);
+    prev_conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, prev_c);
 
-    // Always process this case as the session not founded
-    // But there will be two session instances with the same client id, it may cause bugs...
-    conn->session = NULL;
+    prev_conn->session = NULL; // un-reference the current session
+    tm_mqtt_conn__abort(server, prev_c);
+    clean_session = 1; // force a new session for the current connection
   }
 
   if (clean_session && conn->session) {
