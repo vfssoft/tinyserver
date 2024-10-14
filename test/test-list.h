@@ -168,6 +168,7 @@ TEST_DECLARE(mqtt_pub_qos_2_sub_qos_0_tcp)
 TEST_DECLARE(mqtt_pub_qos_2_sub_qos_1_tcp)
 
 TEST_DECLARE(mqtt_recv_offline_msgs_after_reconnect)
+TEST_DECLARE(mqtt_no_offline_msgs_after_reconnect_with_clean_session)
 
 TEST_DECLARE(mqtt_not_pub_will_if_client_disconnect_normally)
 TEST_DECLARE(mqtt_pub_will_if_client_disconnect_abnormally)
@@ -180,6 +181,7 @@ TEST_DECLARE(mqtt_retain_msg_zero_byte_1)
 TEST_DECLARE(mqtt_retain_msg_zero_byte_2)
 TEST_DECLARE(mqtt_retain_msg_zero_byte_3)
 TEST_DECLARE(mqtt_retain_msg_update_exist)
+TEST_DECLARE(mqtt_retain_msg_kept_after_publisher_session_ends)
 
 TEST_LIST_START
         TEST_ENTRY(invalid_local_host, "Error")
@@ -343,6 +345,7 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_pub_qos_2_sub_qos_1_tcp, "MQTT")
 
         TEST_ENTRY(mqtt_recv_offline_msgs_after_reconnect, "MQTT")
+        TEST_ENTRY(mqtt_no_offline_msgs_after_reconnect_with_clean_session, "MQTT")
 
         TEST_ENTRY(mqtt_not_pub_will_if_client_disconnect_normally, "MQTT")
         TEST_ENTRY(mqtt_pub_will_if_client_disconnect_abnormally, "MQTT")
@@ -355,6 +358,7 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_retain_msg_zero_byte_2, "MQTT")
         TEST_ENTRY(mqtt_retain_msg_zero_byte_3, "MQTT")
         TEST_ENTRY(mqtt_retain_msg_update_exist, "MQTT")
+        TEST_ENTRY(mqtt_retain_msg_kept_after_publisher_session_ends, "MQTT")
 TEST_LIST_END
 
 #endif //TINYSERVER_TEST_LIST_H

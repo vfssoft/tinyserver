@@ -653,6 +653,43 @@ TEST_IMPL(mqtt_retain_msg_update_exist) {
   return 0;
 }
 
+TEST_IMPL(mqtt_retain_msg_kept_after_publisher_session_ends) {
+  test_client_subscriber_info_t* subscriber_info;
+  uv_thread_t subscriber_thread;
+
+  int proto = TS_PROTO_TCP;
+  const char* topic = "retain_message_topic";
+  int qos = 1;
+
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, NULL);
+
+  server = start_mqtt_server(proto, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+
+  // clean session is 1
+  mqtt_publish_a_msg(server, proto, topic, qos, "A", 1, TRUE);
+
+  subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 500);
+
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+
+  tm__stop(server);
+
+  ASSERT_EQ(subscriber_info->msgs_count, 1);
+  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
+  ASSERT_STR_EQ(msg->topic, topic);
+  ASSERT_EQ(msg->qos, qos);
+  ASSERT_EQ(msg->payload_len, 1);
+  ASSERT_MEM_EQ(msg->payload, "A", 1);
+  ASSERT_EQ(msg->retained, TRUE);
+
+  return 0;
+}
+
+
 
 static int mqtt_connect_and_sub(tm_t* server, int proto, int clean_session, const char* client_id, const char* topic, int qos) {
   test_client_connect_sub_info_t info;
@@ -704,6 +741,38 @@ TEST_IMPL(mqtt_recv_offline_msgs_after_reconnect) {
   ASSERT_EQ(msg->payload_len, strlen(payload));
   ASSERT_MEM_EQ(payload, (char*)msg->payload, msg->payload_len);
   ASSERT_EQ(msg->retained, FALSE);
+
+  return 0;
+}
+
+TEST_IMPL(mqtt_no_offline_msgs_after_reconnect_with_clean_session) {
+  test_client_subscriber_info_t* subscriber_info;
+  uv_thread_t subscriber_thread;
+
+  int proto = TS_PROTO_TCP;
+  const char* client_id = "subscriber_with_clean_session";
+  const char* topic = "topic";
+  int qos = 1;
+  const char* payload = "hello offline message";
+
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, NULL);
+
+  server = start_mqtt_server(proto, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+
+  mqtt_connect_and_sub(server, proto, FALSE, client_id, topic, qos);
+
+  mqtt_publish_a_msg(server, proto, topic, qos, payload, strlen(payload), FALSE);
+
+  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, qos, 500, client_id, TRUE, TRUE);
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+
+  tm__stop(server);
+
+  ASSERT_EQ(subscriber_info->msgs_count, 0);
 
   return 0;
 }
