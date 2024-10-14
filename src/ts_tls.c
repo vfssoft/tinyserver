@@ -160,11 +160,17 @@ done:
 
 int ts_tls__destroy(ts_tls_t* tls) {
   if (tls->ssl) {
-    SSL_free(tls->ssl);
+    SSL_free(tls->ssl); // implicitly frees tls->sslbio
+  }
+  if (tls->appbio) {
+    BIO_free(tls->appbio);
   }
   tls->conn = NULL;
   tls->ssl = NULL;
   tls->ctx = NULL; // it's a reference, so don't need to free it.
+  tls->state = TS_STATE_DISCONNECTED;
+  tls->sslbio = NULL;
+  tls->appbio = NULL;
   return 0;
 }
 
