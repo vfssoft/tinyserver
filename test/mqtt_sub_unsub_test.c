@@ -251,3 +251,69 @@ TEST_IMPL(mqtt_sub_unsub_many_test3) {
   
   return mqtt_sub_unsub_many_impl(sub_topics, ARRAYSIZE(sub_topics), unsub_topics, ARRAYSIZE(unsub_topics));
 }
+
+typedef struct {
+    int proto;
+    char topic[64];
+    int request_qos;
+    int granted_qos;
+    int done;
+} test_grant_low_qos_info_t;
+
+static void mqtt_grant_low_qos_subscribe_cb(void* ctx, tm_t* mqt, ts_conn_t* conn, const char* topic, int requested_qos, int* granted_qos) {
+  //test_grant_low_qos_info_t* info = (test_grant_low_qos_info_t*) ctx;
+  *granted_qos = 1;
+}
+
+static void mqtt_client_grant_low_qos_cb(void *arg) {
+  int err;
+  test_grant_low_qos_info_t* info = (test_grant_low_qos_info_t*) arg;
+  mymqtt_t client;
+  mymqtt__init(&client, info->proto, "test_client_id");
+  
+  err = mymqtt__connect(&client);
+  ASSERT_EQ(err, 0);
+  
+  err = mymqtt__subscribe(&client, info->topic, info->request_qos);
+  ASSERT_EQ(err, 0);
+  
+  // MQTTClient doesn't support query the granted qos, so we cannot verify it here.
+  
+  err = mymqtt__unsubscribe(&client, info->topic);
+  ASSERT_EQ(err, 0);
+  
+  err = mymqtt__disconnect(&client);
+  ASSERT_EQ(err, 0);
+  
+  info->done = 1;
+}
+
+TEST_IMPL(mqtt_grant_low_qos_value) {
+  const char* topic = "test_topic";
+  test_grant_low_qos_info_t info;
+  RESET_STRUCT(info);
+  info.proto = TS_PROTO_TCP;
+  strcpy(info.topic, topic);
+  info.request_qos = 2;
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, &info);
+  cbs.subscriber_cb = mqtt_grant_low_qos_subscribe_cb;
+  
+  server = start_mqtt_server(TS_PROTO_TCP, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  uv_thread_t client_thread;
+  uv_thread_create(&client_thread, mqtt_client_grant_low_qos_cb, (void*)&info);
+  
+  while (info.done == 0) {
+    tm__run(server);
+  }
+  
+  tm__stop(server);
+  uv_thread_join(&client_thread);
+  
+  return 0;
+}

@@ -159,6 +159,7 @@ TEST_DECLARE(mqtt_sub_unsub_many_test3)
 TEST_DECLARE(mqtt_max_qos_of_all_subscriptions)
 TEST_DECLARE(mqtt_update_subscribe_qos)
 TEST_DECLARE(mqtt_update_subscribe_qos_resent_retain_msg)
+TEST_DECLARE(mqtt_grant_low_qos_value)
 
 TEST_DECLARE(mqtt_basic_pub_qos0_test)
 TEST_DECLARE(mqtt_basic_pub_qos1_test)
@@ -344,6 +345,7 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_max_qos_of_all_subscriptions, "MQTT")
         TEST_ENTRY(mqtt_update_subscribe_qos, "MQTT")
         TEST_ENTRY(mqtt_update_subscribe_qos_resent_retain_msg, "MQTT")
+        TEST_ENTRY(mqtt_grant_low_qos_value, "MQTT")
 
         TEST_ENTRY(mqtt_basic_pub_qos0_test, "MQTT")
         TEST_ENTRY(mqtt_basic_pub_qos1_test, "MQTT")
