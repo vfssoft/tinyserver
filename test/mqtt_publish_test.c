@@ -814,3 +814,74 @@ TEST_IMPL(mqtt_max_qos_of_all_subscriptions) {
   
   return 0;
 }
+
+
+TEST_IMPL(mqtt_update_subscribe_qos) {
+  test_client_subscriber_info_t* subscriber_info;
+  uv_thread_t subscriber_thread;
+  
+  int proto = TS_PROTO_TCP;
+  const char* client_id = "subscriber";
+  const char* topic = "/test/a/topic";
+  char* payload = "hello message";
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, NULL);
+  
+  server = start_mqtt_server(proto, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  mqtt_connect_and_sub(server, proto, FALSE, client_id, topic, 0);
+  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, 1, 500, client_id, FALSE, FALSE); // re-sub with qos = 1
+  mqtt_publish_a_msg(server, proto, topic, 2, payload, strlen(payload), FALSE);
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+  
+  tm__stop(server);
+  
+  ASSERT_EQ(subscriber_info->msgs_count, 1);
+  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
+  ASSERT_STR_EQ(msg->topic, topic);
+  ASSERT_EQ(msg->qos, 1);
+  
+  return 0;
+}
+
+TEST_IMPL(mqtt_update_subscribe_qos_resent_retain_msg) {
+  test_client_subscriber_info_t* subscriber_info;
+  uv_thread_t subscriber_thread;
+  
+  int proto = TS_PROTO_TCP;
+  const char* client_id = "subscriber";
+  const char* topic = "/test/a/topic";
+  char* payload = "hello message";
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, NULL);
+  
+  server = start_mqtt_server(proto, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, 0, 500, client_id, FALSE, FALSE);
+  mqtt_publish_a_msg(server, proto, topic, 2, payload, strlen(payload), TRUE);
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+  
+  ASSERT_EQ(subscriber_info->msgs_count, 1);
+  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
+  ASSERT_EQ(msg->qos, 0);
+  
+  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, 1, 500, client_id, FALSE, FALSE);
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+  
+  ASSERT_EQ(subscriber_info->msgs_count, 1);
+  msg = &(subscriber_info->msgs[0]);
+  ASSERT_EQ(msg->qos, 1);
+  
+  tm__stop(server);
+
+  return 0;
+}
+
