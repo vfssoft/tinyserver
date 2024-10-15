@@ -28,4 +28,15 @@ long get_current_process_memory_usage();
 
 void wait(int milliseconds);
 
+int build_connect_pkt(
+    char* buf,
+    const char* client_id,
+    int clean_session,
+    const char* username, const char* password,
+    const char* will_msg, int will_msg_len, const char* will_topic, int will_qos, int will_retain,
+    int keep_alive
+);
+
+int build_subscribe_pkt(char* buf, int pkt_id, const char* topic, int qos);
+
 #endif //TINYSERVER_TESTUTIL_H

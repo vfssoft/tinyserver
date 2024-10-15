@@ -163,3 +163,109 @@ void wait(int milliseconds) {
     Sleep(20);
   }
 }
+
+static int encode_short(char* buf, int val) {
+  buf[0] = (char)((val & 0xFF00) >> 8);
+  buf[1] = (char)(val & 0x00FF);
+  return 2;
+}
+static int encode_utf8_string(char* buf, const char* data, int len) {
+  encode_short(buf, len);
+  memcpy(buf + 2, data, len);
+  return len + 2;
+}
+
+int build_connect_pkt(char* buf,
+    const char* client_id,
+    int clean_session,
+    const char* username, const char* password,
+    const char* will_msg, int will_msg_len, const char* will_topic, int will_qos, int will_retain,
+    int keep_alive
+) {
+  int client_id_len = client_id == NULL ? 0 : strlen(client_id);
+  int username_len = username == NULL ? 0 : strlen(username);
+  int password_len = password == NULL ? 0 : strlen(password);
+  int will_topic_len = will_topic == NULL ? 0 : strlen(will_topic);
+  
+  int variable_header_offset = 0;
+  int offset;
+  
+  buf[0] = 0x10; // type and reserved bits
+  
+  // estimate how long needed to encode remaining length
+  if (client_id_len + username_len + password_len + will_topic_len + 10 > 127) {
+    // use two bytes to encode the length
+    variable_header_offset = 3;
+  } else {
+    // use one byte to encode the length
+    variable_header_offset = 2;
+  }
+  
+  offset = variable_header_offset;
+  offset += encode_utf8_string(buf + offset, "MQTT", 4);
+  
+  buf[offset] = 0x04; // Version
+  offset++;
+  
+  int flags = clean_session << 1;
+  if (will_msg != NULL) {
+    flags |= 1 << 2; // will flag
+    flags |= will_qos << 3;
+    flags |= will_retain << 5;
+  }
+  if (username != NULL) {
+    flags |= 1 << 6;
+  }
+  if (password != NULL) {
+    flags |= 1 << 7;
+  }
+  
+  buf[offset] = flags;
+  offset++;
+  
+  buf[offset] = keep_alive & 0xFF00 >> 8;
+  buf[offset+1] = keep_alive & 0x00FF;
+  offset += 2;
+  
+  offset += encode_utf8_string(buf + offset, client_id, client_id_len);
+  
+  if (will_msg) {
+    offset += encode_utf8_string(buf + offset, will_topic, strlen(will_topic));
+    offset += encode_utf8_string(buf + offset, will_msg, will_msg_len);
+  }
+  if (username) {
+    offset += encode_utf8_string(buf + offset, username, strlen(username));
+  }
+  if (password) {
+    offset += encode_utf8_string(buf + offset, password, strlen(password));
+  }
+  
+  int remaining_len = offset - variable_header_offset;
+  if (remaining_len <= 127) {
+    assert(variable_header_offset == 2);
+    buf[1] = remaining_len;
+  } else {
+    assert(variable_header_offset == 3);
+    buf[1] = (remaining_len / 128) | 0x80;
+    buf[2] = remaining_len % 128;
+  }
+  
+  return offset;
+}
+
+int build_subscribe_pkt(char* buf, int pkt_id, const char* topic, int qos) {
+  buf[0] = 0x82;
+  //buf[1] = 0;
+  
+  int offset = 2;
+  offset += encode_short(buf + offset, pkt_id);
+  
+  offset += encode_utf8_string(buf + offset, topic, strlen(topic));
+  
+  buf[offset] = qos;
+  offset++;
+  
+  buf[1] = offset - 2;
+  
+  return offset;
+}
