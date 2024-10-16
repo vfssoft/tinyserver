@@ -14,11 +14,6 @@ static int tm_mqtt_conn__send_pubrec(ts_t* server, ts_conn_t* c, int pkt_id, tm_
   uint162bytes_be(pkt_id, pubrec+2);
   return tm_mqtt_conn__send_packet(server, c, pubrec, 4, pkt_id, msg);
 }
-static int tm_mqtt_conn__send_pubrel(ts_t* server, ts_conn_t* c, int pkt_id, tm_mqtt_msg_t* msg) {
-  char pubrel[4] = { 0x62, 0x02, 0x00, 0x00 };
-  uint162bytes_be(pkt_id, pubrel+2);
-  return tm_mqtt_conn__send_packet(server, c, pubrel, 4, pkt_id, msg);
-}
 static int tm_mqtt_conn__send_pubcomp(ts_t* server, ts_conn_t* c, int pkt_id, tm_mqtt_msg_t* msg) {
   char pubcomp[4] = { 0x70, 0x02, 0x00, 0x00 };
   uint162bytes_be(pkt_id, pubcomp+2);

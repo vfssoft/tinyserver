@@ -43,6 +43,7 @@ struct tm_mqtt_msg_s {
   unsigned long long id;
   int state;
   int pkt_id;
+  BOOL failed; // result of previous sending/receiving
 
   tm_mqtt_msg_t* prev;
   tm_mqtt_msg_t* next;
@@ -68,6 +69,8 @@ unsigned long long tm_mqtt_msg__id(tm_mqtt_msg_t* msg);
 int tm_mqtt_msg__get_state(tm_mqtt_msg_t* msg);
 int tm_mqtt_msg__set_state(tm_mqtt_msg_t* msg, int state);
 int tm_mqtt_msg__update_state(tm_mqtt_msg_t* msg);
+int tm_mqtt_msg__set_failed(tm_mqtt_msg_t* msg, BOOL failed);
+BOOL tm_mqtt_msg__failed(tm_mqtt_msg_t* msg);
 
 
 tm_msg_mgr_t* tm_msg_mgr__create();

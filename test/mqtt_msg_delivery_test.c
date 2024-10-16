@@ -110,7 +110,7 @@ static void client_resend_publish_qos1_cb(void *arg) {
   
   // server should resend publish to us
   err = mytcp__read(&client, recv_buf, 128);
-  ASSERT_OK(err > 0);
+  ASSERT_NE(err, 0);
   
   info->done = 1;
 }

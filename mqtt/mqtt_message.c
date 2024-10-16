@@ -170,7 +170,13 @@ int tm_mqtt_msg__update_state(tm_mqtt_msg_t* msg) {
   
   return 0;
 }
-
+int tm_mqtt_msg__set_failed(tm_mqtt_msg_t* msg, BOOL failed) {
+  msg->failed = failed;
+  return 0;
+}
+BOOL tm_mqtt_msg__failed(tm_mqtt_msg_t* msg) {
+  return msg->failed;
+}
 
 tm_msg_mgr_t* tm_msg_mgr__create() {
   tm_msg_mgr_t* mgr;
@@ -214,6 +220,7 @@ tm_mqtt_msg_t* tm_msg_mgr__add(tm_msg_mgr_t* mgr, const char* topic, const char*
   msg->msg_core = msg_core;
   msg->flags = (dup ? 4 : 0) | (qos << 1) | retain;
   msg->state = MSG_STATE_INIT;
+  msg->failed = FALSE;
   
   ts_mutex__lock(&(mgr->mu));
   msg->id = mgr->next_msg_id;

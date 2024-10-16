@@ -44,6 +44,26 @@ void tm_mqtt_session__attach(tm_mqtt_session_t* sess, void* conn) {
 void* tm_mqtt_session__detach(tm_mqtt_session_t* sess) {
   void* conn = sess->conn;
   sess->conn = NULL;
+
+  // Mark all pending messages as failed
+  // Drop QoS0 messages
+  tm_mqtt_msg_t* msg;
+  tm_mqtt_msg_t* tmp;
+  DL_FOREACH_SAFE(sess->out_msgs, msg, tmp) {
+    if (tm_mqtt_msg__qos(msg) == 0) {
+      tm_mqtt_session__remove_out_msg(sess, msg);
+    } else {
+      tm_mqtt_msg__set_failed(msg, TRUE);
+    }
+  }
+  DL_FOREACH_SAFE(sess->in_msgs, msg, tmp) {
+    if (tm_mqtt_msg__qos(msg) == 0) {
+      tm_mqtt_session__remove_in_msg(sess, msg);
+    } else {
+      tm_mqtt_msg__set_failed(msg, TRUE);
+    }
+  }
+
   return conn;
 }
 
@@ -52,6 +72,7 @@ int tm_mqtt_session__add_in_msg(tm_mqtt_session_t* sess, tm_mqtt_msg_t* msg) {
   return 0;
 }
 int tm_mqtt_session__remove_in_msg(tm_mqtt_session_t* sess, tm_mqtt_msg_t* msg) {
+  // TODO: unref the msg
   DL_DELETE(sess->in_msgs, msg); // no lock
   return 0;
 }
@@ -70,6 +91,7 @@ int tm_mqtt_session__add_out_msg(tm_mqtt_session_t* sess, tm_mqtt_msg_t* msg) {
   return 0;
 }
 int tm_mqtt_session__remove_out_msg(tm_mqtt_session_t* sess, tm_mqtt_msg_t* msg) {
+  // TODO: unref the msg
   DL_DELETE(sess->out_msgs, msg); // no lock
   return 0;
 }
@@ -85,8 +107,15 @@ tm_mqtt_msg_t* tm_mqtt_session__find_out_msg(tm_mqtt_session_t* sess, int pkt_id
 tm_mqtt_msg_t* tm_mqtt_session__get_next_msg_to_send(tm_mqtt_session_t* sess) {
   tm_mqtt_msg_t* cur;
   DL_FOREACH(sess->out_msgs, cur) {
+    if (tm_mqtt_msg__failed(cur) > 0) {
+      if (tm_mqtt_msg__get_state(cur) == MSG_STATE_WAIT_PUBCOMP) {
+        continue;
+      }
+      
+      return cur; // resend the current msg to the client
+    }
     if (tm_mqtt_msg__get_state(cur) == MSG_STATE_TO_PUBLISH) {
-      return cur;
+      return cur; // send the current msg to the client, first time.
     }
   }
   return NULL;

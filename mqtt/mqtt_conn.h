@@ -56,12 +56,15 @@ int tm_mqtt_conn__process_pingreq(ts_t* server, ts_conn_t* c);
 int tm_mqtt_conn__process_disconnect(ts_t* server, ts_conn_t* c);
 int tm_mqtt_conn__process_tcp_disconnect(ts_t* server, ts_conn_t* c);
 
+int tm_mqtt_conn__send_pubrel(ts_t* server, ts_conn_t* c, int pkt_id, tm_mqtt_msg_t* msg);
+
 void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_write_more, void* write_ctx);
 
 void tm_mqtt_conn__timer_cb(ts_t* server, ts_conn_t* c);
 
 int tm_mqtt_conn__update_msg_state(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* msg);
 
-int tm_mqtt_conn__on_subscribed_msg_in(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* msg);
+int tm_mqtt_conn__pub_msg_to_conn_if_any(ts_t* server, ts_conn_t* c);
+int tm_mqtt_conn__pub_msg_to_conn(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* msg);
 
 #endif //TINYSERVER_MQTT_CONN_H

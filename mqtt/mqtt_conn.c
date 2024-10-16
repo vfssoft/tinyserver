@@ -262,14 +262,8 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
   }
 
   tm_mqtt_conn__inflight_packet_destroy(conn, inflight_pkt);
-
-  if (conn->session != NULL && conn->inflight_pkts == NULL) {
-    // no inflight packets, try to send a pending outgoing messages
-    msg = tm_mqtt_session__get_next_msg_to_send(conn->session);
-    if (msg != NULL) {
-      tm_mqtt_conn__on_subscribed_msg_in(server, c, msg);
-    }
-  }
+  
+  tm_mqtt_conn__pub_msg_to_conn_if_any(server, c);
 
 }
 
@@ -395,22 +389,15 @@ static char* tm_mqtt_conn__encode_msg(tm_mqtt_msg_t* msg, int* len) {
   *len = offset;
   return pkt_bytes;
 }
-
-int tm_mqtt_conn__on_subscribed_msg_in(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* msg) {
+static int tm_mqtt_conn__encode_and_send_msg(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* msg) {
   int err;
   tm_server_t* s;
   tm_mqtt_conn_t* conn;
   char* pkt_bytes;
   int pkt_bytes_len = 0;
-  const char* conn_id = ts_server__get_conn_remote_host(server, c);
+  
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
-
-  // msg should already be in the conn.session
-  // tm_mqtt_session__add_out_msg(conn->session, msg);
-  
-  msg->pkt_id = conn->next_pkt_id;
-  conn->next_pkt_id++;
   
   pkt_bytes = tm_mqtt_conn__encode_msg(msg, &pkt_bytes_len);
   if (pkt_bytes == NULL) {
@@ -418,10 +405,7 @@ int tm_mqtt_conn__on_subscribed_msg_in(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t
     tm_mqtt_conn__abort(server, c);
     return 0;
   }
-
-  // Don't update message state here, update state when the data is written successfully
-  // tm_mqtt_conn__update_msg_state(server, c, msg);
-
+  
   err = tm_mqtt_conn__send_packet(server, c, pkt_bytes, pkt_bytes_len, msg->pkt_id, msg);
   ts__free(pkt_bytes);
   
@@ -432,4 +416,84 @@ int tm_mqtt_conn__on_subscribed_msg_in(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t
   }
   
   return 0;
+}
+
+int tm_mqtt_conn__pub_msg_to_conn(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* msg) {
+  int err;
+  tm_server_t* s;
+  tm_mqtt_conn_t* conn;
+  char* pkt_bytes;
+  int pkt_bytes_len = 0;
+  int msg_state;
+  
+  conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
+  s = conn->server;
+  msg_state = tm_mqtt_msg__get_state(msg);
+  
+  // msg should already be in the conn.session
+  // tm_mqtt_session__add_out_msg(conn->session, msg);
+  
+  if (tm_mqtt_msg__failed(msg)) {
+    // resend
+    // keep the old pkt_id
+  
+    tm_mqtt_msg__set_failed(msg, FALSE); // reset the flag
+    
+    // Outgoing
+    if (msg_state == MSG_STATE_TO_PUBLISH || msg_state == MSG_STATE_WAIT_PUBACK || msg_state == MSG_STATE_WAIT_PUBREC) {
+      // send the message again
+      tm_mqtt_msg__set_dup(msg, TRUE);
+      err = tm_mqtt_conn__encode_and_send_msg(server, c, msg);
+      
+    } else if (msg_state == MSG_STATE_SEND_PUBREL) {
+      err = tm_mqtt_conn__send_pubrel(server, c, msg->pkt_id, msg);
+    } else if (msg_state == MSG_STATE_WAIT_PUBCOMP) {
+      // wait for the client resend pubrec
+      // should not reach here
+      assert(0);
+    } else {
+      // For incoming messages,we don't need to resend anything, the peer will resend them.
+      assert(0); // invalid state
+    }
+    
+  } else {
+    msg->pkt_id = conn->next_pkt_id;
+    conn->next_pkt_id++;
+  
+    tm_mqtt_msg__set_dup(msg, FALSE);
+    err = tm_mqtt_conn__encode_and_send_msg(server, c, msg);
+    if (err) {
+      return err;
+    }
+  }
+  
+  // Don't update message state here, update state when the data is written successfully
+  // tm_mqtt_conn__update_msg_state(server, c, msg);
+  
+  return 0;
+}
+int tm_mqtt_conn__pub_msg_to_conn_if_any(ts_t* server, ts_conn_t* c) {
+  tm_server_t* s;
+  tm_mqtt_conn_t* conn;
+  tm_mqtt_msg_t* msg;
+  
+  conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
+  s = conn->server;
+  
+  if (conn->session != NULL && conn->inflight_pkts == NULL) {
+    // no inflight packets, try to send a pending outgoing messages
+    msg = tm_mqtt_session__get_next_msg_to_send(conn->session);
+    if (msg != NULL) {
+      tm_mqtt_conn__pub_msg_to_conn(server, c, msg);
+    }
+  }
+  
+  return 0;
+}
+
+
+int tm_mqtt_conn__send_pubrel(ts_t* server, ts_conn_t* c, int pkt_id, tm_mqtt_msg_t* msg) {
+  char pubrel[4] = { 0x62, 0x02, 0x00, 0x00 };
+  uint162bytes_be(pkt_id, pubrel+2);
+  return tm_mqtt_conn__send_packet(server, c, pubrel, 4, pkt_id, msg);
 }
