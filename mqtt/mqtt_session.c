@@ -108,10 +108,6 @@ tm_mqtt_msg_t* tm_mqtt_session__get_next_msg_to_send(tm_mqtt_session_t* sess) {
   tm_mqtt_msg_t* cur;
   DL_FOREACH(sess->out_msgs, cur) {
     if (tm_mqtt_msg__failed(cur) > 0) {
-      if (tm_mqtt_msg__get_state(cur) == MSG_STATE_WAIT_PUBCOMP) {
-        continue;
-      }
-      
       return cur; // resend the current msg to the client
     }
     if (tm_mqtt_msg__get_state(cur) == MSG_STATE_TO_PUBLISH) {

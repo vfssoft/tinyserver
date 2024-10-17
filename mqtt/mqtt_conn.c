@@ -445,12 +445,8 @@ int tm_mqtt_conn__pub_msg_to_conn(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* msg
       tm_mqtt_msg__set_dup(msg, TRUE);
       err = tm_mqtt_conn__encode_and_send_msg(server, c, msg);
       
-    } else if (msg_state == MSG_STATE_SEND_PUBREL) {
+    } else if (msg_state == MSG_STATE_SEND_PUBREL || msg_state == MSG_STATE_WAIT_PUBCOMP) {
       err = tm_mqtt_conn__send_pubrel(server, c, msg->pkt_id, msg);
-    } else if (msg_state == MSG_STATE_WAIT_PUBCOMP) {
-      // wait for the client resend pubrec
-      // should not reach here
-      assert(0);
     } else {
       // For incoming messages,we don't need to resend anything, the peer will resend them.
       assert(0); // invalid state
