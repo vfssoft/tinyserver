@@ -68,13 +68,13 @@ void tm_mqtt_msg__set_qos(tm_mqtt_msg_t* msg, int qos) {
   msg->flags |= (qos << 1);
 }
 int tm_mqtt_msg__dup(tm_mqtt_msg_t* msg) {
-  return (msg->flags & 0x80) == 0x80;
+  return (msg->flags & 0x08) == 0x08;
 }
 void tm_mqtt_msg__set_dup(tm_mqtt_msg_t* msg, int dup) {
   if (dup) {
-    msg->flags |= 0x80;
+    msg->flags |= 0x08;
   } else {
-    msg->flags &= ~0x80;
+    msg->flags &= ~0x08;
   }
 }
 

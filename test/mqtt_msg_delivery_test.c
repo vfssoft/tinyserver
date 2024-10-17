@@ -110,8 +110,11 @@ static void client_resend_publish_qos1_cb(void *arg) {
   
   // server should resend publish to us
   err = mytcp__read(&client, recv_buf, 128);
-  ASSERT_NE(err, 0);
-  
+  ASSERT_EQ(err, 15);
+  ASSERT_EQ(recv_buf[0], 0x3a); // DUP, QoS 1, Not retain
+  ASSERT_EQ(recv_buf[8], 0x00);
+  ASSERT_EQ(recv_buf[9], 0x01); // packet id
+
   info->done = 1;
 }
 TEST_IMPL(mqtt_msg_delivery_resend_puback) {
