@@ -39,4 +39,12 @@ int build_connect_pkt(
 
 int build_subscribe_pkt(char* buf, int pkt_id, const char* topic, int qos);
 
+int build_publish_pkt(
+    char* buf,
+    const char* topic,
+    int pkt_id,
+    int qos, int dup, int retain,
+    const char* payload, int payload_len
+);
+
 #endif //TINYSERVER_TESTUTIL_H

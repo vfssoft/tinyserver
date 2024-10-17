@@ -269,3 +269,48 @@ int build_subscribe_pkt(char* buf, int pkt_id, const char* topic, int qos) {
   
   return offset;
 }
+
+int build_publish_pkt(
+    char* buf,
+    const char* topic,
+    int pkt_id,
+    int qos, int dup, int retain,
+    const char* payload, int payload_len
+) {
+  buf[0] = 0x30;
+  if (dup) buf[0] |= 0x08;
+  if (qos > 0) buf[0] |= (char)(qos << 1);
+  if (retain) buf[0] |= 0x01;
+
+  int offset = 0;
+  int variable_header_offset = 0;
+
+  if (2 + strlen(topic) + 2 + payload_len > 127) {
+    // use two bytes to encode the length
+    variable_header_offset = 3;
+  } else {
+    // use one byte to encode the length
+    variable_header_offset = 2;
+  }
+  offset = variable_header_offset;
+
+  offset += encode_utf8_string(buf + offset, topic, strlen(topic));
+
+  offset += encode_short(buf + offset, pkt_id);
+
+  memcpy(buf + offset, payload, payload_len);
+  offset += payload_len;
+
+
+  int remaining_len = offset - variable_header_offset;
+  if (remaining_len <= 127) {
+    assert(variable_header_offset == 2);
+    buf[1] = remaining_len;
+  } else {
+    assert(variable_header_offset == 3);
+    buf[1] = (remaining_len / 128) | 0x80;
+    buf[2] = remaining_len % 128;
+  }
+
+  return offset;
+}
