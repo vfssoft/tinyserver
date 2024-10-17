@@ -218,7 +218,7 @@ tm_mqtt_msg_t* tm_msg_mgr__add(tm_msg_mgr_t* mgr, const char* topic, const char*
   tm_mqtt_msg_core__add_ref(msg_core); // add ref
   
   msg->msg_core = msg_core;
-  msg->flags = (dup ? 4 : 0) | (qos << 1) | retain;
+  msg->flags = (dup ? 0x08 : 0x00) | (qos << 1) | retain;
   msg->state = MSG_STATE_INIT;
   msg->failed = FALSE;
   

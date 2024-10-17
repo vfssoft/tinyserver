@@ -191,9 +191,10 @@ TEST_DECLARE(mqtt_retain_msg_zero_byte_3)
 TEST_DECLARE(mqtt_retain_msg_update_exist)
 TEST_DECLARE(mqtt_retain_msg_kept_after_publisher_session_ends)
 
-TEST_DECLARE(mqtt_msg_delivery_resend_puback)
+TEST_DECLARE(mqtt_msg_delivery__server_resend_publish_qos1)
 TEST_DECLARE(mqtt_msg_delivery__server_resend_publish_qos2)
 TEST_DECLARE(mqtt_msg_delivery__server_resend_pubrel)
+TEST_DECLARE(mqtt_msg_delivery__client_resend_publish_qos1)
 
 TEST_LIST_START
         TEST_ENTRY(invalid_local_host, "Error")
@@ -381,9 +382,10 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_retain_msg_kept_after_publisher_session_ends, "MQTT")
 
 
-        TEST_ENTRY(mqtt_msg_delivery_resend_puback, "MQTT")
+        TEST_ENTRY(mqtt_msg_delivery__server_resend_publish_qos1, "MQTT")
         TEST_ENTRY(mqtt_msg_delivery__server_resend_publish_qos2, "MQTT")
         TEST_ENTRY(mqtt_msg_delivery__server_resend_pubrel, "MQTT")
+        TEST_ENTRY(mqtt_msg_delivery__client_resend_publish_qos1, "MQTT")
 TEST_LIST_END
 
 #endif //TINYSERVER_TEST_LIST_H
