@@ -501,3 +501,100 @@ TEST_IMPL(mqtt_msg_delivery__server_resend_pubrel) {
   return 0;
 }
 
+static void client_client_resend_pubrel_cb(void *arg) {
+  client_resend_publish_qos1_info_t* info = (client_resend_publish_qos1_info_t*) arg;
+  
+  char conn_bytes[1024];
+  int conn_bytes_len = build_connect_pkt(conn_bytes, "publish", FALSE, NULL, NULL, NULL, 0, NULL, 0, FALSE, 30);
+  
+  char pub_bytes[128];
+  int pub_bytes_len = build_publish_pkt(pub_bytes, "test", 1, 2, FALSE, FALSE, "hello", 5);
+  
+  char pubrel_bytes[] = { 0x62, 0x02, 0x00, 0x01 };
+  
+  int err;
+  mytcp_t client;
+  char recv_buf[1024];
+  mytcp__init_mutex();
+  mytcp__init(&client);
+  
+  err = mytcp__connect(&client, "127.0.0.1", MQTT_PLAIN_PORT);
+  ASSERT_EQ(err, 0);
+  
+  // connect
+  err = mytcp__write(&client, conn_bytes, conn_bytes_len);
+  ASSERT_EQ(err, conn_bytes_len);
+  err = mytcp__read(&client, recv_buf, 1024);
+  ASSERT_EQ(err, 4);
+  
+  // publish
+  err = mytcp__write(&client, pub_bytes, pub_bytes_len);
+  ASSERT_EQ(err, pub_bytes_len);
+  
+  // recv pubrec
+  err = mytcp__read(&client, recv_buf, 1024);
+  ASSERT_EQ(err, 4);
+  
+  // send pubrel
+  //err = mytcp__write(&client, pubrel_bytes, 4);
+  //ASSERT_EQ(err, 4);
+  
+  // disconnect immediately
+  mytcp__disconnect(&client);
+  
+  // re-connect
+  err = mytcp__connect(&client, "127.0.0.1", MQTT_PLAIN_PORT);
+  ASSERT_EQ(err, 0);
+  
+  // connect
+  err = mytcp__write(&client, conn_bytes, conn_bytes_len);
+  ASSERT_EQ(err, conn_bytes_len);
+  err = mytcp__read(&client, recv_buf, 1024);
+  ASSERT_EQ(err, 4);
+  
+  // resend pubrel
+  err = mytcp__write(&client, pubrel_bytes, 4);
+  ASSERT_EQ(err, 4);
+  err = mytcp__read(&client, recv_buf, 128);
+  ASSERT_EQ(err, 4);
+  
+  info->done = 1;
+}
+static void mqtt_msg_delivery__client_resend_pubrel_msg_cb(void* ctx, tm_t* mqt, ts_conn_t* conn, tm_msg_t* msg, int old_state, int new_state) {
+  if (new_state == 10 /*MSG_STATE_SEND_PUBCOMP*/) {
+    Sleep(500);
+  }
+}
+TEST_IMPL(mqtt_msg_delivery__client_resend_pubrel) {
+  test_client_subscriber_info_t* subscriber_info;
+  uv_thread_t subscriber_thread;
+  
+  client_resend_publish_qos1_info_t info;
+  RESET_STRUCT(info);
+  
+  tm_t* server;
+  tm_callbacks_t cbs;
+  init_callbacks(&cbs, &info);
+  cbs.msg_cb = mqtt_msg_delivery__client_resend_pubrel_msg_cb;
+  
+  server = start_mqtt_server(TS_PROTO_TCP, &cbs);
+  int r = tm__start(server);
+  ASSERT_EQ(r, 0);
+  
+  subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, TS_PROTO_TCP, "test", 2, 2000);
+  
+  uv_thread_t client_thread;
+  uv_thread_create(&client_thread, client_client_resend_pubrel_cb, (void*)&info);
+  
+  mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
+  tm__stop(server);
+  
+  ASSERT_EQ(subscriber_info->msgs_count, 1);
+  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
+  ASSERT_STR_EQ(msg->topic, "test");
+  ASSERT_EQ(msg->qos, 2);
+  ASSERT_EQ(msg->payload_len, 5);
+  ASSERT_MEM_EQ("hello", (char*)msg->payload, 5);
+  
+  return 0;
+}
