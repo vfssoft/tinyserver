@@ -8,8 +8,7 @@ file(GLOB_RECURSE SRC_FILES ${SRC_DIR}/*.c ${SRC_DIR}/*.h)
 
 add_library(server_lib STATIC ${SRC_FILES})
 
-set(OPENSSL_ROOT_DIR "E:/ProgramFiles/OpenSSL")
+find_package(OpenSSL REQUIRED)
+include_directories(../libuv/include ../include)
 
-include_directories(../libuv/include ${OPENSSL_ROOT_DIR}/include ../include)
-
-target_link_libraries(server_lib PRIVATE uv_a ${OPENSSL_ROOT_DIR}/lib/libssl_static.lib ${OPENSSL_ROOT_DIR}/lib/libcrypto_static.lib)
+target_link_libraries(server_lib PRIVATE uv_a OpenSSL::SSL OpenSSL::Crypto)

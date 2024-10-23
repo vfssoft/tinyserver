@@ -1,14 +1,13 @@
 cmake_minimum_required(VERSION 3.23)
 project(tests)
 
-set(OPENSSL_ROOT_DIR "E:/ProgramFiles/OpenSSL")
+find_package(OpenSSL REQUIRED)
 set(PAHO_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/paho.mqtt.c")
 
 include_directories(
         ../src
         ../include
         ../libuv/include
-        ${OPENSSL_ROOT_DIR}/include
         ${PAHO_ROOT_DIR}/build/include
         ../mqtt
 )
@@ -37,7 +36,7 @@ add_executable(tests
 )
 
 target_link_directories(tests PRIVATE ${PAHO_ROOT_DIR}/build/lib)
-target_link_libraries(tests server_lib tm_lib paho-mqtt3cs-static)
+target_link_libraries(tests server_lib tm_lib paho-mqtt3cs-static OpenSSL::SSL OpenSSL::Crypto)
 
 # Automatically build paho.mqtt.c
 add_custom_command(
