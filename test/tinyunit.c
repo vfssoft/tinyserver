@@ -10,6 +10,7 @@
 #else
 #include <sys/time.h>
 #include <sys/resource.h>
+#define stricmp strcasecmp
 #endif
 
 #define STDOUT(format,...) \

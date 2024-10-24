@@ -180,7 +180,7 @@ static int mytcp__ssl_read(mytcp_t* tcp, char* data, int len) {
       // work like read timeout: 1s
       for (int i = 0; i < TEST_CLIENT_READ_TIMEOUT / TEST_CLIENT_WAIT_SLEEP_TIME; i++) {
         if (SSL_pending(tcp->ssl) == 0) {
-          Sleep(TEST_CLIENT_WAIT_SLEEP_TIME);
+          mysleep(TEST_CLIENT_WAIT_SLEEP_TIME);
         } else {
           break;
         }
@@ -408,7 +408,7 @@ static int mytcp__ws_read(mytcp_t* tcp, char* data, int len) {
 
     if (err == 0) {
       if (retry_count == TEST_CLIENT_READ_TIMEOUT / TEST_CLIENT_WAIT_SLEEP_TIME) break;
-      Sleep(TEST_CLIENT_WAIT_SLEEP_TIME);
+      mysleep(TEST_CLIENT_WAIT_SLEEP_TIME);
       retry_count++;
     }
   }

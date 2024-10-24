@@ -179,7 +179,7 @@ TEST_IMPL(mqtt_basic_pub_qos2_test) {
   return mqtt_basic_pub_impl(TS_PROTO_TCP, "a", 2, "hello", 5);
 }
 
-static int mqtt_publish_a_msg(tm_t* server, int proto, const char* topic, int qos, char* payload, int payload_len, BOOL retain) {
+static int mqtt_publish_a_msg(tm_t* server, int proto, const char* topic, int qos, char* payload, int payload_len, int retain) {
   test_client_publisher_info_t info;
   RESET_STRUCT(info);
   info.proto = proto;
@@ -213,7 +213,7 @@ static test_client_subscriber_info_t* mqtt_subscriber_start_ex(tm_t* server, uv_
   return info;
 }
 static test_client_subscriber_info_t* mqtt_subscriber_start(tm_t* server, uv_thread_t* thread, int proto, const char* topic, int qos, int timeoutms) {
-  return mqtt_subscriber_start_ex(server, thread, proto, topic, qos, timeoutms, "tet_subscriber_client_id", TRUE, FALSE);
+  return mqtt_subscriber_start_ex(server, thread, proto, topic, qos, timeoutms, "tet_subscriber_client_id", 1, 0);
 }
 static int mqtt_subscriber_stop(tm_t* server, uv_thread_t* thread,  test_client_subscriber_info_t* info) {
   while (info->done == 0) { tm__run(server); }
@@ -239,7 +239,7 @@ static int mqtt_basic_pub_recv_impl(
   
   subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, sub_topic, sub_qos, 500);
   
-  mqtt_publish_a_msg(server, proto, pub_topic, pub_qos, payload, payload_len, FALSE);
+  mqtt_publish_a_msg(server, proto, pub_topic, pub_qos, payload, payload_len, 0);
   
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
   
@@ -353,7 +353,7 @@ static void mqtt_client_with_will_cb(void *arg) {
   
   info->done = 1;
 }
-static int mqtt_connect_with_will_msg(tm_t* server, int proto, const char* topic, int qos, char* payload, int payload_len, BOOL retain, int disconnect_abnormal) {
+static int mqtt_connect_with_will_msg(tm_t* server, int proto, const char* topic, int qos, char* payload, int payload_len, int retain, int disconnect_abnormal) {
   test_client_will_info_t info;
   RESET_STRUCT(info);
   info.proto = proto;
@@ -408,13 +408,13 @@ static int mqtt_basic_will_msg_impl(int proto, int disconnect_abnormal, int reta
   return 0;
 }
 TEST_IMPL(mqtt_not_pub_will_if_client_disconnect_normally) {
-  return mqtt_basic_will_msg_impl(TS_PROTO_TCP, 0, FALSE);
+  return mqtt_basic_will_msg_impl(TS_PROTO_TCP, 0, 0);
 }
 TEST_IMPL(mqtt_pub_will_if_client_disconnect_abnormally) {
-  return mqtt_basic_will_msg_impl(TS_PROTO_TCP, 1, FALSE);
+  return mqtt_basic_will_msg_impl(TS_PROTO_TCP, 1, 0);
 }
 TEST_IMPL(mqtt_pub_will_if_client_disconnect_abnormally_retain) {
-  return mqtt_basic_will_msg_impl(TS_PROTO_TCP, 1, TRUE);
+  return mqtt_basic_will_msg_impl(TS_PROTO_TCP, 1, 1);
 }
 
 
@@ -437,7 +437,7 @@ TEST_IMPL(mqtt_retain_msg_current_subscription) {
   
   subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 500);
   
-  mqtt_publish_a_msg(server, proto, topic, qos, payload, strlen(payload), TRUE);
+  mqtt_publish_a_msg(server, proto, topic, qos, payload, strlen(payload), 1);
   
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
   
@@ -450,7 +450,7 @@ TEST_IMPL(mqtt_retain_msg_current_subscription) {
   ASSERT_EQ(msg->payload_len, strlen(payload));
   ASSERT_MEM_EQ(payload, (char*)msg->payload, msg->payload_len);
   
-  ASSERT_EQ(msg->retained, FALSE);
+  ASSERT_EQ(msg->retained, 0);
   
   return 0;
 }
@@ -472,7 +472,7 @@ TEST_IMPL(mqtt_retain_msg_new_subscription) {
   int r = tm__start(server);
   ASSERT_EQ(r, 0);
   
-  mqtt_publish_a_msg(server, proto, topic, qos, payload, strlen(payload), TRUE);
+  mqtt_publish_a_msg(server, proto, topic, qos, payload, strlen(payload), 1);
   
   subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 500);
   
@@ -487,7 +487,7 @@ TEST_IMPL(mqtt_retain_msg_new_subscription) {
   ASSERT_EQ(msg->payload_len, strlen(payload));
   ASSERT_MEM_EQ(payload, (char*)msg->payload, msg->payload_len);
   
-  ASSERT_EQ(msg->retained, TRUE);
+  ASSERT_EQ(msg->retained, 1);
   
   return 0;
 }
@@ -508,7 +508,7 @@ TEST_IMPL(mqtt_retain_msg_zero_byte) {
   int r = tm__start(server);
   ASSERT_EQ(r, 0);
   
-  mqtt_publish_a_msg(server, proto, topic, qos, payload, strlen(payload), TRUE);
+  mqtt_publish_a_msg(server, proto, topic, qos, payload, strlen(payload), 1);
   
   subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 1000);
   
@@ -539,7 +539,7 @@ TEST_IMPL(mqtt_retain_msg_zero_byte_1) {
   
   subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 500);
   
-  mqtt_publish_a_msg(server, proto, topic, qos, payload, 0, TRUE);
+  mqtt_publish_a_msg(server, proto, topic, qos, payload, 0, 1);
   
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
   
@@ -550,7 +550,7 @@ TEST_IMPL(mqtt_retain_msg_zero_byte_1) {
   ASSERT_STR_EQ(msg->topic, topic);
   ASSERT_EQ(msg->qos, qos);
   ASSERT_EQ(msg->payload_len, 0);
-  ASSERT_EQ(msg->retained, FALSE);
+  ASSERT_EQ(msg->retained, 0);
   
   return 0;
 }
@@ -570,8 +570,8 @@ TEST_IMPL(mqtt_retain_msg_zero_byte_2) {
   int r = tm__start(server);
   ASSERT_EQ(r, 0);
   
-  mqtt_publish_a_msg(server, proto, topic, qos, "A", 1, TRUE); // create a retained message
-  mqtt_publish_a_msg(server, proto, topic, qos, "", 0, TRUE); // remove the retained message
+  mqtt_publish_a_msg(server, proto, topic, qos, "A", 1, 1); // create a retained message
+  mqtt_publish_a_msg(server, proto, topic, qos, "", 0, 1); // remove the retained message
   
   subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 1000);
   
@@ -599,8 +599,8 @@ TEST_IMPL(mqtt_retain_msg_zero_byte_3) {
   int r = tm__start(server);
   ASSERT_EQ(r, 0);
   
-  mqtt_publish_a_msg(server, proto, topic, qos, "A", 1, TRUE); // create a retained message
-  mqtt_publish_a_msg(server, proto, topic, qos, "", 0, FALSE); // public a message with the same topic but not retained
+  mqtt_publish_a_msg(server, proto, topic, qos, "A", 1, 1); // create a retained message
+  mqtt_publish_a_msg(server, proto, topic, qos, "", 0, 0); // public a message with the same topic but not retained
   
   subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 500);
   
@@ -613,7 +613,7 @@ TEST_IMPL(mqtt_retain_msg_zero_byte_3) {
   ASSERT_STR_EQ(msg->topic, topic);
   ASSERT_EQ(msg->qos, qos);
   ASSERT_EQ(msg->payload_len, 1);
-  ASSERT_EQ(msg->retained, TRUE);
+  ASSERT_EQ(msg->retained, 1);
   
   return 0;
 }
@@ -633,8 +633,8 @@ TEST_IMPL(mqtt_retain_msg_update_exist) {
   int r = tm__start(server);
   ASSERT_EQ(r, 0);
   
-  mqtt_publish_a_msg(server, proto, topic, qos, "A", 1, TRUE); // create a retained message
-  mqtt_publish_a_msg(server, proto, topic, qos, "B", 1, TRUE); // update the retained message
+  mqtt_publish_a_msg(server, proto, topic, qos, "A", 1, 1); // create a retained message
+  mqtt_publish_a_msg(server, proto, topic, qos, "B", 1, 1); // update the retained message
   
   subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 500);
   
@@ -648,7 +648,7 @@ TEST_IMPL(mqtt_retain_msg_update_exist) {
   ASSERT_EQ(msg->qos, qos);
   ASSERT_EQ(msg->payload_len, 1);
   ASSERT_MEM_EQ(msg->payload, "B", 1);
-  ASSERT_EQ(msg->retained, TRUE);
+  ASSERT_EQ(msg->retained, 1);
   
   return 0;
 }
@@ -670,7 +670,7 @@ TEST_IMPL(mqtt_retain_msg_kept_after_publisher_session_ends) {
   ASSERT_EQ(r, 0);
 
   // clean session is 1
-  mqtt_publish_a_msg(server, proto, topic, qos, "A", 1, TRUE);
+  mqtt_publish_a_msg(server, proto, topic, qos, "A", 1, 1);
 
   subscriber_info = mqtt_subscriber_start(server, &subscriber_thread, proto, topic, qos, 500);
 
@@ -684,7 +684,7 @@ TEST_IMPL(mqtt_retain_msg_kept_after_publisher_session_ends) {
   ASSERT_EQ(msg->qos, qos);
   ASSERT_EQ(msg->payload_len, 1);
   ASSERT_MEM_EQ(msg->payload, "A", 1);
-  ASSERT_EQ(msg->retained, TRUE);
+  ASSERT_EQ(msg->retained, 1);
 
   return 0;
 }
@@ -725,11 +725,11 @@ TEST_IMPL(mqtt_recv_offline_msgs_after_reconnect) {
   int r = tm__start(server);
   ASSERT_EQ(r, 0);
 
-  mqtt_connect_and_sub(server, proto, FALSE, client_id, topic, qos);
+  mqtt_connect_and_sub(server, proto, 0, client_id, topic, qos);
 
-  mqtt_publish_a_msg(server, proto, topic, qos, payload, strlen(payload), FALSE);
+  mqtt_publish_a_msg(server, proto, topic, qos, payload, strlen(payload), 0);
 
-  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, qos, 500, client_id, FALSE, TRUE);
+  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, qos, 500, client_id, 0, 1);
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
 
   tm__stop(server);
@@ -740,7 +740,7 @@ TEST_IMPL(mqtt_recv_offline_msgs_after_reconnect) {
   ASSERT_EQ(msg->qos, qos);
   ASSERT_EQ(msg->payload_len, strlen(payload));
   ASSERT_MEM_EQ(payload, (char*)msg->payload, msg->payload_len);
-  ASSERT_EQ(msg->retained, FALSE);
+  ASSERT_EQ(msg->retained, 0);
 
   return 0;
 }
@@ -763,11 +763,11 @@ TEST_IMPL(mqtt_no_offline_msgs_after_reconnect_with_clean_session) {
   int r = tm__start(server);
   ASSERT_EQ(r, 0);
 
-  mqtt_connect_and_sub(server, proto, FALSE, client_id, topic, qos);
+  mqtt_connect_and_sub(server, proto, 0, client_id, topic, qos);
 
-  mqtt_publish_a_msg(server, proto, topic, qos, payload, strlen(payload), FALSE);
+  mqtt_publish_a_msg(server, proto, topic, qos, payload, strlen(payload), 0);
 
-  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, qos, 500, client_id, TRUE, TRUE);
+  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, qos, 500, client_id, 1, 1);
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
 
   tm__stop(server);
@@ -795,12 +795,12 @@ TEST_IMPL(mqtt_max_qos_of_all_subscriptions) {
   int r = tm__start(server);
   ASSERT_EQ(r, 0);
   
-  mqtt_connect_and_sub(server, proto, FALSE, client_id, "/test/a/+", 1);
-  mqtt_connect_and_sub(server, proto, FALSE, client_id, "/test/+", 0);
+  mqtt_connect_and_sub(server, proto, 0, client_id, "/test/a/+", 1);
+  mqtt_connect_and_sub(server, proto, 0, client_id, "/test/+", 0);
   
-  mqtt_publish_a_msg(server, proto, topic, 2, payload, strlen(payload), FALSE);
+  mqtt_publish_a_msg(server, proto, topic, 2, payload, strlen(payload), 0);
   
-  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, qos, 500, client_id, FALSE, TRUE);
+  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, qos, 500, client_id, 0, 1);
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
   
   tm__stop(server);
@@ -833,9 +833,9 @@ TEST_IMPL(mqtt_update_subscribe_qos) {
   int r = tm__start(server);
   ASSERT_EQ(r, 0);
   
-  mqtt_connect_and_sub(server, proto, FALSE, client_id, topic, 0);
-  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, 1, 500, client_id, FALSE, FALSE); // re-sub with qos = 1
-  mqtt_publish_a_msg(server, proto, topic, 2, payload, strlen(payload), FALSE);
+  mqtt_connect_and_sub(server, proto, 0, client_id, topic, 0);
+  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, 1, 500, client_id, 0, 0); // re-sub with qos = 1
+  mqtt_publish_a_msg(server, proto, topic, 2, payload, strlen(payload), 0);
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
   
   tm__stop(server);
@@ -865,15 +865,15 @@ TEST_IMPL(mqtt_update_subscribe_qos_resent_retain_msg) {
   int r = tm__start(server);
   ASSERT_EQ(r, 0);
   
-  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, 0, 500, client_id, FALSE, FALSE);
-  mqtt_publish_a_msg(server, proto, topic, 2, payload, strlen(payload), TRUE);
+  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, 0, 500, client_id, 0, 0);
+  mqtt_publish_a_msg(server, proto, topic, 2, payload, strlen(payload), 1);
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
   
   ASSERT_EQ(subscriber_info->msgs_count, 1);
   mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
   ASSERT_EQ(msg->qos, 0);
   
-  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, 1, 500, client_id, FALSE, FALSE);
+  subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, 1, 500, client_id, 0, 0);
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
   
   ASSERT_EQ(subscriber_info->msgs_count, 1);

@@ -15,7 +15,7 @@ struct ts_ws_s {
 
 // TODO: may not need this struct
 struct ts_ws_frame_s {
-  BOOL fin;
+  int fin;
   int  opcode;
   ts_buf_t* payload_data;
   // no extension is supported for now

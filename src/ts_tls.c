@@ -207,12 +207,12 @@ int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
   ts_server_t* server = conn->listener->server;
   int hs_err;
   int ssl_err;
-  BOOL should_continue = TRUE;
+  int should_continue = 1;
   
   LOG_VERB("[%s][TLS] TLS handshaking", conn->remote_addr);
   
   while (should_continue) {
-    should_continue = FALSE;
+    should_continue = 0;
     
     hs_err = SSL_do_handshake(tls->ssl);
   
@@ -242,7 +242,7 @@ int ts_tls__handshake(ts_tls_t* tls, ts_ro_buf_t* input, ts_buf_t* output) {
         // Note that SSL_ERROR_ZERO_RETURN does not necessarily indicate that the underlying transport has been closed.
     
         if (tls->state == TS_STATE_HANDSHAKING) {
-          ts_tls__set_err(tls, UV__ENOTCONN); // not connected successfully
+          ts_tls__set_err(tls, -1); // not connected successfully
         } else {
           // tls->ssl_state == TLS_STATE_CONNECTED;
           ts_tls__set_err(tls, 0);

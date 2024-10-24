@@ -4,8 +4,8 @@
 int ts_conn__init(ts_server_listener_t* listener, ts_tcp_conn_t* conn) {
   int err = 0;
   ts_server_t* server = listener->server;
-  BOOL use_ssl = ts_use_ssl(listener->protocol);
-  BOOL use_ws = ts_use_websocket(listener->protocol);
+  int use_ssl = ts_use_ssl(listener->protocol);
+  int use_ws = ts_use_websocket(listener->protocol);
   
   conn->listener = listener;
   conn->write_reqs = NULL;
@@ -98,7 +98,7 @@ int ts_conn__destroy(ts_server_listener_t* listener, ts_tcp_conn_t* conn) {
   return 0;
 }
 
-static ts_conn_write_req_t* ts_conn__write_req_create(ts_tcp_conn_t* conn, BOOL internal, void* write_ctx) {
+static ts_conn_write_req_t* ts_conn__write_req_create(ts_tcp_conn_t* conn, int internal, void* write_ctx) {
   ts_conn_write_req_t* write_req;
   
   write_req = ts_conn_write_req__create(conn, internal, write_ctx);
@@ -118,7 +118,7 @@ static void ts_conn__write_req_destroy(ts_conn_write_req_t* req) {
 static void uv_on_write(uv_write_t *req, int status) {
   ts_conn_write_req_t* wr = (ts_conn_write_req_t*) req;
   void* write_ctx = wr->write_ctx;
-  BOOL internal_write_req = wr->internal;
+  int internal_write_req = wr->internal;
   ts_tcp_conn_t* conn = wr->conn;
   ts_server_t* server = conn->listener->server;
   
@@ -232,7 +232,7 @@ static int ts_conn__process_ssl_socket_data(ts_tcp_conn_t* conn, ts_ro_buf_t* in
   while (input->len > 0) { // we have to consume all input data here
   
     if (write_req == NULL) {
-      write_req = ts_conn__write_req_create(conn, TRUE, NULL);
+      write_req = ts_conn__write_req_create(conn, 1, NULL);
       if (write_req == NULL) {
         ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
         goto done;
@@ -314,7 +314,7 @@ static int ts_conn__process_ws_socket_data(ts_tcp_conn_t* conn, ts_ro_buf_t* inp
   while (input->len > 0) { // we have to consume all input data here
 
     if (write_req == NULL) {
-      write_req = ts_conn__write_req_create(conn, TRUE, NULL);
+      write_req = ts_conn__write_req_create(conn, 1, NULL);
       if (write_req == NULL) {
         ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
         goto done;
@@ -511,7 +511,7 @@ int ts_conn__send_data(ts_tcp_conn_t* conn, const char* data, int data_len, void
   ts_conn_write_req_t* write_req;
   ts_buf_t* used_buf;
   
-  write_req = ts_conn__write_req_create(conn, FALSE, write_ctx);
+  write_req = ts_conn__write_req_create(conn, 0, write_ctx);
   if (write_req == NULL) {
     ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
     goto done;
@@ -544,11 +544,12 @@ int ts_conn__close(ts_tcp_conn_t* conn, uv_close_cb cb) {
   ts_server_t* server = listener->server;
   ts_conn_write_req_t* write_req;
   ts_buf_t* used_buf;
+  uv_handle_t* h;
   
-  BOOL use_ssl = ts_use_ssl(listener->protocol);
-  BOOL use_ws = ts_use_websocket(listener->protocol);
+  int use_ssl = ts_use_ssl(listener->protocol);
+  int use_ws = ts_use_websocket(listener->protocol);
   
-  write_req = ts_conn__write_req_create(conn, TRUE, NULL);
+  write_req = ts_conn__write_req_create(conn, 1, NULL);
   if (write_req == NULL) {
     ts_error__set(&(conn->err), TS_ERR_OUT_OF_MEMORY);
     goto done;
@@ -570,7 +571,7 @@ int ts_conn__close(ts_tcp_conn_t* conn, uv_close_cb cb) {
   }
 
 done:
-  uv_handle_t* h = (uv_handle_t*)&conn->uvtcp;
+  h = (uv_handle_t*)&conn->uvtcp;
   if (h && !uv_is_closing(h)) {
     uv_close(h, cb);
   }

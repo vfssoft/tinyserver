@@ -93,7 +93,7 @@ static void mqtt_client_subscriber_cb(void *arg) {
   
   long long int start = get_current_time_millis();
   while (1) {
-    Sleep(20);
+    mysleep(20);
     
     if (info->timeoutms > 0) {
       long long int current = get_current_time_millis();
@@ -285,7 +285,7 @@ static void client_client_resend_publish_qos1_cb(void *arg) {
 }
 static void mqtt_msg_delivery__client_resend_publish_qos1_msg_cb(void* ctx, tm_t* mqt, ts_conn_t* conn, tm_msg_t* msg, int old_state, int new_state) {
   if (new_state == 7 /*MSG_STATE_SEND_PUBACK*/) {
-    Sleep(500);
+    mysleep(500);
   }
 }
 TEST_IMPL(mqtt_msg_delivery__client_resend_publish_qos1) {
@@ -562,7 +562,7 @@ static void client_client_resend_pubrel_cb(void *arg) {
 }
 static void mqtt_msg_delivery__client_resend_pubrel_msg_cb(void* ctx, tm_t* mqt, ts_conn_t* conn, tm_msg_t* msg, int old_state, int new_state) {
   if (new_state == 10 /*MSG_STATE_SEND_PUBCOMP*/) {
-    Sleep(500);
+    mysleep(500);
   }
 }
 TEST_IMPL(mqtt_msg_delivery__client_resend_pubrel) {

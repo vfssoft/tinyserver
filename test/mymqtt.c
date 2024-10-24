@@ -7,7 +7,7 @@
 void conn_lost_cb(void *context, char *cause)
 {
   mymqtt_t* c = (mymqtt_t*)context;
-  c->is_conn_lost = TRUE;
+  c->is_conn_lost = 1;
   c->conn_lost_reason = strdup(cause);
 }
 
@@ -101,7 +101,7 @@ int mymqtt__init(mymqtt_t* c, int proto, const char* client_id) {
   memset(c->msgs, 0, sizeof(mymqtt_msg_t) * 32);
   c->msgs_count = 0;
 
-  c->is_conn_lost = FALSE;
+  c->is_conn_lost = 0;
   c->conn_lost_reason = NULL;
   
   return 0;

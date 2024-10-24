@@ -98,14 +98,14 @@ static int ts_ws_frame__destroy(ts_ws_frame_t* frame) {
   }
   return 0;
 }
-static int ts_ws__decode_frame(ts_ws_t* ws, ts_ws_frame_t* frame, BOOL* ok) {
+static int ts_ws__decode_frame(ts_ws_t* ws, ts_ws_frame_t* frame, int* ok) {
   int err = 0;
   ts_buf_t* buf = ws->in_buf;
   int offset = 0; // next byte to read
-  BOOL masked = FALSE;
+  int masked = 0;
   char masking_key[4];
   
-  *ok = FALSE;
+  *ok = 0;
   
   if (buf->len < 2) return 0;
   
@@ -152,7 +152,7 @@ static int ts_ws__decode_frame(ts_ws_t* ws, ts_ws_frame_t* frame, BOOL* ok) {
     frame->payload_data->buf[i] ^= masking_key[i%4];
   }
   
-  *ok = TRUE;
+  *ok = 1;
   
 done:
   return ws->err.err;
@@ -247,11 +247,11 @@ int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
   char sub_protocols[64] = { 0 };
   char resp_buf[2048] = { 0 };
 
-  BOOL req_line_parsed = FALSE;
-  BOOL has_host_hdr = FALSE;
-  BOOL has_upgrade_hdr = FALSE;
-  BOOL has_connection_hdr = FALSE;
-  BOOL has_version_hdr = FALSE;
+  int req_line_parsed = 0;
+  int has_host_hdr = 0;
+  int has_upgrade_hdr = 0;
+  int has_connection_hdr = 0;
+  int has_version_hdr = 0;
 
   ts_tcp_conn_t* conn = ws->conn;
   ts_server_t* server = conn->listener->server;
@@ -287,7 +287,7 @@ int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
     }
     
     if (!req_line_parsed) {
-      req_line_parsed = TRUE;
+      req_line_parsed = 1;
       // parse the first line of the HTTP Upgrade request
       // Example: GET /chat HTTP/1.1
       ts_ws__parse_request_line(line, &method, &url, &version);
@@ -305,20 +305,20 @@ int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
       }
 
       if (stricmp(header_name, "Host") == 0) {
-        has_host_hdr = TRUE;
+        has_host_hdr = 1;
         // nothing now
       } else if (stricmp(header_name, "Upgrade") == 0) {
         if (strcmp(header_value, "websocket") != 0) {
           ts_error__set_msgf(&(ws->err), TS_ERR_INVALID_WS_HEADERS, "Invalid Websocket Upgrade header value: %s", header_value);
           goto bad_request;
         }
-        has_upgrade_hdr = TRUE;
+        has_upgrade_hdr = 1;
       } else if (stricmp(header_name, "Connection") == 0) {
         if (stricmp(header_value, "Upgrade") != 0) {
           ts_error__set_msgf(&(ws->err), TS_ERR_INVALID_WS_HEADERS, "Invalid Websocket Connection header value: %s", header_value);
           goto bad_request;
         }
-        has_connection_hdr = TRUE;
+        has_connection_hdr = 1;
       } else if (stricmp(header_name, "Sec-WebSocket-Key") == 0) {
         strcpy(seckey, header_value);
       } else if (stricmp(header_name, "Sec-WebSocket-Version") == 0) {
@@ -326,7 +326,7 @@ int ts_ws__handshake(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output) {
           ts_error__set_msgf(&(ws->err), TS_ERR_INVALID_WS_HEADERS, "Invalid Websocket Sec-WebSocket-Version header value: %s", header_value);
           goto bad_request;
         }
-        has_version_hdr = TRUE;
+        has_version_hdr = 1;
       } else if (stricmp(header_name, "Sec-WebSocket-Protocol") == 0) {
         strcpy(sub_protocols, header_value);
       }
@@ -388,7 +388,7 @@ done:
 int ts_ws__unwrap(ts_ws_t* ws, ts_ro_buf_t* input, ts_buf_t* output_app, ts_buf_t* output_sock) {
   int err = 0;
   ts_ws_frame_t frame;
-  BOOL ok = FALSE;
+  int ok = 0;
   
   err = ts_ws_frame__init(&frame);
   if (err) {

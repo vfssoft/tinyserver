@@ -11,10 +11,10 @@ const char* ts_proto__str(int proto) {
   return "";
 }
 
-BOOL ts_use_ssl(int proto) {
+int ts_use_ssl(int proto) {
   return proto == TS_PROTO_TLS || proto == TS_PROTO_WSS;
 }
-BOOL ts_use_websocket(int proto) {
+int ts_use_websocket(int proto) {
   return proto == TS_PROTO_WS || proto == TS_PROTO_WSS;
 }
 
@@ -59,7 +59,7 @@ int ts_tcp__getaddrinfo(const char* host, int use_ipv6, struct sockaddr_storage*
   return 0;
 }
 
-static BOOL str_contains_char(const char* str, char c) {
+static int str_contains_char(const char* str, char c) {
   const char* p = str;
   while (*p != 0 && *p != c) p++;
   return *p != 0;

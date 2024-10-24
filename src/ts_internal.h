@@ -10,6 +10,7 @@
 #include <openssl/engine.h>
 
 #include <stdio.h>
+#include <string.h>
 
 #include "ts.h"
 #include "ts_server.h"
@@ -31,16 +32,10 @@
 #define CONTAINER_OF(ptr, type, member) \
     ((type *)((char *)(ptr) - offsetof(type, member)))
 
-#ifndef BOOL
-#define BOOL int
-#endif
-
-#ifndef FALSE
-#define FALSE 0
-#endif
-
-#ifndef TRUE
-#define TRUE 1
+#ifdef _WIN32
+#else
+#define ARRAYSIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+#define stricmp strcasecmp
 #endif
 
 #endif //TINYSERVER_TS_INTERNAL_H

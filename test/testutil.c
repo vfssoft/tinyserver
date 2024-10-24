@@ -166,7 +166,7 @@ void wait(int milliseconds) {
 }
 void mysleep(int milliseconds) {
 #ifdef _WIN32
-  Sleep(milliseconds)
+  Sleep(milliseconds);
 #else
   usleep(milliseconds);
 #endif
