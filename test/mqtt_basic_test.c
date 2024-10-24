@@ -463,7 +463,7 @@ static void mqtt_client_ping_client_cb(void* arg) {
   ASSERT_EQ(err, 0);
   
   unsigned long long end_time_marker = get_current_time_millis() + (info->keep_alive * 1.5 + 1) * 1000;
-  while (end_time_marker > get_current_time_millis()) Sleep(1000);
+  while (end_time_marker > get_current_time_millis()) mysleep(1000);
   
   err = mymqtt__disconnect(&client);
   ASSERT_EQ(err, 0);

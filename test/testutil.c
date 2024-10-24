@@ -9,6 +9,7 @@
 #else
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <unistd.h>
 #endif
 
 
@@ -160,8 +161,15 @@ long get_current_process_memory_usage() {
 void wait(int milliseconds) {
   unsigned long long end_time_marker = get_current_time_millis() + milliseconds;
   while (get_current_time_millis() < end_time_marker) {
-    Sleep(20);
+    mysleep(20);
   }
+}
+void mysleep(int milliseconds) {
+#ifdef _WIN32
+  Sleep(milliseconds)
+#else
+  usleep(milliseconds);
+#endif
 }
 
 static int encode_short(char* buf, int val) {

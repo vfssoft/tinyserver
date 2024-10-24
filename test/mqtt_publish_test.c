@@ -48,7 +48,7 @@ static void mqtt_client_subscriber_cb(void *arg) {
   
   long long int start = get_current_time_millis();
   while (1) {
-    Sleep(20);
+    mysleep(20);
     
     if (info->timeoutms > 0) {
       long long int current = get_current_time_millis();

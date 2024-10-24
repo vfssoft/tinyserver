@@ -27,6 +27,7 @@ long long get_current_time_millis();
 long get_current_process_memory_usage();
 
 void wait(int milliseconds);
+void mysleep(int milliseconds);
 
 int build_connect_pkt(
     char* buf,
