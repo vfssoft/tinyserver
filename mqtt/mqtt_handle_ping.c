@@ -15,7 +15,7 @@ int tm_mqtt_conn__process_pingreq(ts_t* server, ts_conn_t* c) {
   
   err = tm_mqtt_conn__send_packet(server, c, pingresp, 2, -1, NULL);
   if (err) {
-    LOG_ERROR("[%s] Send PINGRESP failed: %d", conn_id, err);
+    LOG_ERROR("[%s][%s] Send PINGRESP failed: %d", conn_id, conn->session->client_id, err);
     tm_mqtt_conn__abort(server, c);
   }
   

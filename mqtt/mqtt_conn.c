@@ -295,7 +295,7 @@ int tm_mqtt_conn__update_msg_state(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* ms
   old_state = tm_mqtt_msg__get_state(msg);
   err = tm_mqtt_msg__update_state(msg);
   if (err) {
-    LOG_ERROR("[%s] Invalid message state: current state: %d", conn->session->client_id, old_state);
+    LOG_ERROR("[%s][%s] Invalid message state: current state: %d", conn_id, conn->session->client_id, old_state);
     tm_mqtt_conn__abort(server, c);
     return err;
   }
@@ -303,13 +303,13 @@ int tm_mqtt_conn__update_msg_state(ts_t* server, ts_conn_t* c, tm_mqtt_msg_t* ms
   
   tm__internal_msg_cb(conn->server, conn, msg, old_state, new_state);
   
-  LOG_DEBUG_EX("[%s] Update message state: %d -> %d", conn->session->client_id, old_state, new_state);
+  LOG_DEBUG_EX("[%s][%s] Update message state: %d -> %d", conn_id, conn->session->client_id, old_state, new_state);
   
   if (new_state == MSG_STATE_DONE) {
     if (old_state == MSG_STATE_TO_PUBLISH/*qos=0*/ || old_state == MSG_STATE_WAIT_PUBACK || old_state == MSG_STATE_WAIT_PUBCOMP) {
       tm_mqtt_session__remove_out_msg(conn->session, msg);
     } else if (old_state == MSG_STATE_RECEIVE_PUB/*qos=0*/ || old_state == MSG_STATE_SEND_PUBACK || old_state == MSG_STATE_SEND_PUBCOMP) {
-      LOG_VERB("[%s] Message received successfully(MID=%" PRIu64 ")", conn->session->client_id, msg->id);
+      LOG_VERB("[%s][%s] Message received successfully(MID=%" PRIu64 ")", conn_id, conn->session->client_id, msg->id);
       if (tm_mqtt_msg__retain(msg)) {
         tm__on_retain_message(conn->server, c, msg);
       }
@@ -395,8 +395,10 @@ static int tm_mqtt_conn__encode_and_send_msg(ts_t* server, ts_conn_t* c, tm_mqtt
   tm_mqtt_conn_t* conn;
   char* pkt_bytes;
   int pkt_bytes_len = 0;
+  const char* conn_id;
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
+  conn_id = ts_server__get_conn_remote_host(server, c);
   s = conn->server;
   
   pkt_bytes = tm_mqtt_conn__encode_msg(msg, &pkt_bytes_len);
@@ -410,7 +412,7 @@ static int tm_mqtt_conn__encode_and_send_msg(ts_t* server, ts_conn_t* c, tm_mqtt
   ts__free(pkt_bytes);
   
   if (err) {
-    LOG_ERROR("[%s] Failed to publish message to the client: %d", conn->session->client_id, err);
+    LOG_ERROR("[%s][%s] Failed to publish message to the client: %d", conn_id, conn->session->client_id, err);
     tm_mqtt_conn__abort(server, c);
     return 0;
   }

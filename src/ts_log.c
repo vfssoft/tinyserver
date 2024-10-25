@@ -57,7 +57,7 @@ static int ts_log__vprintf(ts_log_t* log, int level, const char* func, int linen
     len += snprintf(line, sizeof(line), "[%s]", timestamp_buf);
   }
 
-  //len += snprintf(&line[len], sizeof(line) - len, "[%s]", level_str);
+  len += snprintf(&line[len], sizeof(line) - len, "[%s]", level_str);
 
   //len += snprintf(&line[len], sizeof(line) - len, "[%s(%d)]", func, lineno);
 
