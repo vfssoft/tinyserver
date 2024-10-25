@@ -26,7 +26,9 @@ static void tm_mqtt_conn__generate_client_id(ts_t* server, ts_conn_t* c, char* c
 }
 
 static int tm_mqtt_conn__send_connack(ts_t* server, ts_conn_t* c, BOOL sp, int return_code) {
+  tm_mqtt_conn_t* conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   char connack[4] = { 0x20, 0x02, (char)(sp & 0xFF), (char)(return_code & 0xFF) };
+  LOG_DUMP(connack, 4, "[%s][%s] Send [CONNACK]", ts_server__get_conn_remote_host(server, c), conn->session == NULL ? "CLIENT_ID_PLACEHOLDER" : conn->session->client_id);
   return tm_mqtt_conn__send_packet(server, c, connack, 4, -1, NULL);
 }
 
@@ -61,6 +63,8 @@ int tm_mqtt_conn__process_connect(ts_t* server, ts_conn_t* c, const char* pkt_by
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
   decoder = &conn->decoder;
+  
+  LOG_DUMP(pkt_bytes, pkt_bytes_len, "[%s] Receive [CONNECT]", ts_server__get_conn_remote_host(server, c));
   
   ts_error__init(&errt);
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);

@@ -5,18 +5,24 @@
 #include <internal/ts_miscellany.h>
 
 static int tm_mqtt_conn__send_puback(ts_t* server, ts_conn_t* c, int pkt_id, tm_mqtt_msg_t* msg) {
+  tm_mqtt_conn_t* conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   char puback[4] = { 0x40, 0x02, 0x00, 0x00 };
   uint162bytes_be(pkt_id, puback+2);
+  LOG_DUMP(puback, 4, "[%s][%s] Send [PUBACK]", ts_server__get_conn_remote_host(server, c), conn->session->client_id);
   return tm_mqtt_conn__send_packet(server, c, puback, 4, pkt_id, msg);
 }
 static int tm_mqtt_conn__send_pubrec(ts_t* server, ts_conn_t* c, int pkt_id, tm_mqtt_msg_t* msg) {
+  tm_mqtt_conn_t* conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   char pubrec[4] = { 0x52, 0x02, 0x00, 0x00 };
   uint162bytes_be(pkt_id, pubrec+2);
+  LOG_DUMP(pubrec, 4, "[%s][%s] Send [PUBREC]", ts_server__get_conn_remote_host(server, c), conn->session->client_id);
   return tm_mqtt_conn__send_packet(server, c, pubrec, 4, pkt_id, msg);
 }
 static int tm_mqtt_conn__send_pubcomp(ts_t* server, ts_conn_t* c, int pkt_id, tm_mqtt_msg_t* msg) {
+  tm_mqtt_conn_t* conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   char pubcomp[4] = { 0x70, 0x02, 0x00, 0x00 };
   uint162bytes_be(pkt_id, pubcomp+2);
+  LOG_DUMP(pubcomp, 4, "[%s][%s] Send [PUBCOMP]", ts_server__get_conn_remote_host(server, c), conn->session->client_id);
   return tm_mqtt_conn__send_packet(server, c, pubcomp, 4, pkt_id, msg);
 }
 
@@ -38,7 +44,9 @@ int tm_mqtt_conn__process_publish(ts_t* server, ts_conn_t* c, const char* pkt_by
   conn_id = ts_server__get_conn_remote_host(server, c);
   s = conn->server;
   decoder = &conn->decoder;
-
+  
+  LOG_DUMP(pkt_bytes, pkt_bytes_len, "[%s][%s] Receive [PUBLISH]", conn_id, conn->session->client_id);
+  
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
 
   if (!tm__is_valid_qos(qos)) {
@@ -137,6 +145,8 @@ int tm_mqtt_conn__process_puback(ts_t* server, ts_conn_t* c, const char* pkt_byt
   s = conn->server;
   decoder = &conn->decoder;
   
+  LOG_DUMP(pkt_bytes, pkt_bytes_len, "[%s][%s] Receive [PUBACK]", conn_id, conn->session->client_id);
+  
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
   
   err = tm_packet_decoder__read_int16(decoder, &pkt_id);
@@ -176,6 +186,8 @@ int tm_mqtt_conn__process_pubrec(ts_t* server, ts_conn_t* c, const char* pkt_byt
   conn_id = ts_server__get_conn_remote_host(server, c);
   s = conn->server;
   decoder = &conn->decoder;
+  
+  LOG_DUMP(pkt_bytes, pkt_bytes_len, "[%s][%s] Receive [PUBREC]", conn_id, conn->session->client_id);
   
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
   
@@ -223,6 +235,8 @@ int tm_mqtt_conn__process_pubrel(ts_t* server, ts_conn_t* c, const char* pkt_byt
   s = conn->server;
   decoder = &conn->decoder;
   
+  LOG_DUMP(pkt_bytes, pkt_bytes_len, "[%s][%s] Receive [PUBREL]", conn_id, conn->session->client_id);
+  
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
   
   err = tm_packet_decoder__read_int16(decoder, &pkt_id);
@@ -263,6 +277,8 @@ int tm_mqtt_conn__process_pubcomp(ts_t* server, ts_conn_t* c, const char* pkt_by
   conn_id = ts_server__get_conn_remote_host(server, c);
   s = conn->server;
   decoder = &conn->decoder;
+  
+  LOG_DUMP(pkt_bytes, pkt_bytes_len, "[%s][%s] Receive [PUBCOMP]", conn_id, conn->session->client_id);
   
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);
   

@@ -39,8 +39,20 @@ int ts_log__destroy(ts_log_t* log) {
   return 0;
 }
 
+static int ts_log__output(ts_log_t* log, const char* line) {
+  ts_mutex__lock(&(log->mutex));
+  if (log->log_dest & TS_LOG_DEST_EVENT) {
+    ts_server__internal_log_cb(log->server, line);
+  }
+  if (log->log_dest & TS_LOG_DEST_FILE) {
+    // TODO:
+  }
+  ts_mutex__unlock(&(log->mutex));
+  return 0;
+}
+
 // TODO: add modules: tcp, tls, websocket, and so on
-static int ts_log__vprintf(ts_log_t* log, int level, const char* func, int lineno, const char *fmt, va_list va) {
+static int ts_log__vprintf(ts_log_t* log, int level, const char* func, int lineno, const char* data, int data_len, const char *fmt, va_list va) {
   int len = 0;
   char line[1024];
   const char* level_str = log_level_strs[level];
@@ -63,15 +75,15 @@ static int ts_log__vprintf(ts_log_t* log, int level, const char* func, int linen
 
   vsnprintf(&line[len], sizeof(line) - len, fmt, va);
   line[sizeof(line)-1] = 0; // ensure string is null terminated.
-
-  ts_mutex__lock(&(log->mutex));
-  if (log->log_dest & TS_LOG_DEST_EVENT) {
-    ts_server__internal_log_cb(log->server, line);
+  
+  ts_log__output(log, line);
+  
+  if (data_len > 0) {
+    ts_buf_t* buf = ts_buf__create(0);
+    ts_buf__write_hex_dump(buf, data, data_len);
+    ts_log__output(log, buf->buf);
+    ts_buf__destroy(buf);
   }
-  if (log->log_dest & TS_LOG_DEST_FILE) {
-    // TODO:
-  }
-  ts_mutex__unlock(&(log->mutex));
 
   return 0;
 }
@@ -85,8 +97,23 @@ int ts_log__log(ts_log_t* log, int level, const char* func, int lineno, const ch
   int err;
 
   va_start(va, fmt);
-  err = ts_log__vprintf(log, level, func, lineno, fmt, va);
+  err = ts_log__vprintf(log, level, func, lineno, NULL, 0, fmt, va);
   va_end(va);
 
+  return err;
+}
+
+int ts_log__log_hexdump(ts_log_t* log, int level, const char* func, int lineno, const char* data, int data_len, const char* fmt, ...) {
+  if (level > log->log_level) {
+    return 0;
+  }
+  
+  va_list va;
+  int err;
+  
+  va_start(va, fmt);
+  err = ts_log__vprintf(log, level, func, lineno, data, data_len, fmt, va);
+  va_end(va);
+  
   return err;
 }

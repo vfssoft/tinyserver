@@ -52,8 +52,8 @@ int tm_mqtt_conn__process_pubrel(ts_t* server, ts_conn_t* c, const char* pkt_byt
 int tm_mqtt_conn__process_pubcomp(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off);
 int tm_mqtt_conn__process_subscribe(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off);
 int tm_mqtt_conn__process_unsubscribe(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off);
-int tm_mqtt_conn__process_pingreq(ts_t* server, ts_conn_t* c);
-int tm_mqtt_conn__process_disconnect(ts_t* server, ts_conn_t* c);
+int tm_mqtt_conn__process_pingreq(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len);
+int tm_mqtt_conn__process_disconnect(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len);
 int tm_mqtt_conn__process_tcp_disconnect(ts_t* server, ts_conn_t* c);
 
 int tm_mqtt_conn__send_pubrel(ts_t* server, ts_conn_t* c, int pkt_id, tm_mqtt_msg_t* msg);

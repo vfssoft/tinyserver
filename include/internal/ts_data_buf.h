@@ -32,4 +32,6 @@ int ts_buf__set_str(ts_buf_t* buf, const char* str, int len);
 int ts_buf__write_str(ts_buf_t* buf, const char* str, int len);
 int ts_buf__set_const(ts_buf_t* buf, const char* data, int len);
 
+int ts_buf__write_hex_dump(ts_buf_t* buf, const char* data, int len);
+
 #endif //TINYSERVER_TS_DATA_BUF_H

@@ -145,10 +145,10 @@ static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* 
       return tm_mqtt_conn__process_unsubscribe(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_PINGREQ:
-      return tm_mqtt_conn__process_pingreq(server, c);
+      return tm_mqtt_conn__process_pingreq(server, c, pkt_bytes, pkt_bytes_len);
 
     case PKT_TYPE_DISCONNECT:
-      return tm_mqtt_conn__process_disconnect(server, c);
+      return tm_mqtt_conn__process_disconnect(server, c, pkt_bytes, pkt_bytes_len);
 
     default:
       LOG_ERROR("[%s] Unkonwn Control Packet Type(%d)", ts_server__get_conn_remote_host(server, c), pkt_type);
@@ -408,6 +408,8 @@ static int tm_mqtt_conn__encode_and_send_msg(ts_t* server, ts_conn_t* c, tm_mqtt
     return 0;
   }
   
+  LOG_DUMP(pkt_bytes, pkt_bytes_len, "[%s][%s] Send [PUBLISH]", conn_id, conn->session->client_id);
+  
   err = tm_mqtt_conn__send_packet(server, c, pkt_bytes, pkt_bytes_len, msg->pkt_id, msg);
   ts__free(pkt_bytes);
   
@@ -491,7 +493,9 @@ int tm_mqtt_conn__pub_msg_to_conn_if_any(ts_t* server, ts_conn_t* c) {
 
 
 int tm_mqtt_conn__send_pubrel(ts_t* server, ts_conn_t* c, int pkt_id, tm_mqtt_msg_t* msg) {
+  tm_mqtt_conn_t* conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   char pubrel[4] = { 0x62, 0x02, 0x00, 0x00 };
   uint162bytes_be(pkt_id, pubrel+2);
+  LOG_DUMP(pubrel, 4, "[%s][%s] Send [PUBREL]", ts_server__get_conn_remote_host(server, c), conn->session->client_id);
   return tm_mqtt_conn__send_packet(server, c, pubrel, 4, pkt_id, msg);
 }

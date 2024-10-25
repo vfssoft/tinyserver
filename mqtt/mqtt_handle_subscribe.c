@@ -5,11 +5,14 @@
 #include <internal/ts_miscellany.h>
 
 static int tm_mqtt_conn__send_suback(ts_t* server, ts_conn_t* c, int pkt_id, char* return_codes, int return_code_count) {
+  tm_mqtt_conn_t* conn = ts_server__get_conn_user_data(server, c);
   char suback[64];
   suback[0] = (char)0x90;
   suback[1] = (char)(2 + return_code_count);
   uint162bytes_be(pkt_id, suback+2);
   memcpy(suback + 4, return_codes, return_code_count);
+  
+  LOG_DUMP(suback, 4 + return_code_count, "[%s][%s] Send [SUBACK]", ts_server__get_conn_remote_host(server, c), conn->session->client_id);
 
   return tm_mqtt_conn__send_packet(server, c, suback, 4 + return_code_count, pkt_id, NULL);
 }
@@ -31,6 +34,8 @@ int tm_mqtt_conn__process_subscribe(ts_t* server, ts_conn_t* c, const char* pkt_
   conn_id = ts_server__get_conn_remote_host(server, c);
   s = conn->server;
   decoder = &conn->decoder;
+  
+  LOG_DUMP(pkt_bytes, pkt_bytes_len, "[%s][%s] Receive [SUBSCRIBE]", conn_id, conn->session->client_id);
   
   ts_error__init(&errt);
   tm_packet_decoder__set(decoder, pkt_bytes + variable_header_off, pkt_bytes_len - variable_header_off);

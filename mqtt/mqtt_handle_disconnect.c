@@ -3,7 +3,7 @@
 
 #include <internal/ts_log.h>
 
-int tm_mqtt_conn__process_disconnect(ts_t* server, ts_conn_t* c) {
+int tm_mqtt_conn__process_disconnect(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len) {
   tm_mqtt_conn_t* conn;
   tm_server_t* s;
   const char* conn_id;
@@ -11,6 +11,8 @@ int tm_mqtt_conn__process_disconnect(ts_t* server, ts_conn_t* c) {
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
   s = conn->server;
   conn_id = ts_server__get_conn_remote_host(server, c);
+  
+  LOG_DUMP(pkt_bytes, pkt_bytes_len, "[%s][%s] Receive [DISCONNECT]", ts_server__get_conn_remote_host(server, c), conn->session->client_id);
   
   if (conn->will) {
     LOG_VERB("[%s][%s] Client is disconnected gracefully, discard the Will message silently", conn_id, conn->session->client_id);
