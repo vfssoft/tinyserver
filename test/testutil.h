@@ -4,6 +4,7 @@
 #include <ts.h>
 #include <ts_internal.h>
 #include <tm.h>
+#include "test_mqtt_msgs.h"
 
 #define MQTT_PLAIN_PORT 11883
 #define MQTT_TLS_PORT   18883
@@ -47,5 +48,7 @@ int build_publish_pkt(
     int qos, int dup, int retain,
     const char* payload, int payload_len
 );
+
+int assert_msg(msg_t* m, const char* topic, const char* payload, int payload_len, int qos, int retained);
 
 #endif //TINYSERVER_TESTUTIL_H

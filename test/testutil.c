@@ -322,3 +322,15 @@ int build_publish_pkt(
 
   return offset;
 }
+
+int assert_msg(msg_t* m, const char* topic, const char* payload, int payload_len, int qos, int retained) {
+  ASSERT_STR_EQ(m->topic, topic);
+  ASSERT_EQ(m->qos, qos);
+  if (payload_len >= 0) {
+    ASSERT_EQ(m->payload_len, payload_len);
+    if (payload_len > 0) {
+      ASSERT_MEM_EQ(payload, (char*)m->payload, m->payload_len);
+    }
+  }
+  ASSERT_EQ(m->retained, retained);
+}

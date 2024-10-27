@@ -33,6 +33,8 @@ add_executable(tests
         mytcp.c
         mymqtt.h
         mymqtt.c
+        test_mqtt_msgs.h
+        test_mqtt_msgs.c
         ../src/ts_int_array.c
 )
 

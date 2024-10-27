@@ -70,8 +70,7 @@ typedef struct {
     int skip_sub;
     int done;
     
-    mymqtt_msg_t msgs[32]; // msg received
-    int msgs_count;
+    msgs_t* msgs; // msg received
 } test_client_subscriber_info_t;
 static void mqtt_client_subscriber_cb(void *arg) {
   int err;
@@ -101,13 +100,13 @@ static void mqtt_client_subscriber_cb(void *arg) {
         break;
       }
     }
-    if (mymqtt__recv_msg_count(&client) >= info->exp_recv_count) {
+    if (msgs__count(client.msgs) >= info->exp_recv_count) {
       break;
     }
   }
   
-  if (mymqtt__recv_msg_count(&client) >= 0) {
-    info->msgs_count = mymqtt__recv_msgs(&client, info->msgs);
+  if (msgs__count(client.msgs) >= 0) {
+    info->msgs = msgs__clone(client.msgs);
   }
   
   if (!info->skip_sub) {
@@ -312,12 +311,9 @@ TEST_IMPL(mqtt_msg_delivery__client_resend_publish_qos1) {
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
   tm__stop(server);
   
-  ASSERT_EQ(subscriber_info->msgs_count, 1);
-  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
-  ASSERT_STR_EQ(msg->topic, "test");
-  ASSERT_EQ(msg->qos, 1);
-  ASSERT_EQ(msg->payload_len, 5);
-  ASSERT_MEM_EQ("hello", (char*)msg->payload, 5);
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 1);
+  msg_t* msg = msgs__at(subscriber_info->msgs, 0);
+  assert_msg(msg, "test", "hello", 5, 1, 0);
   
   return 0;
 }
@@ -589,12 +585,9 @@ TEST_IMPL(mqtt_msg_delivery__client_resend_pubrel) {
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
   tm__stop(server);
   
-  ASSERT_EQ(subscriber_info->msgs_count, 1);
-  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
-  ASSERT_STR_EQ(msg->topic, "test");
-  ASSERT_EQ(msg->qos, 2);
-  ASSERT_EQ(msg->payload_len, 5);
-  ASSERT_MEM_EQ("hello", (char*)msg->payload, 5);
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 1);
+  msg_t* msg = msgs__at(subscriber_info->msgs, 0);
+  assert_msg(msg, "test", "hello", 5, 2, 0);
   
   return 0;
 }

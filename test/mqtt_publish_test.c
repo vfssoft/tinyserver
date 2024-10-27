@@ -24,8 +24,7 @@ typedef struct {
   int skip_sub;
   int done;
     
-  mymqtt_msg_t msgs[32]; // msg received
-  int msgs_count;
+  msgs_t* msgs; // msg received
 } test_client_subscriber_info_t;
 
 static void mqtt_client_subscriber_cb(void *arg) {
@@ -56,13 +55,13 @@ static void mqtt_client_subscriber_cb(void *arg) {
         break;
       }
     }
-    if (mymqtt__recv_msg_count(&client) >= info->exp_recv_count) {
+    if (msgs__count(client.msgs) >= info->exp_recv_count) {
       break;
     }
   }
   
-  if (mymqtt__recv_msg_count(&client) >= 0) {
-    info->msgs_count = mymqtt__recv_msgs(&client, info->msgs);
+  if (msgs__count(client.msgs) > 0) {
+    info->msgs = msgs__clone(client.msgs);
   }
 
   if (!info->skip_sub) {
@@ -245,12 +244,9 @@ static int mqtt_basic_pub_recv_impl(
   
   tm__stop(server);
   
-  ASSERT_EQ(subscriber_info->msgs_count, 1);
-  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
-  ASSERT_STR_EQ(msg->topic, sub_topic);
-  ASSERT_EQ(msg->qos, (sub_qos > pub_qos ? pub_qos : sub_qos));
-  ASSERT_EQ(msg->payload_len, payload_len);
-  ASSERT_MEM_EQ(payload, (char*)msg->payload, payload_len);
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 1);
+  msg_t* msg = msgs__at(subscriber_info->msgs, 0);
+  assert_msg(msg, sub_topic, payload, payload_len, (sub_qos > pub_qos ? pub_qos : sub_qos), 0);
   
   return 0;
 }
@@ -395,14 +391,11 @@ static int mqtt_basic_will_msg_impl(int proto, int disconnect_abnormal, int reta
   tm__stop(server);
   
   if (disconnect_abnormal) {
-    ASSERT_EQ(subscriber_info->msgs_count, 1);
-    mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
-    ASSERT_STR_EQ(msg->topic, will_topic);
-    ASSERT_EQ(msg->qos, 1);
-    ASSERT_MEM_EQ(payload, (char*)msg->payload, msg->payload_len);
-    ASSERT_EQ(msg->retained, 0);
+    ASSERT_EQ(msgs__count(subscriber_info->msgs), 1);
+    msg_t* msg = msgs__at(subscriber_info->msgs, 0);
+    assert_msg(msg, will_topic, payload, strlen(payload), 1, 0);
   } else {
-    ASSERT_EQ(subscriber_info->msgs_count, 0);
+    ASSERT_EQ(msgs__count(subscriber_info->msgs), 0);
   }
   
   return 0;
@@ -443,14 +436,9 @@ TEST_IMPL(mqtt_retain_msg_current_subscription) {
   
   tm__stop(server);
   
-  ASSERT_EQ(subscriber_info->msgs_count, 1);
-  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
-  ASSERT_STR_EQ(msg->topic, topic);
-  ASSERT_EQ(msg->qos, qos);
-  ASSERT_EQ(msg->payload_len, strlen(payload));
-  ASSERT_MEM_EQ(payload, (char*)msg->payload, msg->payload_len);
-  
-  ASSERT_EQ(msg->retained, 0);
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 1);
+  msg_t* msg = msgs__at(subscriber_info->msgs, 0);
+  assert_msg(msg, topic, payload, strlen(payload), qos, 0);
   
   return 0;
 }
@@ -480,14 +468,9 @@ TEST_IMPL(mqtt_retain_msg_new_subscription) {
   
   tm__stop(server);
   
-  ASSERT_EQ(subscriber_info->msgs_count, 1);
-  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
-  ASSERT_STR_EQ(msg->topic, topic);
-  ASSERT_EQ(msg->qos, qos);
-  ASSERT_EQ(msg->payload_len, strlen(payload));
-  ASSERT_MEM_EQ(payload, (char*)msg->payload, msg->payload_len);
-  
-  ASSERT_EQ(msg->retained, 1);
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 1);
+  msg_t* msg = msgs__at(subscriber_info->msgs, 0);
+  assert_msg(msg, topic, payload, strlen(payload), qos, 1);
   
   return 0;
 }
@@ -516,7 +499,7 @@ TEST_IMPL(mqtt_retain_msg_zero_byte) {
   
   tm__stop(server);
   
-  ASSERT_EQ(subscriber_info->msgs_count, 0);
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 0);
   
   return 0;
 }
@@ -545,12 +528,9 @@ TEST_IMPL(mqtt_retain_msg_zero_byte_1) {
   
   tm__stop(server);
   
-  ASSERT_EQ(subscriber_info->msgs_count, 1);
-  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
-  ASSERT_STR_EQ(msg->topic, topic);
-  ASSERT_EQ(msg->qos, qos);
-  ASSERT_EQ(msg->payload_len, 0);
-  ASSERT_EQ(msg->retained, 0);
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 1);
+  msg_t* msg = msgs__at(subscriber_info->msgs, 0);
+  assert_msg(msg, topic, NULL, 0, qos, 0);
   
   return 0;
 }
@@ -579,7 +559,7 @@ TEST_IMPL(mqtt_retain_msg_zero_byte_2) {
   
   tm__stop(server);
   
-  ASSERT_EQ(subscriber_info->msgs_count, 0);
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 0);
   
   return 0;
 }
@@ -608,12 +588,9 @@ TEST_IMPL(mqtt_retain_msg_zero_byte_3) {
   
   tm__stop(server);
   
-  ASSERT_EQ(subscriber_info->msgs_count, 1);
-  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
-  ASSERT_STR_EQ(msg->topic, topic);
-  ASSERT_EQ(msg->qos, qos);
-  ASSERT_EQ(msg->payload_len, 1);
-  ASSERT_EQ(msg->retained, 1);
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 1);
+  msg_t* msg = msgs__at(subscriber_info->msgs, 0);
+  assert_msg(msg, topic, "A", 1, qos, 1);
   
   return 0;
 }
@@ -642,13 +619,9 @@ TEST_IMPL(mqtt_retain_msg_update_exist) {
   
   tm__stop(server);
   
-  ASSERT_EQ(subscriber_info->msgs_count, 1);
-  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
-  ASSERT_STR_EQ(msg->topic, topic);
-  ASSERT_EQ(msg->qos, qos);
-  ASSERT_EQ(msg->payload_len, 1);
-  ASSERT_MEM_EQ(msg->payload, "B", 1);
-  ASSERT_EQ(msg->retained, 1);
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 1);
+  msg_t* msg = msgs__at(subscriber_info->msgs, 0);
+  assert_msg(msg, topic, "B", 1, qos, 1);
   
   return 0;
 }
@@ -677,14 +650,10 @@ TEST_IMPL(mqtt_retain_msg_kept_after_publisher_session_ends) {
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
 
   tm__stop(server);
-
-  ASSERT_EQ(subscriber_info->msgs_count, 1);
-  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
-  ASSERT_STR_EQ(msg->topic, topic);
-  ASSERT_EQ(msg->qos, qos);
-  ASSERT_EQ(msg->payload_len, 1);
-  ASSERT_MEM_EQ(msg->payload, "A", 1);
-  ASSERT_EQ(msg->retained, 1);
+  
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 1);
+  msg_t* msg = msgs__at(subscriber_info->msgs, 0);
+  assert_msg(msg, topic, "A", 1, qos, 1);
 
   return 0;
 }
@@ -733,14 +702,10 @@ TEST_IMPL(mqtt_recv_offline_msgs_after_reconnect) {
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
 
   tm__stop(server);
-
-  ASSERT_EQ(subscriber_info->msgs_count, 1);
-  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
-  ASSERT_STR_EQ(msg->topic, topic);
-  ASSERT_EQ(msg->qos, qos);
-  ASSERT_EQ(msg->payload_len, strlen(payload));
-  ASSERT_MEM_EQ(payload, (char*)msg->payload, msg->payload_len);
-  ASSERT_EQ(msg->retained, 0);
+  
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 1);
+  msg_t* msg = msgs__at(subscriber_info->msgs, 0);
+  assert_msg(msg, topic, payload, strlen(payload), qos, 0);
 
   return 0;
 }
@@ -771,8 +736,8 @@ TEST_IMPL(mqtt_no_offline_msgs_after_reconnect_with_clean_session) {
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
 
   tm__stop(server);
-
-  ASSERT_EQ(subscriber_info->msgs_count, 0);
+  
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 0);
 
   return 0;
 }
@@ -805,12 +770,9 @@ TEST_IMPL(mqtt_max_qos_of_all_subscriptions) {
   
   tm__stop(server);
   
-  ASSERT_EQ(subscriber_info->msgs_count, 1);
-  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
-  ASSERT_STR_EQ(msg->topic, topic);
-  ASSERT_EQ(msg->qos, 1);
-  ASSERT_EQ(msg->payload_len, strlen(payload));
-  ASSERT_MEM_EQ(payload, (char*)msg->payload, msg->payload_len);
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 1);
+  msg_t* msg = msgs__at(subscriber_info->msgs, 0);
+  assert_msg(msg, topic, payload, strlen(payload), 1, 0);
   
   return 0;
 }
@@ -840,10 +802,9 @@ TEST_IMPL(mqtt_update_subscribe_qos) {
   
   tm__stop(server);
   
-  ASSERT_EQ(subscriber_info->msgs_count, 1);
-  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
-  ASSERT_STR_EQ(msg->topic, topic);
-  ASSERT_EQ(msg->qos, 1);
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 1);
+  msg_t* msg = msgs__at(subscriber_info->msgs, 0);
+  assert_msg(msg, topic, NULL, -1, 1, 0);
   
   return 0;
 }
@@ -869,15 +830,15 @@ TEST_IMPL(mqtt_update_subscribe_qos_resent_retain_msg) {
   mqtt_publish_a_msg(server, proto, topic, 2, payload, strlen(payload), 1);
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
   
-  ASSERT_EQ(subscriber_info->msgs_count, 1);
-  mymqtt_msg_t* msg = &(subscriber_info->msgs[0]);
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 1);
+  msg_t* msg = msgs__at(subscriber_info->msgs, 0);
   ASSERT_EQ(msg->qos, 0);
   
   subscriber_info = mqtt_subscriber_start_ex(server, &subscriber_thread, proto, topic, 1, 500, client_id, 0, 0);
   mqtt_subscriber_stop(server, &subscriber_thread, subscriber_info);
   
-  ASSERT_EQ(subscriber_info->msgs_count, 1);
-  msg = &(subscriber_info->msgs[0]);
+  ASSERT_EQ(msgs__count(subscriber_info->msgs), 1);
+  msg = msgs__at(subscriber_info->msgs, 0);
   ASSERT_EQ(msg->qos, 1);
   
   tm__stop(server);

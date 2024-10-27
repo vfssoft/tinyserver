@@ -13,24 +13,19 @@ void conn_lost_cb(void *context, char *cause)
 
 int msg_arrived_cb(void *context, char *topicName, int topicLen, MQTTClient_message *message) {
   mymqtt_t* c = (mymqtt_t*)context;
-  mymqtt_msg_t* msg = (mymqtt_msg_t*) malloc(sizeof(mymqtt_msg_t));
   
   topicLen = strlen(topicName);
-  msg->topic = (char*) malloc(topicLen + 1);
-  strcpy(msg->topic, topicName);
-  msg->topic[topicLen] = 0;
+  char* topic = (char*) malloc(topicLen + 1);
+  strcpy(topic, topicName);
+  topic[topicLen] = 0;
   
-  msg->payload = (char*) malloc(message->payloadlen);
-  memcpy(msg->payload, message->payload, message->payloadlen);
-  msg->payload_len = message->payloadlen;
-  
-  msg->qos = message->qos;
-  msg->dup = message->dup;
-  msg->retained = message->retained;
-  
-  memcpy(&(c->msgs[c->msgs_count]), msg, sizeof(mymqtt_msg_t));
-  c->msgs_count++;
-  
+  msgs__add2(c->msgs,
+             topic,
+             message->payload, message->payloadlen,
+             message->qos,
+             message->retained,
+             message->dup
+  );
   return 1;
 }
 
@@ -98,8 +93,7 @@ int mymqtt__init(mymqtt_t* c, int proto, const char* client_id) {
   c->options.cleansession = 1;
   c->options.connectTimeout = 3;
   
-  memset(c->msgs, 0, sizeof(mymqtt_msg_t) * 32);
-  c->msgs_count = 0;
+  c->msgs = msgs__create(32);
 
   c->is_conn_lost = 0;
   c->conn_lost_reason = NULL;
@@ -113,6 +107,8 @@ void mymqtt__destroy(mymqtt_t* c) {
     free(c->conn_lost_reason);
     c->conn_lost_reason = NULL;
   }
+  
+  msgs__destroy(c->msgs);
 }
 
 void mymqtt__set_user(mymqtt_t* c, const char* user) {
@@ -140,13 +136,6 @@ void mymqtt__set_will(mymqtt_t* c, const char* topic, int qos, const char* paylo
 
 int mymqtt__sp(mymqtt_t* c) {
   return c->options.returned.sessionPresent;
-}
-int mymqtt__recv_msg_count(mymqtt_t* c) {
-  return c->msgs_count;
-}
-int mymqtt__recv_msgs(mymqtt_t* c, mymqtt_msg_t* msgs) {
-  memcpy(msgs, c->msgs, sizeof(mymqtt_msg_t) * c->msgs_count);
-  return c->msgs_count;
 }
 int mymqtt__is_conn_lost(mymqtt_t* c) {
   return c->is_conn_lost;
