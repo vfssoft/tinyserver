@@ -102,12 +102,14 @@ int tm_mqtt_conn__send_packet(ts_t* server, ts_conn_t* c, const char* data, int 
 
 static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* pkt_bytes, int pkt_bytes_len, int variable_header_off) {
   tm_mqtt_conn_t* conn;
+  const char* conn_id;
   
   conn = (tm_mqtt_conn_t*) ts_server__get_conn_user_data(server, c);
+  conn_id = ts_server__get_conn_remote_host(server, c);
   int pkt_type = (pkt_bytes[0] & 0xF0) >> 4;
 
   if (conn->session == NULL && pkt_type != PKT_TYPE_CONNECT) {
-    LOG_ERROR("[%s] First packet should be CONNECT", ts_server__get_conn_remote_host(server, c));
+    LOG_ERROR("[%s] First packet should be CONNECT", conn_id);
     tm_mqtt_conn__abort(server, c);
     return TS_ERR_MALFORMED_MQTT_PACKET;
   }
@@ -116,42 +118,52 @@ static int tm_mqtt_conn__process_in_pkt(ts_t* server, ts_conn_t* c, const char* 
 
     case PKT_TYPE_CONNECT:
       if (conn->session && tm_mqtt_session__conn(conn->session) != NULL) {
-        LOG_ERROR("[%s] Already connected but receive another CONNECT", ts_server__get_conn_remote_host(server, c));
+        LOG_ERROR("[%s] Already connected but receive another CONNECT", conn_id);
         tm_mqtt_conn__abort(server, c);
         return 0;
       }
 
+      LOG_DEBUG("[%s] Receive CONNECT", conn_id);
       return tm_mqtt_conn__process_connect(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_PUBLISH:
+      LOG_DEBUG("[%s][%s] Receive PUBLISH", conn_id, conn->session->client_id);
       return tm_mqtt_conn__process_publish(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_PUBACK:
+      LOG_DEBUG("[%s][%s] Receive PUBACK", conn_id, conn->session->client_id);
       return tm_mqtt_conn__process_puback(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_PUBREC:
+      LOG_DEBUG("[%s][%s] Receive PUBREC", conn_id, conn->session->client_id);
       return tm_mqtt_conn__process_pubrec(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_PUBREL:
+      LOG_DEBUG("[%s][%s] Receive PUBREL", conn_id, conn->session->client_id);
       return tm_mqtt_conn__process_pubrel(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_PUBCOMP:
+      LOG_DEBUG("[%s][%s] Receive PUBCOMP", conn_id, conn->session->client_id);
       return tm_mqtt_conn__process_pubcomp(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_SUBSCRIBE:
+      LOG_DEBUG("[%s][%s] Receive SUBSCRIBE", conn_id, conn->session->client_id);
       return tm_mqtt_conn__process_subscribe(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_UNSUBSCRIBE:
+      LOG_DEBUG("[%s][%s] Receive UNSUBSCRIBE", conn_id, conn->session->client_id);
       return tm_mqtt_conn__process_unsubscribe(server, c, pkt_bytes, pkt_bytes_len, variable_header_off);
 
     case PKT_TYPE_PINGREQ:
+      LOG_DEBUG("[%s][%s] Receive PINGREQ", conn_id, conn->session->client_id);
       return tm_mqtt_conn__process_pingreq(server, c, pkt_bytes, pkt_bytes_len);
 
     case PKT_TYPE_DISCONNECT:
+      LOG_DEBUG("[%s][%s] Receive DISCONNECT", conn_id, conn->session->client_id);
       return tm_mqtt_conn__process_disconnect(server, c, pkt_bytes, pkt_bytes_len);
 
     default:
-      LOG_ERROR("[%s] Unkonwn Control Packet Type(%d)", ts_server__get_conn_remote_host(server, c), pkt_type);
+      LOG_ERROR("[%s] Unkonwn Control Packet Type(%d)", conn_id, pkt_type);
       tm_mqtt_conn__abort(server, c);
       break;
   }
@@ -234,29 +246,37 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
   inflight_pkt = (tm_inflight_packet_t*) write_ctx;
   
   if (status != 0) {
-    LOG_ERROR("[%s] Write failed: %d %s, abort the connection", conn_id, status, uv_strerror(status));
+    LOG_ERROR("[%s][%s] Write failed: %d %s, abort the connection", conn_id, conn->session->client_id, status, uv_strerror(status));
     // TODO: mark the fail state
     tm_mqtt_conn__abort(server, c);
   } else {
     switch (inflight_pkt->pkt_type) {
       case PKT_TYPE_PUBLISH:
+        LOG_DEBUG("[%s][%s] Send PUBLISH successfully", conn_id, conn->session->client_id);
         tm_mqtt_conn__update_msg_state(server, c, inflight_pkt->msg);
         break;
         
       case PKT_TYPE_PUBACK:
+        LOG_DEBUG("[%s][%s] Send PUBACK successfully", conn_id, conn->session->client_id);
         tm_mqtt_conn__update_msg_state(server, c, inflight_pkt->msg);
         break;
   
       case PKT_TYPE_PUBREC:
+        LOG_DEBUG("[%s][%s] Send PUBREC successfully", conn_id, conn->session->client_id);
         tm_mqtt_conn__update_msg_state(server, c, inflight_pkt->msg);
         break;
   
       case PKT_TYPE_PUBREL:
+        LOG_DEBUG("[%s][%s] Send PUBREL successfully", conn_id, conn->session->client_id);
         tm_mqtt_conn__update_msg_state(server, c, inflight_pkt->msg);
         break;
   
       case PKT_TYPE_PUBCOMP:
+        LOG_DEBUG("[%s][%s] Send PUBCOMP successfully", conn_id, conn->session->client_id);
         tm_mqtt_conn__update_msg_state(server, c, inflight_pkt->msg);
+        break;
+      default:
+        LOG_DEBUG("[%s][%s] Send other control packets successfully", conn_id, conn->session->client_id);
         break;
     }
   }
