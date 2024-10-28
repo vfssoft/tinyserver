@@ -1,6 +1,12 @@
 
 #include "ts_internal.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/time.h>
+#endif
+
 static const char* log_level_strs[] = {
   "NONE ",
   "ERROR",
@@ -13,15 +19,16 @@ static const char* log_level_strs[] = {
 int ts_log__init(ts_log_t* log, void* server) {
 #if _DEBUG
   log->log_level = TS_LOG_LEVEL_DEBUG;
+  log->log_timestamp_milliseconds = 1;
 #else
   log->log_level = TS_LOG_LEVEL_INFO;
+  log->log_timestamp_milliseconds = 0;
 #endif
   log->log_dest = TS_LOG_DEST_EVENT;
   log->log_dir = NULL;
   log->server = server;
 
   log->log_timestamp = 1;
-  log->log_timestamp_format = NULL;
 
   ts_mutex__init(&(log->mutex));
   return 0;
@@ -32,9 +39,6 @@ int ts_log__destroy(ts_log_t* log) {
   
   if (log->log_dir) {
     ts__free(log->log_dir);
-  }
-  if (log->log_timestamp_format) {
-    ts__free(log->log_timestamp_format);
   }
   return 0;
 }
@@ -51,6 +55,21 @@ static int ts_log__output(ts_log_t* log, const char* line) {
   return 0;
 }
 
+static long long ts_log__milliseconds_since_1970() {
+#ifdef _WIN32
+  FILETIME ft;
+  GetSystemTimeAsFileTime(&ft);
+  ULARGE_INTEGER ui;
+  ui.LowPart = ft.dwLowDateTime;
+  ui.HighPart = ft.dwHighDateTime;
+  return (ui.QuadPart / 10000LL  - 11644473600000LL); // Convert from 100-nanosecond intervals to milliseconds
+#else
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return (tv.tv_sec * 1000LL) + (tv.tv_usec / 1000);
+#endif
+}
+
 // TODO: add modules: tcp, tls, websocket, and so on
 static int ts_log__vprintf(ts_log_t* log, int level, const char* func, int lineno, const char* data, int data_len, const char *fmt, va_list va) {
   int len = 0;
@@ -59,13 +78,13 @@ static int ts_log__vprintf(ts_log_t* log, int level, const char* func, int linen
 
   if (log->log_timestamp) {
     char timestamp_buf[64];
-    time_t now = time(NULL);
-    if (log->log_timestamp_format != NULL) {
-      struct tm* local_time = localtime(&now);
-      strftime(timestamp_buf, sizeof(timestamp_buf), log->log_timestamp_format, local_time);
+    long long now;
+    if (log->log_timestamp_milliseconds) {
+      now = ts_log__milliseconds_since_1970();
     } else {
-      snprintf(timestamp_buf, sizeof(timestamp_buf),"%" PRIu64, (uint64_t)now);
+      now = (long long)time(NULL);
     }
+    snprintf(timestamp_buf, sizeof(timestamp_buf),"%" PRIu64, (uint64_t)now);
     len += snprintf(line, sizeof(line), "[%s]", timestamp_buf);
   }
 

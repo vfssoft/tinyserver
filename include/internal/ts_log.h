@@ -16,8 +16,8 @@ struct ts_log_s {
     char* log_dir;
     void* server;
     
-    int log_timestamp;
-    char* log_timestamp_format;
+    int log_timestamp; // by default, only seconds
+    int log_timestamp_milliseconds;
     
     // internal states
     FILE* cur_log_file;
