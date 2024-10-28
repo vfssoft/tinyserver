@@ -197,6 +197,19 @@ TEST_DECLARE(mqtt_msg_delivery__server_resend_pubrel)
 TEST_DECLARE(mqtt_msg_delivery__client_resend_publish_qos1)
 TEST_DECLARE(mqtt_msg_delivery__client_resend_pubrel)
 
+TEST_DECLARE(mqtt_singe_pub_single_single_sub_1000_msgs_qos_0_tcp)
+TEST_DECLARE(mqtt_singe_pub_single_single_sub_1000_msgs_qos_0_tls)
+TEST_DECLARE(mqtt_singe_pub_single_single_sub_1000_msgs_qos_0_ws)
+TEST_DECLARE(mqtt_singe_pub_single_single_sub_1000_msgs_qos_0_wss)
+TEST_DECLARE(mqtt_singe_pub_single_single_sub_1000_msgs_qos_1_tcp)
+TEST_DECLARE(mqtt_singe_pub_single_single_sub_1000_msgs_qos_1_tls)
+TEST_DECLARE(mqtt_singe_pub_single_single_sub_1000_msgs_qos_1_ws)
+TEST_DECLARE(mqtt_singe_pub_single_single_sub_1000_msgs_qos_1_wss)
+TEST_DECLARE(mqtt_singe_pub_single_single_sub_1000_msgs_qos_2_tcp)
+TEST_DECLARE(mqtt_singe_pub_single_single_sub_1000_msgs_qos_2_tls)
+TEST_DECLARE(mqtt_singe_pub_single_single_sub_1000_msgs_qos_2_ws)
+TEST_DECLARE(mqtt_singe_pub_single_single_sub_1000_msgs_qos_2_wss)
+
 TEST_LIST_START
         TEST_ENTRY(invalid_local_host, "Error")
         TEST_ENTRY(invalid_local_host_2, "Error")
@@ -388,6 +401,19 @@ TEST_LIST_START
         TEST_ENTRY(mqtt_msg_delivery__server_resend_pubrel, "MQTT")
         TEST_ENTRY(mqtt_msg_delivery__client_resend_publish_qos1, "MQTT")
         TEST_ENTRY(mqtt_msg_delivery__client_resend_pubrel, "MQTT")
+
+        TEST_ENTRY(mqtt_singe_pub_single_single_sub_1000_msgs_qos_0_tcp, "MQTT")
+        TEST_ENTRY(mqtt_singe_pub_single_single_sub_1000_msgs_qos_0_tls, "MQTT")
+        TEST_ENTRY(mqtt_singe_pub_single_single_sub_1000_msgs_qos_0_ws, "MQTT")
+        TEST_ENTRY(mqtt_singe_pub_single_single_sub_1000_msgs_qos_0_wss, "MQTT")
+        TEST_ENTRY(mqtt_singe_pub_single_single_sub_1000_msgs_qos_1_tcp, "MQTT")
+        TEST_ENTRY(mqtt_singe_pub_single_single_sub_1000_msgs_qos_1_tls, "MQTT")
+        TEST_ENTRY(mqtt_singe_pub_single_single_sub_1000_msgs_qos_1_ws, "MQTT")
+        TEST_ENTRY(mqtt_singe_pub_single_single_sub_1000_msgs_qos_1_wss, "MQTT")
+        TEST_ENTRY(mqtt_singe_pub_single_single_sub_1000_msgs_qos_2_tcp, "MQTT")
+        TEST_ENTRY(mqtt_singe_pub_single_single_sub_1000_msgs_qos_2_tls, "MQTT")
+        TEST_ENTRY(mqtt_singe_pub_single_single_sub_1000_msgs_qos_2_ws, "MQTT")
+        TEST_ENTRY(mqtt_singe_pub_single_single_sub_1000_msgs_qos_2_wss, "MQTT")
 TEST_LIST_END
 
 #endif //TINYSERVER_TEST_LIST_H
