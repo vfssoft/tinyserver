@@ -276,7 +276,11 @@ void tm_mqtt_conn__write_cb(ts_t* server, ts_conn_t* c, int status, int can_writ
         tm_mqtt_conn__update_msg_state(server, c, inflight_pkt->msg);
         break;
       default:
-        LOG_DEBUG("[%s][%s] Send other control packets successfully", conn_id, conn->session->client_id);
+        if (conn->session == NULL) {
+          LOG_DEBUG("[%s][%s] Send other control packets successfully", conn_id, "CLIENT_ID_PLACEHOLDER");
+        } else {
+          LOG_DEBUG("[%s][%s] Send other control packets successfully", conn_id, conn->session->client_id);
+        }
         break;
     }
   }
