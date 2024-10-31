@@ -1,4 +1,4 @@
-#include "ts_array.h"
+#include "internal/ts_array.h"
 
 #define SIZE_OF_PTR (int)(sizeof(void*))
 
