@@ -12,3 +12,14 @@ find_package(OpenSSL REQUIRED)
 include_directories(../libuv/include ../include)
 
 target_link_libraries(server_lib PRIVATE uv_a OpenSSL::SSL OpenSSL::Crypto)
+
+install(
+        TARGETS server_lib
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+)
+
+install(
+        DIRECTORY ../include/
+        DESTINATION include
+)
