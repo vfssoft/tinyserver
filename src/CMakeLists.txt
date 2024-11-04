@@ -8,10 +8,23 @@ file(GLOB_RECURSE SRC_FILES ${SRC_DIR}/*.c ${SRC_DIR}/*.h)
 
 add_library(server_lib STATIC ${SRC_FILES})
 
-find_package(OpenSSL REQUIRED)
-include_directories(../libuv/include ../include)
+include (ExternalProject)
+ExternalProject_Add(
+        uv
+        GIT_REPOSITORY https://github.com/libuv/libuv.git
+        GIT_TAG v1.x
+        BUILD_IN_SOURCE 1
+        CMAKE_ARGS -DLIBUV_BUILD_SHARED=FALSE -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libuv -DBUILD_SHARED_LIBS=OFF
+)
+add_dependencies(server_lib uv)
 
-target_link_libraries(server_lib PRIVATE uv_a OpenSSL::SSL OpenSSL::Crypto)
+link_directories(${CMAKE_BINARY_DIR}/libuv/lib)
+
+
+find_package(OpenSSL REQUIRED)
+include_directories(../include ${CMAKE_BINARY_DIR}/libuv/include)
+
+target_link_libraries(server_lib PRIVATE libuv OpenSSL::SSL OpenSSL::Crypto)
 
 install(
         TARGETS server_lib

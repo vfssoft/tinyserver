@@ -7,7 +7,7 @@ set(PAHO_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/paho.mqtt.c")
 include_directories(
         ../src
         ../include
-        ../libuv/include
+        ${CMAKE_BINARY_DIR}/libuv/include
         ${PAHO_ROOT_DIR}/build/include
         ../mqtt
 )
@@ -73,5 +73,5 @@ add_custom_target(
 add_dependencies(tests PreBuildPaho)
 
 
-target_link_directories(tests PRIVATE ${PAHO_ROOT_DIR}/build/lib)
-target_link_libraries(tests server_lib tm_lib ${MQTT3CS} OpenSSL::SSL OpenSSL::Crypto)
+target_link_directories(tests PRIVATE ${PAHO_ROOT_DIR}/build/lib ${CMAKE_BINARY_DIR}/libuv/lib)
+target_link_libraries(tests server_lib tm_lib libuv ${MQTT3CS} OpenSSL::SSL OpenSSL::Crypto Iphlpapi Userenv Dbghelp Psapi)

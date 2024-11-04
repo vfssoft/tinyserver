@@ -11,7 +11,6 @@ else()
     set(OPENSSL_USE_STATIC_LIBS FALSE) # Use shared libraries
 endif()
 
-add_subdirectory(libuv)
 add_subdirectory(src)
 add_subdirectory(mqtt)
 
