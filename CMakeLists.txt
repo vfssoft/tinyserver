@@ -11,7 +11,7 @@ else()
     set(OPENSSL_USE_STATIC_LIBS FALSE) # Use shared libraries
 endif()
 
-add_definitions(-DWITH_MEMORY_TRACKING)
+add_definitions(-DWITH_MEMORY_TRACKING -DTHREAD_API)
 
 if(WIN32)
     set(SYS_DLL Psapi Iphlpapi Userenv Dbghelp)
@@ -47,7 +47,20 @@ enable_testing()
 
 file(GLOB TEST_SRC_FILES "test/*.c")
 add_executable(tests ${TEST_SRC_FILES})
-target_link_libraries(tests PRIVATE ts OpenSSL::SSL OpenSSL::Crypto)
+
+include (ExternalProject)
+ExternalProject_Add(
+        tinyunit
+        GIT_REPOSITORY https://github.com/vfssoft/tinyunit.git
+        GIT_TAG main
+        BUILD_IN_SOURCE 1
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/tinyunit  -DBUILD_SHARED_LIBS=OFF
+)
+add_dependencies(tests tinyunit)
+
+target_include_directories(tests PRIVATE ${CMAKE_BINARY_DIR}/tinyunit/include)
+target_link_directories(tests PRIVATE ${CMAKE_BINARY_DIR}/tinyunit/lib)
+target_link_libraries(tests PRIVATE ts tinyunit_lib OpenSSL::SSL OpenSSL::Crypto)
 
 add_test(NAME tests COMMAND tests)
 
