@@ -1,3 +1,0 @@
-[submodule "test/paho.mqtt.c"]
-	path = test/paho.mqtt.c
-	url = git@github.com:VFSSOFT/paho.mqtt.c.git
