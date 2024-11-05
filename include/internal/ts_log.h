@@ -22,7 +22,7 @@ struct ts_log_s {
     // internal states
     FILE* cur_log_file;
     
-    ts_mutex_t mutex;
+    ts_mutex_t* mutex;
 };
 
 #define LOG(level, fmt, ...)   ts_log__log(ts_server__get_log(server), level,                __FUNCTION__, __LINE__, fmt, ##__VA_ARGS__)

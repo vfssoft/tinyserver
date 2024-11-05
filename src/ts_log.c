@@ -30,12 +30,12 @@ int ts_log__init(ts_log_t* log, void* server) {
 
   log->log_timestamp = 1;
 
-  ts_mutex__init(&(log->mutex));
+  log->mutex = ts_mutex__create();
   return 0;
 }
 
 int ts_log__destroy(ts_log_t* log) {
-  ts_mutex__destroy(&(log->mutex));
+  ts_mutex__destroy(log->mutex);
   
   if (log->log_dir) {
     ts__free(log->log_dir);
@@ -44,14 +44,14 @@ int ts_log__destroy(ts_log_t* log) {
 }
 
 static int ts_log__output(ts_log_t* log, const char* line) {
-  ts_mutex__lock(&(log->mutex));
+  ts_mutex__lock(log->mutex);
   if (log->log_dest & TS_LOG_DEST_EVENT) {
     ts_server__internal_log_cb(log->server, line);
   }
   if (log->log_dest & TS_LOG_DEST_FILE) {
     // TODO:
   }
-  ts_mutex__unlock(&(log->mutex));
+  ts_mutex__unlock(log->mutex);
   return 0;
 }
 
