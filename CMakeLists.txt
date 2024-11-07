@@ -32,6 +32,7 @@ find_package(OpenSSL REQUIRED)
 include_directories(include ${CMAKE_BINARY_DIR}/libuv/include)
 
 add_subdirectory(server)
+add_subdirectory(client)
 add_subdirectory(test)
 
 install(
