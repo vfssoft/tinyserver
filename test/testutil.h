@@ -2,7 +2,6 @@
 #define TINYSERVER_TESTUTIL_H
 
 #include <ts.h>
-#include <ts_internal.h>
 
 
 #define RESET_STRUCT(s) memset(&s, 0, sizeof(s))

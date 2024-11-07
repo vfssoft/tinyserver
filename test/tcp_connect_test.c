@@ -24,7 +24,7 @@ static void client_connect_cb(void *arg) {
 typedef struct test_conn_info_s {
   int connected_fired;
   int disconnected_fired;
-  ts_server_t* server;
+  ts_t* server;
   ts_conn_t* conn;
 } test_conn_info_t;
 
@@ -107,7 +107,7 @@ static void client_connect_wait_disconnect_cb(void *arg) {
   char readbuf[1];
   mytcp__read(&client, readbuf, 1);
 }
-static void connected_reject_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status) {
+static void connected_reject_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status) {
   test_conn_info_t* info = (test_conn_info_t*)ctx;
   info->connected_fired++;
 

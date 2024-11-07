@@ -19,12 +19,6 @@ else()
     set(SYS_DLL)
 endif()
 
-
-include_directories(src)
-file(GLOB_RECURSE SRC_FILES src/*.c)
-
-add_library(ts STATIC ${SRC_FILES})
-
 include (ExternalProject)
 ExternalProject_Add(
         uv
@@ -33,42 +27,12 @@ ExternalProject_Add(
         BUILD_IN_SOURCE 1
         CMAKE_ARGS -DLIBUV_BUILD_SHARED=FALSE -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libuv -DBUILD_SHARED_LIBS=OFF
 )
-add_dependencies(ts uv)
-
-link_directories(${CMAKE_BINARY_DIR}/libuv/lib)
 
 find_package(OpenSSL REQUIRED)
 include_directories(include ${CMAKE_BINARY_DIR}/libuv/include)
 
-target_link_libraries(ts PRIVATE libuv OpenSSL::SSL OpenSSL::Crypto ${SYS_DLL})
-
-
-enable_testing()
-
-file(GLOB TEST_SRC_FILES "test/*.c")
-add_executable(tests ${TEST_SRC_FILES})
-
-include (ExternalProject)
-ExternalProject_Add(
-        tinyunit
-        GIT_REPOSITORY https://github.com/vfssoft/tinyunit.git
-        GIT_TAG main
-        BUILD_IN_SOURCE 1
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/tinyunit  -DBUILD_SHARED_LIBS=OFF
-)
-add_dependencies(tests tinyunit)
-
-target_include_directories(tests PRIVATE ${CMAKE_BINARY_DIR}/tinyunit/include)
-target_link_directories(tests PRIVATE ${CMAKE_BINARY_DIR}/tinyunit/lib)
-target_link_libraries(tests PRIVATE ts tinyunit_lib OpenSSL::SSL OpenSSL::Crypto)
-
-add_test(NAME tests COMMAND tests)
-
-install(
-        TARGETS ts
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-)
+add_subdirectory(server)
+add_subdirectory(test)
 
 install(
         DIRECTORY include/

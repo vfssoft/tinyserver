@@ -40,14 +40,14 @@ static void client_cb(void *arg) {
   ASSERT_EQ(err, 0);
 }
 
-static void read_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, const char* data, int len) {
+static void read_cb(void* ctx, ts_t* server, ts_conn_t* conn, const char* data, int len) {
   test_conn_info_t* info = (test_conn_info_t*)ctx;
   info->read_fired++;
   memcpy(info->databuf, data, len);
 
   ts_server__write(server, conn, data, len, NULL);
 }
-static void write_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, int status, int write_more, void* write_ctx) {
+static void write_cb(void* ctx, ts_t* server, ts_conn_t* conn, int status, int write_more, void* write_ctx) {
   test_conn_info_t* info = (test_conn_info_t*)ctx;
   info->write_fired++;
 }
@@ -218,7 +218,7 @@ typedef struct test_echo_data_s {
     int   client_done;
 } test_echo_data_t;
 
-static int echo_read_cb(void* ctx, ts_server_t* server, ts_conn_t* conn, const char* data, int len) {
+static int echo_read_cb(void* ctx, ts_t* server, ts_conn_t* conn, const char* data, int len) {
   test_echo_data_t* info = (test_echo_data_t*)ctx;
 
   memcpy(info->recv_buf + info->recv_buf_off, data, len);

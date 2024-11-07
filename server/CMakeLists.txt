@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.16)
+
+file(GLOB_RECURSE SRC_FILES *.c)
+
+add_library(ts STATIC ${SRC_FILES})
+
+add_dependencies(ts uv)
+
+include_directories(../include ${CMAKE_BINARY_DIR}/libuv/include)
+target_link_libraries(ts PRIVATE libuv OpenSSL::SSL OpenSSL::Crypto ${SYS_DLL})
+
+install(
+        TARGETS ts
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+)
