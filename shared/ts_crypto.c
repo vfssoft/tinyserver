@@ -1,6 +1,8 @@
-#include "internal/ts_crypto.h"
+#include <internal/ts_crypto.h>
+#include <internal/ts_mem.h>
 
-#include "ts_internal.h"
+#include <openssl/ssl.h>
+
 
 void crypto__sha1(char* data, int data_len, char* hash) {
   SHA1((unsigned char*)data, data_len, (unsigned char*)hash);

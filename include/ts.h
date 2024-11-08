@@ -1,6 +1,8 @@
 #ifndef TINYSERVER_TS_TCP_H
 #define TINYSERVER_TS_TCP_H
 
+#include <tsdefs.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -63,26 +65,6 @@ TS_EXTERN  int ts_server_log_set_log_dir(ts_t* server, const char* dir);
 
 // internal utils
 TS_EXTERN unsigned long long ts_server__now(ts_t* server);
-
-#define TS_LOG_DEST_FILE   1
-#define TS_LOG_DEST_EVENT  2
-
-#define TS_LOG_LEVEL_NONE    0
-#define TS_LOG_LEVEL_ERROR   1
-#define TS_LOG_LEVEL_INFO    2
-#define TS_LOG_LEVEL_VERB    3
-#define TS_LOG_LEVEL_DEBUG   4
-#define TS_LOG_LEVEL_DEBUGEX 5
-
-#define TS_PROTO_TCP   1
-#define TS_PROTO_TLS   2
-#define TS_PROTO_WS    3
-#define TS_PROTO_WSS   4
-
-#define TS_STATE_HANDSHAKING   0
-#define TS_STATE_CONNECTED     1
-#define TS_STATE_DISCONNECTING 2
-#define TS_STATE_DISCONNECTED  3
 
 #ifdef __cplusplus
 }

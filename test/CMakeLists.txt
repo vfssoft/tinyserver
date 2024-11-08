@@ -7,6 +7,7 @@ ExternalProject_Add(
         GIT_TAG main
         BUILD_IN_SOURCE 1
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/tinyunit  -DBUILD_SHARED_LIBS=OFF
+        UPDATE_COMMAND ""
 )
 
 enable_testing()

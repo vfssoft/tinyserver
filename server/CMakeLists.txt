@@ -4,6 +4,9 @@ set(SHARED_FILES
         ../shared/ts_data_buf.c
         ../shared/ts_error.c
         ../shared/ts_mem.c
+        ../shared/ts_log.c
+        ../shared/ts_miscellany.c
+        ../shared/ts_crypto.c
 )
 
 file(GLOB_RECURSE SRC_FILES *.c)

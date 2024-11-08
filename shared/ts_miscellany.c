@@ -1,5 +1,8 @@
+#include <uv.h>
+#include <openssl/ssl.h>
 
-#include "ts_internal.h"
+#include <tsdefs.h>
+#include <internal/ts_miscellany.h>
 
 const char* ts_proto__str(int proto) {
   switch (proto) {

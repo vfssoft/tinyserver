@@ -1,5 +1,5 @@
-
-#include "ts_internal.h"
+#include <internal/ts_log.h>
+#include <internal/ts_data_buf.h>
 
 #ifdef _WIN32
 #include <windows.h>
