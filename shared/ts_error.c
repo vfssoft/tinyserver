@@ -1,6 +1,7 @@
 
-#include "ts_internal.h"
-
+#include <stdarg.h>
+#include <internal/ts_error.h>
+#include <internal/ts_mem.h>
 
 static const char* ts_error_pre_def_err_msg(int err) {
   switch (err) {

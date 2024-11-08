@@ -1,5 +1,7 @@
 
-#include "ts_internal.h"
+#include <internal/ts_mem.h>
+#include <internal/ts_data_buf.h>
+#include <internal/ts_error.h>
 
 static const char DECIMAL_TO_HEX_MAP[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 static const char ASCII_VISIABLE_CHAR_MAP[] = {
@@ -50,7 +52,7 @@ static int ts_buf__ensure_cap(ts_buf_t* buf, int cap) {
 
   char* newbuf = (char*) ts__malloc(cap);
   if (newbuf == NULL) {
-    return UV__EAI_MEMORY;
+    return TS_ERR_OUT_OF_MEMORY;
   }
 
   if (buf->len > 0) {

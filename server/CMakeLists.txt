@@ -1,8 +1,14 @@
 cmake_minimum_required(VERSION 3.16)
 
+set(SHARED_FILES
+        ../shared/ts_data_buf.c
+        ../shared/ts_error.c
+        ../shared/ts_mem.c
+)
+
 file(GLOB_RECURSE SRC_FILES *.c)
 
-add_library(ts STATIC ${SRC_FILES})
+add_library(ts STATIC ${SRC_FILES} ${SHARED_FILES})
 
 add_dependencies(ts uv)
 
